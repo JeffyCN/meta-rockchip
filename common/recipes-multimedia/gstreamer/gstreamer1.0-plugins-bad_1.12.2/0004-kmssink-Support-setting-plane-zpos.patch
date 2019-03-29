@@ -1,0 +1,104 @@
+From 8fae13150ab9f13c87e0b7c1ef0002fa00aae77b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 26 Dec 2018 21:24:37 +0800
+Subject: [PATCH 4/4] kmssink: Support setting plane zpos
+
+Using min zpos when attached to window by default.
+Set env KMSSINK_PLANE_ZPOS to specify plane zpos.
+Set env KMSSINK_PLANE_ON_TOP to force max zpos
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 62 insertions(+)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 5eb95d0..577b857 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -46,6 +46,7 @@
+ #include <gst/allocators/gstdmabuf.h>
+ 
+ #include <fcntl.h>
++#include <stdlib.h>
+ #include <string.h>
+ 
+ #include "gstkmssink.h"
+@@ -1234,6 +1235,64 @@ error_map_src_buffer:
+   }
+ }
+ 
++static void
++configure_plane_zpos (GstKMSSink * self)
++{
++  drmModeObjectPropertiesPtr props = NULL;
++  drmModePropertyPtr prop = NULL;
++  drmModeResPtr res = NULL;
++  gchar *buf;
++  int i;
++  guint64 min, max, zpos;
++
++  if (self->plane_id <= 0)
++    return;
++
++  if (drmSetClientCap (self->fd, DRM_CLIENT_CAP_ATOMIC, 1))
++    return;
++
++  res = drmModeGetResources (self->fd);
++  if (!res)
++    return;
++
++  props = drmModeObjectGetProperties (self->fd, self->plane_id,
++      DRM_MODE_OBJECT_PLANE);
++  if (!props)
++    goto out;
++
++  for (i = 0; i < props->count_props; i++) {
++    prop = drmModeGetProperty (self->fd, props->props[i]);
++    if (prop && !strcmp (prop->name, "ZPOS"))
++      break;
++    drmModeFreeProperty (prop);
++    prop = NULL;
++  }
++
++  if (!prop)
++    goto out;
++
++  min = prop->values[0];
++  max = prop->values[1];
++
++  zpos = max;
++
++  buf = getenv ("KMSSINK_PLANE_ZPOS");
++  if (buf)
++    zpos = atoi (buf);
++  else if (getenv ("KMSSINK_PLANE_ON_TOP"))
++    zpos = max;
++
++  GST_INFO_OBJECT (self, "set plane zpos = %llu (%llu~%llu)", zpos, min, max);
++
++  drmModeObjectSetProperty (self->fd, self->plane_id,
++      DRM_MODE_OBJECT_PLANE, props->props[i], zpos);
++
++out:
++  drmModeFreeProperty (prop);
++  drmModeFreeObjectProperties (props);
++  drmModeFreeResources (res);
++}
++
+ static GstFlowReturn
+ gst_kms_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+ {
+@@ -1251,6 +1310,9 @@ gst_kms_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+ 
+   res = GST_FLOW_ERROR;
+ 
++  if (!self->last_buffer)
++    configure_plane_zpos (self);
++
+   buffer = gst_kms_sink_get_input_buffer (self, buf);
+   if (!buffer)
+     return GST_FLOW_ERROR;
+-- 
+2.11.0
+

@@ -1,0 +1,582 @@
+From f0a0fd2719071b371952494d1034007541c30336 Mon Sep 17 00:00:00 2001
+From: Mark Yao <mark.yao@rock-chips.com>
+Date: Wed, 8 Oct 2014 14:38:23 +0800
+Subject: [PATCH 1/2] CHROMIUM: libdrm: add support for rockchip
+
+This is the userspace counterpart to the kernel Rockchip DRM
+driver, which handles GEM buffer management.
+
+BUG=chrome-os-partner:32762
+BUG=b:26575005
+TEST=emerge-veyron libdrm; boot and display.
+
+Signed-off-by: Mark Yao <mark.yao@rock-chips.com>
+Change-Id: Iad042a2347be66672b9749987183c2c0f082d991
+---
+ Makefile.am                    |   5 +
+ configure.ac                   |  14 +++
+ rockchip/Makefile.am           |  20 +++
+ rockchip/libdrm_rockchip.pc.in |  11 ++
+ rockchip/rockchip_drm.c        | 274 +++++++++++++++++++++++++++++++++++++++++
+ rockchip/rockchip_drm.h        |  73 +++++++++++
+ rockchip/rockchip_drmif.h      |  75 +++++++++++
+ 7 files changed, 472 insertions(+)
+ create mode 100644 rockchip/Makefile.am
+ create mode 100644 rockchip/libdrm_rockchip.pc.in
+ create mode 100644 rockchip/rockchip_drm.c
+ create mode 100644 rockchip/rockchip_drm.h
+ create mode 100644 rockchip/rockchip_drmif.h
+
+diff --git a/Makefile.am b/Makefile.am
+index faf0f75..0331faf 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -90,6 +90,10 @@ if HAVE_ETNAVIV
+ ETNAVIV_SUBDIR = etnaviv
+ endif
+ 
++if HAVE_ROCKCHIP
++ROCKCHIP_SUBDIR = rockchip
++endif
++
+ if BUILD_MANPAGES
+ if HAVE_MANPAGES_STYLESHEET
+ MAN_SUBDIR = man
+@@ -109,6 +113,7 @@ SUBDIRS = \
+ 	$(TEGRA_SUBDIR) \
+ 	$(VC4_SUBDIR) \
+ 	$(ETNAVIV_SUBDIR) \
++	$(ROCKCHIP_SUBDIR) \
+ 	data \
+ 	tests \
+ 	$(MAN_SUBDIR)
+diff --git a/configure.ac b/configure.ac
+index 7c8093b..e65daaf 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -158,6 +158,11 @@ AC_ARG_ENABLE(etnaviv-experimental-api,
+ 	      [Enable support for etnaviv's experimental API (default: disabled)]),
+ 	      [ETNAVIV=$enableval], [ETNAVIV=no])
+ 
++AC_ARG_ENABLE(rockchip-experimental-api,
++	      AS_HELP_STRING([--enable-rockchip-experimental-api],
++	      [Enable support for rockchip's experimental API (default: disabled)]),
++	      [ROCKCHIP=$enableval], [ROCKCHIP=no])
++
+ AC_ARG_ENABLE(install-test-programs,
+ 		  AS_HELP_STRING([--enable-install-test-programs],
+ 		  [Install test programs (default: no)]),
+@@ -457,6 +462,12 @@ fi
+ 
+ AM_CONDITIONAL(HAVE_ETNAVIV, [test "x$ETNAVIV" = xyes])
+ 
++AM_CONDITIONAL(HAVE_ROCKCHIP, [test "x$ROCKCHIP" = xyes])
++
++if test "x$ROCKCHIP" = xyes; then
++	AC_DEFINE(HAVE_ROCKCHIP, 1, [Have ROCKCHIP support])
++fi
++
+ AM_CONDITIONAL(HAVE_INSTALL_TESTS, [test "x$INSTALL_TESTS" = xyes])
+ 
+ AC_ARG_ENABLE([cairo-tests],
+@@ -569,6 +580,8 @@ AC_CONFIG_FILES([
+ 	vc4/libdrm_vc4.pc
+ 	etnaviv/Makefile
+ 	etnaviv/libdrm_etnaviv.pc
++	rockchip/Makefile
++	rockchip/libdrm_rockchip.pc
+ 	tests/Makefile
+ 	tests/modeprint/Makefile
+ 	tests/modetest/Makefile
+@@ -602,4 +615,5 @@ echo "  Freedreno API  $FREEDRENO (kgsl: $FREEDRENO_KGSL)"
+ echo "  Tegra API      $TEGRA"
+ echo "  VC4 API        $VC4"
+ echo "  Etnaviv API    $ETNAVIV"
++echo "  Rockchip API   $ROCKCHIP"
+ echo ""
+diff --git a/rockchip/Makefile.am b/rockchip/Makefile.am
+new file mode 100644
+index 0000000..2ebb82f
+--- /dev/null
++++ b/rockchip/Makefile.am
+@@ -0,0 +1,20 @@
++AM_CFLAGS = \
++	$(WARN_CFLAGS) \
++	-I$(top_srcdir) \
++	-I$(top_srcdir)/rockchip \
++	$(PTHREADSTUBS_CFLAGS) \
++	-I$(top_srcdir)/include/drm
++
++libdrm_rockchip_la_LTLIBRARIES = libdrm_rockchip.la
++libdrm_rockchip_ladir = $(libdir)
++libdrm_rockchip_la_LDFLAGS = -version-number 1:0:0 -no-undefined
++libdrm_rockchip_la_LIBADD = ../libdrm.la @PTHREADSTUBS_LIBS@
++
++libdrm_rockchip_la_SOURCES = \
++	rockchip_drm.c
++
++libdrm_rockchipincludedir = ${includedir}/libdrm
++libdrm_rockchipinclude_HEADERS = rockchip_drmif.h rockchip_drm.h
++
++pkgconfigdir = @pkgconfigdir@
++pkgconfig_DATA = libdrm_rockchip.pc
+diff --git a/rockchip/libdrm_rockchip.pc.in b/rockchip/libdrm_rockchip.pc.in
+new file mode 100644
+index 0000000..13f22ac
+--- /dev/null
++++ b/rockchip/libdrm_rockchip.pc.in
+@@ -0,0 +1,11 @@
++prefix=@prefix@
++exec_prefix=@exec_prefix@
++libdir=@libdir@
++includedir=@includedir@
++
++Name: libdrm_rockchip
++Description: Userspace interface to rockchip kernel DRM services
++Version: 0.1
++Libs: -L${libdir} -ldrm_rockchip
++Cflags: -I${includedir} -I${includedir}/libdrm
++Requires.private: libdrm
+diff --git a/rockchip/rockchip_drm.c b/rockchip/rockchip_drm.c
+new file mode 100644
+index 0000000..20a83d5
+--- /dev/null
++++ b/rockchip/rockchip_drm.c
+@@ -0,0 +1,274 @@
++/*
++ * Copyright (C) ROCKCHIP, Inc.
++ * Author:yzq<yzq@rock-chips.com>
++ *
++ * based on exynos_drm.c
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice (including the next
++ * paragraph) shall be included in all copies or substantial portions of the
++ * Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++#include <errno.h>
++
++#include <sys/mman.h>
++#include <linux/stddef.h>
++
++#include <xf86drm.h>
++
++#include "rockchip_drm.h"
++#include "rockchip_drmif.h"
++
++/*
++ * Create rockchip drm device object.
++ *
++ * @fd: file descriptor to rockchip drm driver opened.
++ *
++ * if true, return the device object else NULL.
++ */
++struct rockchip_device *rockchip_device_create(int fd)
++{
++	struct rockchip_device *dev;
++
++	dev = calloc(1, sizeof(*dev));
++	if (!dev) {
++		fprintf(stderr, "failed to create device[%s].\n",
++				strerror(errno));
++		return NULL;
++	}
++
++	dev->fd = fd;
++
++	return dev;
++}
++
++/*
++ * Destroy rockchip drm device object
++ *
++ * @dev: rockchip drm device object.
++ */
++void rockchip_device_destroy(struct rockchip_device *dev)
++{
++	free(dev);
++}
++
++/*
++ * Create a rockchip buffer object to rockchip drm device.
++ *
++ * @dev: rockchip drm device object.
++ * @size: user-desired size.
++ * flags: user-desired memory type.
++ *	user can set one or more types among several types to memory
++ *	allocation and cache attribute types. and as default,
++ *	ROCKCHIP_BO_NONCONTIG and ROCKCHIP-BO_NONCACHABLE types would
++ *	be used.
++ *
++ * if true, return a rockchip buffer object else NULL.
++ */
++struct rockchip_bo *rockchip_bo_create(struct rockchip_device *dev,
++					size_t size, uint32_t flags)
++{
++	struct rockchip_bo *bo;
++	struct drm_rockchip_gem_create req = {
++		.size = size,
++		.flags = flags,
++	};
++
++	if (size == 0) {
++		fprintf(stderr, "invalid size.\n");
++		return NULL;
++	}
++
++	bo = calloc(1, sizeof(*bo));
++	if (!bo) {
++		fprintf(stderr, "failed to create bo[%s].\n",
++				strerror(errno));
++		goto fail;
++	}
++
++	bo->dev = dev;
++
++	if (drmIoctl(dev->fd, DRM_IOCTL_ROCKCHIP_GEM_CREATE, &req)){
++		fprintf(stderr, "failed to create gem object[%s].\n",
++				strerror(errno));
++		goto err_free_bo;
++	}
++
++	bo->handle = req.handle;
++	bo->size = size;
++	bo->flags = flags;
++
++	return bo;
++
++err_free_bo:
++	free(bo);
++fail:
++	return NULL;
++}
++
++/*
++ * Destroy a rockchip buffer object.
++ *
++ * @bo: a rockchip buffer object to be destroyed.
++ */
++void rockchip_bo_destroy(struct rockchip_bo *bo)
++{
++	if (!bo)
++		return;
++
++	if (bo->vaddr)
++		munmap(bo->vaddr, bo->size);
++
++	if (bo->handle) {
++		struct drm_gem_close req = {
++			.handle = bo->handle,
++		};
++
++		drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
++	}
++
++	free(bo);
++}
++
++
++/*
++ * Get a rockchip buffer object from a gem global object name.
++ *
++ * @dev: a rockchip device object.
++ * @name: a gem global object name exported by another process.
++ *
++ * this interface is used to get a rockchip buffer object from a gem
++ * global object name sent by another process for buffer sharing.
++ *
++ * if true, return a rockchip buffer object else NULL.
++ *
++ */
++struct rockchip_bo *rockchip_bo_from_name(struct rockchip_device *dev,
++						uint32_t name)
++{
++	struct rockchip_bo *bo;
++	struct drm_gem_open req = {
++		.name = name,
++	};
++
++	bo = calloc(1, sizeof(*bo));
++	if (!bo) {
++		fprintf(stderr, "failed to allocate bo[%s].\n",
++				strerror(errno));
++		return NULL;
++	}
++
++	if (drmIoctl(dev->fd, DRM_IOCTL_GEM_OPEN, &req)) {
++		fprintf(stderr, "failed to open gem object[%s].\n",
++				strerror(errno));
++		goto err_free_bo;
++	}
++
++	bo->dev = dev;
++	bo->name = name;
++	bo->handle = req.handle;
++
++	return bo;
++
++err_free_bo:
++	free(bo);
++	return NULL;
++}
++
++/*
++ * Get a gem global object name from a gem object handle.
++ *
++ * @bo: a rockchip buffer object including gem handle.
++ * @name: a gem global object name to be got by kernel driver.
++ *
++ * this interface is used to get a gem global object name from a gem object
++ * handle to a buffer that wants to share it with another process.
++ *
++ * if true, return 0 else negative.
++ */
++int rockchip_bo_get_name(struct rockchip_bo *bo, uint32_t *name)
++{
++	if (!bo->name) {
++		struct drm_gem_flink req = {
++			.handle = bo->handle,
++		};
++		int ret;
++
++		ret = drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_FLINK, &req);
++		if (ret) {
++			fprintf(stderr, "failed to get gem global name[%s].\n",
++					strerror(errno));
++			return ret;
++		}
++
++		bo->name = req.name;
++	}
++
++	*name = bo->name;
++
++	return 0;
++}
++
++uint32_t rockchip_bo_handle(struct rockchip_bo *bo)
++{
++	return bo->handle;
++}
++
++/*
++ * Mmap a buffer to user space.
++ *
++ * @bo: a rockchip buffer object including a gem object handle to be mmapped
++ *	to user space.
++ *
++ * if true, user pointer mmaped else NULL.
++ */
++void *rockchip_bo_map(struct rockchip_bo *bo)
++{
++	if (!bo->vaddr) {
++		struct rockchip_device *dev = bo->dev;
++		struct drm_rockchip_gem_map_off req = {
++			.handle = bo->handle,
++		};
++		int ret;
++
++		ret = drmIoctl(dev->fd, DRM_IOCTL_ROCKCHIP_GEM_MAP_OFFSET, &req);
++		if (ret) {
++			fprintf(stderr, "failed to ioctl gem map offset[%s].\n",
++				strerror(errno));
++			return NULL;
++		}
++
++		bo->vaddr = mmap(0, bo->size, PROT_READ | PROT_WRITE,
++				 MAP_SHARED, dev->fd, req.offset);
++		if (bo->vaddr == MAP_FAILED) {
++			fprintf(stderr, "failed to mmap buffer[%s].\n",
++				strerror(errno));
++			return NULL;
++		}
++	}
++
++	return bo->vaddr;
++}
+diff --git a/rockchip/rockchip_drm.h b/rockchip/rockchip_drm.h
+new file mode 100644
+index 0000000..13977d5
+--- /dev/null
++++ b/rockchip/rockchip_drm.h
+@@ -0,0 +1,73 @@
++/*
++ * Copyright (c) Fuzhou Rockchip Electronics Co.Ltd
++ * Authors:
++ *       Mark Yao <yzq@rock-chips.com>
++ *
++ * based on exynos_drm.h
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice (including the next
++ * paragraph) shall be included in all copies or substantial portions of the
++ * Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ *
++ */
++
++#ifndef _ROCKCHIP_DRM_H_
++#define _ROCKCHIP_DRM_H_
++
++#include <stdint.h>
++#include "drm.h"
++
++/**
++ * User-desired buffer creation information structure.
++ *
++ * @size: user-desired memory allocation size.
++ *	- this size value would be page-aligned internally.
++ * @flags: user request for setting memory type or cache attributes.
++ * @handle: returned a handle to created gem object.
++ *	- this handle will be set by gem module of kernel side.
++ */
++struct drm_rockchip_gem_create {
++	uint64_t size;
++	uint32_t flags;
++	uint32_t handle;
++};
++
++/**
++ * A structure for getting buffer offset.
++ *
++ * @handle: a pointer to gem object created.
++ * @pad: just padding to be 64-bit aligned.
++ * @offset: relatived offset value of the memory region allocated.
++ *	- this value should be set by user.
++ */
++struct drm_rockchip_gem_map_off {
++	uint32_t handle;
++	uint32_t pad;
++	uint64_t offset;
++};
++
++#define DRM_ROCKCHIP_GEM_CREATE	0x00
++#define DRM_ROCKCHIP_GEM_MAP_OFFSET	0x01
++
++#define DRM_IOCTL_ROCKCHIP_GEM_CREATE DRM_IOWR(DRM_COMMAND_BASE + \
++		DRM_ROCKCHIP_GEM_CREATE, struct drm_rockchip_gem_create)
++
++#define DRM_IOCTL_ROCKCHIP_GEM_MAP_OFFSET DRM_IOWR(DRM_COMMAND_BASE + \
++		DRM_ROCKCHIP_GEM_MAP_OFFSET, struct drm_rockchip_gem_map_off)
++
++#endif
+diff --git a/rockchip/rockchip_drmif.h b/rockchip/rockchip_drmif.h
+new file mode 100644
+index 0000000..30a875b
+--- /dev/null
++++ b/rockchip/rockchip_drmif.h
+@@ -0,0 +1,75 @@
++/*
++ * Copyright (C) ROCKCHIP, Inc.
++ * Author:yzq<yzq@rock-chips.com>
++ *
++ * based on exynos_drmif.h
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice (including the next
++ * paragraph) shall be included in all copies or substantial portions of the
++ * Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ *
++ */
++
++#ifndef ROCKCHIP_DRMIF_H_
++#define ROCKCHIP_DRMIF_H_
++
++#include <xf86drm.h>
++#include <stdint.h>
++#include "rockchip_drm.h"
++
++struct rockchip_device {
++	int fd;
++};
++
++/*
++ * Rockchip Buffer Object structure.
++ *
++ * @dev: rockchip device object allocated.
++ * @handle: a gem handle to gem object created.
++ * @flags: indicate memory allocation and cache attribute types.
++ * @size: size to the buffer created.
++ * @vaddr: user space address to a gem buffer mmaped.
++ * @name: a gem global handle from flink request.
++ */
++struct rockchip_bo {
++	struct rockchip_device	*dev;
++	uint32_t		handle;
++	uint32_t		flags;
++	size_t			size;
++	void			*vaddr;
++	uint32_t		name;
++};
++
++/*
++ * device related functions:
++ */
++struct rockchip_device *rockchip_device_create(int fd);
++void rockchip_device_destroy(struct rockchip_device *dev);
++
++/*
++ * buffer-object related functions:
++ */
++struct rockchip_bo *rockchip_bo_create(struct rockchip_device *dev,
++			size_t size, uint32_t flags);
++void rockchip_bo_destroy(struct rockchip_bo *bo);
++struct rockchip_bo *rockchip_bo_from_name(struct rockchip_device *dev,
++			uint32_t name);
++int rockchip_bo_get_name(struct rockchip_bo *bo, uint32_t *name);
++uint32_t rockchip_bo_handle(struct rockchip_bo *bo);
++void *rockchip_bo_map(struct rockchip_bo *bo);
++#endif /* ROCKCHIP_DRMIF_H_ */
+-- 
+2.11.0
+

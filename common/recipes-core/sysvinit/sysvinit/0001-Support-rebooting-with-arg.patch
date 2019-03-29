@@ -1,0 +1,71 @@
+From 142c2f03d9b2b5264112dddd36c658954cf877b8 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 16 Jul 2018 09:53:40 +0800
+Subject: [PATCH] Support rebooting with arg
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ src/halt.c | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/src/halt.c b/src/halt.c
+index 499e973..26e6c86 100644
+--- a/src/halt.c
++++ b/src/halt.c
+@@ -58,6 +58,9 @@
+ #include <getopt.h>
+ #include "reboot.h"
+ 
++#include <linux/reboot.h>
++#include <sys/syscall.h>
++
+ char *Version = "@(#)halt  2.86  31-Jul-2004 miquels@cistron.nl";
+ char *progname;
+ 
+@@ -184,6 +187,7 @@ int main(int argc, char **argv)
+ 	int do_poweroff = 0;
+ 	int c;
+ 	char *tm = NULL;
++	char *extra_arg = NULL;
+ 
+ 	/*
+ 	 *	Find out who we are
+@@ -232,7 +236,8 @@ int main(int argc, char **argv)
+ 				usage();
+ 		}
+ 	 }
+-	if (argc != optind) usage();
++	if (argc != optind)
++		extra_arg = argv[optind];
+ 
+ 	if (geteuid() != 0) {
+ 		fprintf(stderr, "%s: must be superuser.\n", progname);
+@@ -241,7 +246,7 @@ int main(int argc, char **argv)
+ 
+ 	(void)chdir("/");
+ 
+-	if (!do_hard && !do_nothing) {
++	if (!do_hard && !do_nothing && !extra_arg) {
+ 		/*
+ 		 *	See if we are in runlevel 0 or 6.
+ 		 */
+@@ -277,6 +282,16 @@ int main(int argc, char **argv)
+ 	if (do_nothing) exit(0);
+ 
+ 	if (do_reboot) {
++		if (extra_arg) {
++			if (!do_sync)
++				sync();
++			printf("rebooting with arg(%s)", extra_arg);
++			syscall(__NR_reboot, LINUX_REBOOT_MAGIC1,
++				LINUX_REBOOT_MAGIC2,
++				LINUX_REBOOT_CMD_RESTART2, extra_arg);
++			exit(0);
++		}
++
+ 		init_reboot(BMAGIC_REBOOT);
+ 	} else {
+ 		/*
+-- 
+2.11.0
+

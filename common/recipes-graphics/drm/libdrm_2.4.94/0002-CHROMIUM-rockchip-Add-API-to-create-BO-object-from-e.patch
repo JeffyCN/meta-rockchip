@@ -1,0 +1,74 @@
+From 19cd9748ebc73c72a6689ff5366101837f04d744 Mon Sep 17 00:00:00 2001
+From: Tomasz Figa <tfiga@google.com>
+Date: Tue, 28 Apr 2015 09:53:35 +0900
+Subject: [PATCH 2/2] CHROMIUM: rockchip: Add API to create BO object from
+ existing handle
+
+Certain use cases involve importing BO from Prime FD and obtaining a
+handle, which then needs to be imported into libdrm.
+
+BUG=b:26864637
+TEST=N/A
+
+Change-Id: Ibe28f719d1287e2cc5fb62523239635f8baac901
+Signed-off-by: Tomasz Figa <tfiga@google.com>
+Reviewed-on: https://chromium-review.googlesource.com/324673
+Commit-Ready: Nicolas Boichat <drinkcat@chromium.org>
+Tested-by: Nicolas Boichat <drinkcat@chromium.org>
+Reviewed-by: Daniel Kurtz <djkurtz@chromium.org>
+---
+ rockchip/rockchip_drm.c   | 25 +++++++++++++++++++++++++
+ rockchip/rockchip_drmif.h |  2 ++
+ 2 files changed, 27 insertions(+)
+
+diff --git a/rockchip/rockchip_drm.c b/rockchip/rockchip_drm.c
+index 20a83d5..9433d52 100644
+--- a/rockchip/rockchip_drm.c
++++ b/rockchip/rockchip_drm.c
+@@ -129,6 +129,31 @@ fail:
+ 	return NULL;
+ }
+ 
++struct rockchip_bo *rockchip_bo_from_handle(struct rockchip_device *dev,
++			uint32_t handle, uint32_t flags, uint32_t size)
++{
++	struct rockchip_bo *bo;
++
++	if (size == 0) {
++		fprintf(stderr, "invalid size.\n");
++		return NULL;
++	}
++
++	bo = calloc(1, sizeof(*bo));
++	if (!bo) {
++		fprintf(stderr, "failed to create bo[%s].\n",
++				strerror(errno));
++		return NULL;
++	}
++
++	bo->dev = dev;
++	bo->handle = handle;
++	bo->size = size;
++	bo->flags = flags;
++
++	return bo;
++}
++
+ /*
+  * Destroy a rockchip buffer object.
+  *
+diff --git a/rockchip/rockchip_drmif.h b/rockchip/rockchip_drmif.h
+index 30a875b..ec3ff84 100644
+--- a/rockchip/rockchip_drmif.h
++++ b/rockchip/rockchip_drmif.h
+@@ -71,5 +71,7 @@ struct rockchip_bo *rockchip_bo_from_name(struct rockchip_device *dev,
+ 			uint32_t name);
+ int rockchip_bo_get_name(struct rockchip_bo *bo, uint32_t *name);
+ uint32_t rockchip_bo_handle(struct rockchip_bo *bo);
++struct rockchip_bo *rockchip_bo_from_handle(struct rockchip_device *dev,
++			uint32_t handle, uint32_t flags, uint32_t size);
+ void *rockchip_bo_map(struct rockchip_bo *bo);
+ #endif /* ROCKCHIP_DRMIF_H_ */
+-- 
+2.11.0
+

@@ -1,0 +1,112 @@
+From 40711bf06ea1566d6aa773cdee2d0c80271fe9e2 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 10 Dec 2018 20:57:25 +0800
+Subject: [PATCH 3/4] kmssink: Support save/restore original crtc
+
+Port from weston's compositor-drm.c
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 25 ++++++++++++++++++++-----
+ sys/kms/gstkmssink.h |  7 +++++++
+ 2 files changed, 27 insertions(+), 5 deletions(-)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 9abe93d..5eb95d0 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -45,11 +45,6 @@
+ #include <gst/video/video.h>
+ #include <gst/allocators/gstdmabuf.h>
+ 
+-#include <drm.h>
+-#include <xf86drm.h>
+-#include <xf86drmMode.h>
+-#include <drm_fourcc.h>
+-
+ #include <fcntl.h>
+ #include <string.h>
+ 
+@@ -321,6 +316,20 @@ get_drm_caps (GstKMSSink * self)
+   return TRUE;
+ }
+ 
++static void
++restore_original_crtc (GstKMSSink * self)
++{
++  if (!self->original_crtc)
++    return;
++
++  drmModeSetCrtc(self->fd, self->original_crtc->crtc_id,
++      self->original_crtc->buffer_id, self->original_crtc->x,
++      self->original_crtc->y, (uint32_t *) &self->conn_id, 1,
++      &self->original_crtc->mode);
++  drmModeFreeCrtc(self->original_crtc);
++  self->original_crtc = NULL;
++}
++
+ static gboolean
+ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo)
+ {
+@@ -367,6 +376,9 @@ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo)
+   if (!mode)
+     goto mode_failed;
+ 
++  if (!self->original_crtc)
++    self->original_crtc = drmModeGetCrtc(self->fd, self->crtc_id);
++
+   err = drmModeSetCrtc (self->fd, self->crtc_id, fb_id, 0, 0,
+       (uint32_t *) & self->conn_id, 1, mode);
+   if (err)
+@@ -409,6 +421,7 @@ mode_failed:
+   }
+ modesetting_failed:
+   {
++    restore_original_crtc(self);
+     GST_ERROR_OBJECT (self, "Failed to set mode: %s", strerror (errno));
+     goto bail;
+   }
+@@ -600,6 +613,7 @@ bail:
+     drmModeFreeResources (res);
+ 
+   if (!ret && self->fd >= 0) {
++    restore_original_crtc (self);
+     drmClose (self->fd);
+     self->fd = -1;
+   }
+@@ -690,6 +704,7 @@ gst_kms_sink_stop (GstBaseSink * bsink)
+   gst_poll_fd_init (&self->pollfd);
+ 
+   if (self->fd >= 0) {
++    restore_original_crtc (self);
+     drmClose (self->fd);
+     self->fd = -1;
+   }
+diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
+index 214f3ad..9926555 100644
+--- a/sys/kms/gstkmssink.h
++++ b/sys/kms/gstkmssink.h
+@@ -28,6 +28,11 @@
+ 
+ #include <gst/video/gstvideosink.h>
+ 
++#include <drm.h>
++#include <xf86drm.h>
++#include <xf86drmMode.h>
++#include <drm_fourcc.h>
++
+ G_BEGIN_DECLS
+ 
+ #define GST_TYPE_KMS_SINK \
+@@ -58,6 +63,8 @@ struct _GstKMSSink {
+   guint16 hdisplay, vdisplay;
+   guint32 buffer_id;
+ 
++  drmModeCrtcPtr original_crtc;
++
+   /* capabilities */
+   gboolean has_prime_import;
+   gboolean has_async_page_flip;
+-- 
+2.11.0
+

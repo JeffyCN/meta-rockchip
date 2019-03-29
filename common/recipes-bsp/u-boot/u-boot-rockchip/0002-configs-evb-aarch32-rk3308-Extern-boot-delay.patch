@@ -1,0 +1,27 @@
+From 4445c5e08a9eeb46e2d5ea63ac9cf1dda7ed7c51 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 22 Mar 2019 14:18:40 +0800
+Subject: [PATCH 2/9] configs: evb-aarch32-rk3308: Extern boot delay
+
+Change-Id: Ia3d8310e3a20f09e23d9dbf87e36bfdb04e80c02
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ configs/evb-aarch32-rk3308_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configs/evb-aarch32-rk3308_defconfig b/configs/evb-aarch32-rk3308_defconfig
+index f8510b1e49..4e261b3e4c 100644
+--- a/configs/evb-aarch32-rk3308_defconfig
++++ b/configs/evb-aarch32-rk3308_defconfig
+@@ -14,7 +14,7 @@ CONFIG_ANDROID_BOOT_IMAGE=y
+ CONFIG_FIT=y
+ CONFIG_FIT_VERBOSE=y
+ # CONFIG_PASS_DEVICE_SERIAL_BY_FDT is not set
+-CONFIG_BOOTDELAY=0
++CONFIG_BOOTDELAY=1
+ CONFIG_SYS_CONSOLE_INFO_QUIET=y
+ # CONFIG_DISPLAY_CPUINFO is not set
+ CONFIG_ANDROID_BOOTLOADER=y
+-- 
+2.11.0
+
