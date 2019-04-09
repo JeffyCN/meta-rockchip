@@ -1,0 +1,127 @@
+From 6fb247c173d2e86620f1a5dcc3fb158bd9160ddd Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 6 Dec 2018 18:53:05 +0800
+Subject: [PATCH] gl-renderer: Workaround dmabuf import/attach for mali
+
+Tested on px3se with libmali-utgard-400-r7p0-r3p0-wayland.so, the
+mpp + waylandsink works.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/gl-renderer.c | 35 ++++++++++++++++++++++++++++++-----
+ 1 file changed, 30 insertions(+), 5 deletions(-)
+
+diff --git a/libweston/gl-renderer.c b/libweston/gl-renderer.c
+index c6091af..e052975 100644
+--- a/libweston/gl-renderer.c
++++ b/libweston/gl-renderer.c
+@@ -227,6 +227,8 @@ struct gl_renderer {
+ 	struct wl_signal destroy_signal;
+ 
+ 	struct wl_listener output_destroy_listener;
++
++	int is_mali_egl;
+ };
+ 
+ static PFNEGLGETPLATFORMDISPLAYEXTPROC get_platform_display = NULL;
+@@ -1592,6 +1594,14 @@ import_simple_dmabuf(struct gl_renderer *gr,
+ 	attribs[atti++] = attributes->format;
+ 	/* XXX: Add modifier here when supported */
+ 
++	// Mali needs extra attributes
++	if (gr->is_mali_egl) {
++		attribs[atti++] = EGL_YUV_COLOR_SPACE_HINT_EXT;
++		attribs[atti++] = EGL_ITU_REC601_EXT;
++		attribs[atti++] = EGL_SAMPLE_RANGE_HINT_EXT;
++		attribs[atti++] = EGL_YUV_NARROW_RANGE_EXT;
++	}
++
+ 	if (attributes->n_planes > 0) {
+ 		attribs[atti++] = EGL_DMA_BUF_PLANE0_FD_EXT;
+ 		attribs[atti++] = attributes->fd[0];
+@@ -1920,7 +1930,7 @@ import_known_dmabuf(struct gl_renderer *gr,
+ 	return true;
+ }
+ 
+-static void
++static int
+ gl_renderer_attach_dmabuf(struct weston_surface *surface,
+ 			  struct weston_buffer *buffer,
+ 			  struct linux_dmabuf_buffer *dmabuf)
+@@ -1934,7 +1944,7 @@ gl_renderer_attach_dmabuf(struct weston_surface *surface,
+ 	if (!gr->has_dmabuf_import) {
+ 		linux_dmabuf_buffer_send_server_error(dmabuf,
+ 				"EGL dmabuf import not supported");
+-		return;
++		return -1;
+ 	}
+ 
+ 	buffer->width = dmabuf->attributes.width;
+@@ -1972,7 +1982,7 @@ gl_renderer_attach_dmabuf(struct weston_surface *surface,
+ 
+ 	if (!import_known_dmabuf(gr, image)) {
+ 		linux_dmabuf_buffer_send_server_error(dmabuf, "EGL dmabuf import failed");
+-		return;
++		return -1;
+ 	}
+ 
+ 	gs->num_images = image->num_images;
+@@ -1992,6 +2002,8 @@ gl_renderer_attach_dmabuf(struct weston_surface *surface,
+ 	gs->height = buffer->height;
+ 	gs->buffer_type = BUFFER_TYPE_EGL;
+ 	gs->y_inverted = buffer->y_inverted;
++
++	return 0;
+ }
+ 
+ static void
+@@ -2027,7 +2039,16 @@ gl_renderer_attach(struct weston_surface *es, struct weston_buffer *buffer)
+ 	else if (gr->has_bind_display &&
+ 		 gr->query_buffer(gr->egl_display, (void *)buffer->resource,
+ 				  EGL_TEXTURE_FORMAT, &format))
++	{
++		// Prefer attaching as dmabuf for mali
++		dmabuf = linux_dmabuf_buffer_get(buffer->resource);
++		if (dmabuf && gr->is_mali_egl) {
++			if (!gl_renderer_attach_dmabuf(es, buffer, dmabuf))
++				return;
++		}
++
+ 		gl_renderer_attach_egl(es, buffer, format);
++	}
+ 	else if ((dmabuf = linux_dmabuf_buffer_get(buffer->resource)))
+ 		gl_renderer_attach_dmabuf(es, buffer, dmabuf);
+ 	else {
+@@ -2503,8 +2524,9 @@ log_extensions(const char *name, const char *extensions)
+ }
+ 
+ static void
+-log_egl_gl_info(EGLDisplay egldpy)
++log_egl_gl_info(struct gl_renderer *gr)
+ {
++	EGLDisplay egldpy = gr->egl_display;
+ 	const char *str;
+ 
+ 	str = eglQueryString(egldpy, EGL_VERSION);
+@@ -2531,6 +2553,9 @@ log_egl_gl_info(EGLDisplay egldpy)
+ 	str = (char *)glGetString(GL_RENDERER);
+ 	weston_log("GL renderer: %s\n", str ? str : "(null)");
+ 
++	if (strstr(str, "mali") || strstr(str, "Mali"))
++		gr->is_mali_egl = 1;
++
+ 	str = (char *)glGetString(GL_EXTENSIONS);
+ 	log_extensions("GL extensions", str ? str : "(null)");
+ }
+@@ -3300,7 +3325,7 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
+ 		return -1;
+ 	}
+ 
+-	log_egl_gl_info(gr->egl_display);
++	log_egl_gl_info(gr);
+ 
+ 	gr->image_target_texture_2d =
+ 		(void *) eglGetProcAddress("glEGLImageTargetTexture2DOES");
+-- 
+2.11.0
+
