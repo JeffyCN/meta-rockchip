@@ -14,8 +14,6 @@ SRCREV = "95c3cee3b78725833e6e7d6f933f397ed86d32b5"
 S = "${WORKDIR}/git"
 
 DEPENDS = "libdrm patchelf-native"
-DEPENDS_${PN}_px3se = "openssl10"
-RDEPENDS_${PN}_px3se = "libssl libcrypto"
 
 PROVIDES += "virtual/egl virtual/libgles1 virtual/libgles2 virtual/libgles3 virtual/libopencl virtual/libgbm"
 
@@ -91,46 +89,15 @@ do_install () {
 	cp -r ${S}/include/* ${D}${includedir}/
 }
 
-do_install_append_px3se() {
-	install -m 0755 -d ${D}/${sysconfdir}/init.d
-	install -m 0755 ${S}/overlay/S10libmali_px3se \
-		${D}/${sysconfdir}/init.d/mali.sh
-	install -m 0755 -d ${D}/${bindir}
-	install -m 0755 ${S}/overlay/px3seBase ${D}/${bindir}/
-
-	patchelf --replace-needed "libcrypto.so.1.0.0" "libcrypto.so.1.0.2" \
-		${D}/${libdir}/libMali.so.1
-	patchelf --replace-needed "libcrypto.so.1.0.0" "libcrypto.so.1.0.2" \
-		${D}/${bindir}/px3seBase
-	patchelf --replace-needed "libssl.so.1.0.0" "libssl.so.1.0.2" \
-		${D}/${bindir}/px3seBase
-}
-
-inherit update-rc.d
-
-# Optional initial script
-INITSCRIPT_NAME = "mali.sh"
-INITSCRIPT_PARAMS = "start 10 5 4 3 2 ."
-
 INSANE_SKIP_${PN} = "already-stripped ldflags dev-so"
 
 INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 INHIBIT_PACKAGE_STRIP = "1"
 
 FILES_${PN} = " \
-	${libdir}/lib*${SOLIBS} \
+	${libdir} \
 "
 FILES_${PN}-dev = " \
-	${libdir}/lib*${SOLIBSDEV} \
-	${includedir} \
-	${libdir}/pkgconfig \
-"
-FILES_${PN}_px3se = " \
-	${libdir} \
-	${sysconfdir} \
-	${bindir} \
-"
-FILES_${PN}-dev_px3se = " \
 	${includedir} \
 	${libdir}/pkgconfig \
 "
