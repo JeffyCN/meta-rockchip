@@ -1,0 +1,42 @@
+From f664cb98ee782c4dddeb9a0d1c8399c3f40321c2 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 18 Apr 2019 17:44:06 +0800
+Subject: [PATCH] ui: gl_surface_egl: Support egl platform display
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ui/gl/gl_surface_egl.cc | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/ui/gl/gl_surface_egl.cc b/ui/gl/gl_surface_egl.cc
+index 3e61b5f..6b91e4b 100644
+--- a/ui/gl/gl_surface_egl.cc
++++ b/ui/gl/gl_surface_egl.cc
+@@ -261,6 +261,24 @@ EGLDisplay GetDisplayFromType(DisplayType display_type,
+                               EGLNativeDisplayType native_display) {
+   switch (display_type) {
+     case DEFAULT:
++      {
++        EGLDisplay display = EGL_NO_DISPLAY;
++#if defined(USE_X11)
++        display = eglGetPlatformDisplayEXT(
++            EGL_PLATFORM_X11_KHR,
++            reinterpret_cast<void*>(native_display), nullptr);
++#else
++        display = eglGetPlatformDisplayEXT(
++            EGL_PLATFORM_WAYLAND_KHR,
++            reinterpret_cast<void*>(native_display), nullptr);
++#endif
++        if (!display)
++          display = eglGetPlatformDisplayEXT(
++              EGL_PLATFORM_GBM_KHR,
++              reinterpret_cast<void*>(native_display), nullptr);
++        if (display)
++          return display;
++      }
+     case SWIFT_SHADER:
+       return eglGetDisplay(native_display);
+     case ANGLE_D3D9:
+-- 
+2.11.0
+
