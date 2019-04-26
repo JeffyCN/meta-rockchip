@@ -1,0 +1,25 @@
+From 9f6d0d08122cba7283c19778ab6dae8b57e666e6 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 26 Apr 2019 13:48:17 +0800
+Subject: [PATCH] blink: Fix compile error
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../renderer/core/editing/iterators/text_iterator_text_node_handler.cc   | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/third_party/blink/renderer/core/editing/iterators/text_iterator_text_node_handler.cc b/third_party/blink/renderer/core/editing/iterators/text_iterator_text_node_handler.cc
+index 905de382..eb5fd6cc 100644
+--- a/third_party/blink/renderer/core/editing/iterators/text_iterator_text_node_handler.cc
++++ b/third_party/blink/renderer/core/editing/iterators/text_iterator_text_node_handler.cc
+@@ -5,6 +5,7 @@
+ #include "third_party/blink/renderer/core/editing/iterators/text_iterator_text_node_handler.h"
+ 
+ #include <algorithm>
++#include "third_party/blink/renderer/core/dom/node_computed_style.h"
+ #include "third_party/blink/renderer/core/dom/first_letter_pseudo_element.h"
+ #include "third_party/blink/renderer/core/editing/ephemeral_range.h"
+ #include "third_party/blink/renderer/core/editing/iterators/text_iterator_text_state.h"
+-- 
+2.11.0
+
