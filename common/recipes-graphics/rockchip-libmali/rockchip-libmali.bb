@@ -25,6 +25,11 @@ RDEPENDS_${PN} = " \
         ${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
 "
 
+DEPENDS_append = " \
+        ${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
+        ${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
+"
+
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 python () {
@@ -78,12 +83,10 @@ do_install () {
 	ln -sf libMali.so.1 ${D}/${libdir}/libgbm.so.1
 	ln -sf libgbm.so.1 ${D}/${libdir}/libgbm.so
 
+	PC_FILES="egl.pc gbm.pc glesv2.pc mali.pc OpenCL.pc"
 	install -d -m 0755 ${D}${libdir}/pkgconfig
-	install -m 0644 ${WORKDIR}/build/egl.pc ${D}${libdir}/pkgconfig/
-	install -m 0644 ${WORKDIR}/build/gbm.pc ${D}${libdir}/pkgconfig/
-	install -m 0644 ${WORKDIR}/build/glesv2.pc ${D}${libdir}/pkgconfig/
-	install -m 0644 ${WORKDIR}/build/mali.pc ${D}${libdir}/pkgconfig/
-	install -m 0644 ${WORKDIR}/build/OpenCL.pc ${D}${libdir}/pkgconfig/
+	cd ${WORKDIR}/build/
+	install -m 0644 ${PC_FILES} ${D}${libdir}/pkgconfig/
 
 	if echo ${RK_MALI_LIB} | grep -q wayland; then
 		ln -sf libMali.so.1 ${D}/${libdir}/libwayland-egl.so.1
@@ -91,6 +94,11 @@ do_install () {
 
 		install -m 0644 ${WORKDIR}/build/wayland-egl.pc \
 			${D}${libdir}/pkgconfig/
+
+		cd ${D}${libdir}/pkgconfig/
+		for f in ${PC_FILES} wayland-egl.pc; do
+			sed -i "s/^Libs:/Libs:-lwayland-client -lwayland-server /" ${f}
+		done
 	fi
 
 	install -d -m 0755 ${D}${includedir}
