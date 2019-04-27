@@ -45,12 +45,12 @@ python () {
 	      ("libgles1", "libglesv1-cm1"),
 	      ("libgles2", "libglesv2-2"),
 	      ("libgles3",), ("libopencl",)):
-        pkgs = " ".join(p)
+        pkgs = " " + " ".join(p)
         d.appendVar("RREPLACES_" + pn, pkgs)
         d.appendVar("RPROVIDES_" + pn, pkgs)
         d.appendVar("RCONFLICTS_" + pn, pkgs)
 
-        pkgs = p[0] + "-dev"
+        pkgs = " " + p[0] + "-dev "
         d.appendVar("RREPLACES_" + pn_dev, pkgs)
         d.appendVar("RPROVIDES_" + pn_dev, pkgs)
         d.appendVar("RCONFLICTS_" + pn_dev, pkgs)
