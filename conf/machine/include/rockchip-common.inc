@@ -86,7 +86,8 @@ gen_rkparameter() {
 		return
 	fi
 
-	OUT="${IMGDEPLOYDIR}/parameter"
+	OUT="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.parameter"
+	ln -sf "${IMAGE_LINK_NAME}.parameter" "${IMGDEPLOYDIR}/parameter"
 
 	echo "Generating ${OUT}..."
 
@@ -132,7 +133,8 @@ gen_rkupdateimg() {
 	ln -sf "${IMAGE_LINK_NAME}.${RK_ROOTFS_TYPE}" rootfs.img
 
 	PARAMETER=parameter
-	OUT=package-file
+	OUT="${IMAGE_LINK_NAME}.package-file"
+	ln -sf "${IMAGE_LINK_NAME}.package-file" package-file
 
 	echo "Generating ${OUT}..."
 
@@ -157,7 +159,9 @@ gen_rkupdateimg() {
 
 	afptool -pack ./ update.raw.img
 	rkImageMaker -RK$(hexdump -s 21 -n 4 -e '4/1 "%c"' loader.bin | rev) \
-		loader.bin update.raw.img update.img -os_type:androidos
+		loader.bin update.raw.img "${IMAGE_LINK_NAME}.update.img" \
+		-os_type:androidos
+	ln -sf "${IMAGE_LINK_NAME}.update.img" update.img
 
 	rm -rf ${RK_IMAGES} update.raw.img
 }
