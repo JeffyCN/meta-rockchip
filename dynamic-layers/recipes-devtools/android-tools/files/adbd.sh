@@ -37,8 +37,8 @@ prepare_adb()
 
 start_adbd()
 {
-	export service_adb_tcp_port=5555
-	start-stop-daemon -S -b -n adbd -a /usr/bin/adbd
+	start-stop-daemon -S -b -n adbd -a \
+		/usr/bin/env PROC_service.adb.tcp.port=5555 /usr/bin/adbd
 
 	sleep 1 && \
 		echo $(ls /sys/class/udc/|head -n 1) > $SYS_PATH/UDC&
