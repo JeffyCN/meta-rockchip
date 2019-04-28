@@ -40,8 +40,13 @@ start_adbd()
 	start-stop-daemon -S -b -n adbd -a \
 		/usr/bin/env PROC_service.adb.tcp.port=5555 /usr/bin/adbd
 
-	sleep 1 && \
-		echo $(ls /sys/class/udc/|head -n 1) > $SYS_PATH/UDC&
+	# Wait for usb ffs ready
+	for i in `seq 100`;do
+		fuser /dev/usb-ffs/adb/ep* && break
+		sleep .01
+	done
+
+	echo $(ls /sys/class/udc/|head -n 1) > $SYS_PATH/UDC
 }
 
 stop_adbd()
