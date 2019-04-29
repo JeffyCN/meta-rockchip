@@ -73,7 +73,7 @@ do_post_rootfs() {
 	for script in ${RK_POST_ROOTFS_SCRIPTS};do
 		[ -f "${script}" ] || continue
 		echo "Running script: ${script}..."
-		cd "${script}/../"
+		cd "${script%/*}"
 		"${script}" "${IMAGE_ROOTFS}"
 	done
 }
