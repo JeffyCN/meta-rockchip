@@ -6,5 +6,4 @@ inherit auto-patch
 PACKAGECONFIG_GL = "${@bb.utils.contains('DISTRO_FEATURES', 'opengl', 'gles2', '', d)}"
 PACKAGECONFIG_FONTS = "fontconfig"
 
-# Enable linuxfb for wayland to pass QPA platform plugin check
-PACKAGECONFIG_append += "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'linuxfb', '', d)}"
+PACKAGECONFIG_append += "gbm kms eglfs linuxfb"
