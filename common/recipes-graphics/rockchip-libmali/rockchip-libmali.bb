@@ -42,9 +42,9 @@ python () {
     d.setVar("DEBIAN_NOAUTONAME_" + pn_dev, "1")
 
     for p in (("libegl", "libegl1"),
-	      ("libgles1", "libglesv1-cm1"),
-	      ("libgles2", "libglesv2-2"),
-	      ("libgles3",), ("libopencl",)):
+              ("libgles1", "libglesv1-cm1"),
+              ("libgles2", "libglesv2-2"),
+              ("libgles3",), ("libopencl",)):
         pkgs = " " + " ".join(p)
         d.appendVar("RREPLACES_" + pn, pkgs)
         d.appendVar("RPROVIDES_" + pn, pkgs)
