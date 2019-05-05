@@ -27,6 +27,7 @@ PREFERRED_PROVIDER_virtual/libgles3 ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libopencl ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libgbm ?= "rockchip-libmali"
 PACKAGECONFIG_pn-wayland = "${@ 'no-egl' if 'wayland' in d.getVar('RK_MALI_LIB') else '' }"
+PACKAGECONFIG_append_pn-mesa-gl += " no-khr-headers"
 
 PREFERRED_PROVIDER_virtual/libgl ?= "mesa-gl"
 PREFERRED_PROVIDER_virtual/mesa ?= "mesa-gl"
