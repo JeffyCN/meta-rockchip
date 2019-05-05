@@ -10,7 +10,7 @@ RPROVIDES_${PN} += " u-boot"
 DESCRIPTION = "Rockchip next-dev U-Boot"
 LICENSE = "GPLv2+"
 
-DEPENDS = "dtc-native bc-native swig-native rk-binary-native"
+DEPENDS += "dtc-native bc-native swig-native rk-binary-native"
 
 LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
 SRC_URI = " \
