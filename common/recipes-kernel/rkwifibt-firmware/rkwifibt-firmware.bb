@@ -91,4 +91,4 @@ python () {
     d.appendVar('RDEPENDS_' + pn, ' ' + ' '.join(firmware_pkgs))
 }
 
-INSANE_SKIP = "arch"
+INSANE_SKIP_${PN} += "arch"
