@@ -15,11 +15,6 @@ DEPENDS = "dtc-native bc-native swig-native rk-binary-native"
 LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
 SRC_URI = " \
 	git://github.com/rockchip-linux/u-boot.git;branch=next-dev; \
-	file://0001-include-update-log2-header-from-the-Linux-kernel.patch \
-	file://0001-envtools-make-sure-version-timestamp-header-file-are.patch \
-	file://0002-configs-evb-aarch32-rk3308-Extern-boot-delay.patch \
-	file://0003-boot_rkimg-Support-boot-mode-without-misc-partition.patch \
-	file://0004-rockchip-vendor-Fix-maybe-uninitialized.patch \
 "
 
 SRCREV = "e95ee152a4ba4e58e479600ba3c2d430af164a33"
