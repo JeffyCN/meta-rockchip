@@ -31,3 +31,5 @@ FILES_${PN}-rk-cdndp = " \
 "
 
 RDEPENDS_${PN}-rk-cdndp = "${PN}-rockchip-license"
+
+INSANE_SKIP += "host-user-contaminated"
