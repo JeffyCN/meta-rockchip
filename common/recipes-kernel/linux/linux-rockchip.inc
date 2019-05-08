@@ -38,9 +38,16 @@ do_install_prepend() {
 	fi
 }
 
-# Remove kernel images from rootfs
-do_deploy_append() {
+# Avoid installing kernel images to rootfs
+do_install_append() {
 	if [ "x${RK_INSTALL_KERNEL_IMAGES}" != "x1" ]; then
-		rm -rf ${D}/${KERNEL_IMAGEDEST}
+		mv ${D}/${KERNEL_IMAGEDEST} ${WORKDIR}/
+	fi
+}
+
+# Move kernel images back for devicetree deploying
+do_deploy_prepend() {
+	if [ "x${RK_INSTALL_KERNEL_IMAGES}" != "x1" ]; then
+		mv ${WORKDIR}/${KERNEL_IMAGEDEST} ${D}/
 	fi
 }
