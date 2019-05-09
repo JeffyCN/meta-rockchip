@@ -2,7 +2,8 @@
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 require conf/machine/include/rockchip-common.inc
-require conf/machine/include/arm/arch-armv8.inc
+include conf/machine/include/arm/arch-armv8.inc
+include conf/machine/include/arm/arch-armv8a.inc
 
 SERIAL_CONSOLES = "1500000;ttyFIQ0"
 
