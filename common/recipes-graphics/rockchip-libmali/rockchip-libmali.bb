@@ -105,7 +105,7 @@ do_install () {
 	cp -r ${S}/include/* ${D}${includedir}/
 }
 
-INSANE_SKIP_${PN} = "already-stripped ldflags dev-so"
+INSANE_SKIP_${PN} = "already-stripped ldflags dev-so textrel"
 
 INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 INHIBIT_PACKAGE_STRIP = "1"
