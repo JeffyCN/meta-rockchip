@@ -18,6 +18,8 @@ EXTRA_OECMAKE = "     \
     -DHAVE_DRM=ON     \
 "
 
+CFLAGS += "-D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64"
+
 PACKAGES = "${PN}-demos ${PN}-dbg ${PN}-staticdev ${PN}-dev ${PN} ${PN}-vpu"
 FILES_${PN}-vpu = "${libdir}/lib*vpu${SOLIBS}"
 FILES_${PN} = "${libdir}/lib*mpp${SOLIBS}"
