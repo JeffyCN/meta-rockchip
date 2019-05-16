@@ -1,0 +1,30 @@
+From 67e39fb1d3b0a421bf3fde0c01ba318ae8cdebca Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 29 Apr 2019 17:54:11 +0800
+Subject: [PATCH 3/4] media: gpu: v4l2: Fix mali egl image create error
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/v4l2/generic_v4l2_device.cc | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/media/gpu/v4l2/generic_v4l2_device.cc b/media/gpu/v4l2/generic_v4l2_device.cc
+index 6337247..2dc1b7a 100644
+--- a/media/gpu/v4l2/generic_v4l2_device.cc
++++ b/media/gpu/v4l2/generic_v4l2_device.cc
+@@ -281,6 +281,12 @@ EGLImageKHR GenericV4L2Device::CreateEGLImage(
+     }
+   }
+ 
++  // For old mali
++  attrs.push_back(EGL_YUV_COLOR_SPACE_HINT_EXT);
++  attrs.push_back(EGL_ITU_REC601_EXT);
++  attrs.push_back(EGL_SAMPLE_RANGE_HINT_EXT);
++  attrs.push_back(EGL_YUV_NARROW_RANGE_EXT);
++
+   attrs.push_back(EGL_NONE);
+ 
+   EGLImageKHR egl_image = eglCreateImageKHR(
+-- 
+2.11.0
+
