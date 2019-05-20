@@ -10,7 +10,8 @@
 # Short-Description: Custom initial script for chromium browser
 ### END INIT INFO
 
-# Create dummy video node for V4L2 VDA with rkmpp plugin
-ln -sf null /dev/video-dec0
+# Create dummy video node for V4L2 VDA/VEA with rkmpp plugin
+echo dec > /dev/video-dec0
+echo enc > /dev/video-enc0
 
 exit 0
