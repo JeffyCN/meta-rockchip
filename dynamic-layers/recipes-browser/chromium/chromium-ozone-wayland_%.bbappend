@@ -14,3 +14,19 @@ GN_ARGS += "is_debug=true is_official_build=false"
 # 	use_rockchip_minigbm=true \
 # 	use_wayland_gbm=false \
 # "
+
+FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+
+SRC_URI += "file://chromium-init.sh"
+
+do_install_append () {
+        install -d ${D}${sysconfdir}/init.d/
+        install -m 0755 ${WORKDIR}/chromium-init.sh ${D}${sysconfdir}/init.d/
+}
+
+inherit update-rc.d
+
+INITSCRIPT_NAME = "chromium-init.sh"
+INITSCRIPT_PARAMS = "start 99 S ."
+
+FILES_${PN} += "${sysconfdir}/init.d"
