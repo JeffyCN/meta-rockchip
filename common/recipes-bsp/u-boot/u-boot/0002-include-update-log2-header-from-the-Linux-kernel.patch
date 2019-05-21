@@ -1,7 +1,7 @@
-From 69df172410a8ef4ec7bc367e37edcef68dcf8504 Mon Sep 17 00:00:00 2001
+From 541ef014e6c6e904cfead43038535ec4d9a8aeb9 Mon Sep 17 00:00:00 2001
 From: Heinrich Schuchardt <xypron.glpk@gmx.de>
 Date: Mon, 7 May 2018 22:18:27 +0200
-Subject: [PATCH] include: update log2 header from the Linux kernel
+Subject: [PATCH 2/6] include: update log2 header from the Linux kernel
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit

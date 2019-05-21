@@ -1,7 +1,7 @@
-From 8070a3327a97ef947ecfa0200d60851563060fc9 Mon Sep 17 00:00:00 2001
+From ceb6171b763d56f69f782ee725d3f24598291ad5 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 2 Apr 2019 13:51:25 +0800
-Subject: [PATCH] rockchip: vendor: Fix maybe-uninitialized
+Subject: [PATCH 5/6] rockchip: vendor: Fix maybe-uninitialized
 
 arch/arm/mach-rockchip/vendor.c:663:6  error: 'item_num' may be used uninitialized in this function [-Werror=maybe-uninitialized]
   ret = vendor_storage_write(id, buffer, size);

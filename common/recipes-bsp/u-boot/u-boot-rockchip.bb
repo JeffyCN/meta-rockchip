@@ -13,11 +13,6 @@ LICENSE = "GPLv2+"
 DEPENDS += "dtc-native bc-native swig-native rk-binary-native"
 
 LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
-SRC_URI = " \
-	git://github.com/rockchip-linux/u-boot.git;branch=next-dev; \
-"
-
-SRCREV = "e95ee152a4ba4e58e479600ba3c2d430af164a33"
 S = "${WORKDIR}/git"
 
 # Generate rockchip style u-boot binary

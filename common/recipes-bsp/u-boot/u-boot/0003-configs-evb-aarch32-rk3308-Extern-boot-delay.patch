@@ -1,7 +1,7 @@
-From 4445c5e08a9eeb46e2d5ea63ac9cf1dda7ed7c51 Mon Sep 17 00:00:00 2001
+From ce1fe48890b4937c069f09dce9903876d8140dd0 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 22 Mar 2019 14:18:40 +0800
-Subject: [PATCH 2/9] configs: evb-aarch32-rk3308: Extern boot delay
+Subject: [PATCH 3/6] configs: evb-aarch32-rk3308: Extern boot delay
 
 Change-Id: Ia3d8310e3a20f09e23d9dbf87e36bfdb04e80c02
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
@@ -10,7 +10,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/configs/evb-aarch32-rk3308_defconfig b/configs/evb-aarch32-rk3308_defconfig
-index f8510b1e49..4e261b3e4c 100644
+index 1937284b35..94efdefb26 100644
 --- a/configs/evb-aarch32-rk3308_defconfig
 +++ b/configs/evb-aarch32-rk3308_defconfig
 @@ -14,7 +14,7 @@ CONFIG_ANDROID_BOOT_IMAGE=y

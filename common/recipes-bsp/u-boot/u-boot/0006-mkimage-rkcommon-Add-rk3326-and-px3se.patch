@@ -1,19 +1,19 @@
-From a3b7ed7d7274644c61cb2628590a34d2f9b37564 Mon Sep 17 00:00:00 2001
+From 26a72b2781590200015d6a87e9fdd98dba2ae55d Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 22 Mar 2019 14:38:11 +0800
-Subject: [PATCH] mkimage: rkcommon: Add rk3308 rk3326 and px3se
+Subject: [PATCH 6/6] mkimage: rkcommon: Add rk3326 and px3se
 
 Change-Id: I37f3292faaa9c4d4145ebb09542b36df55fe4303
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- tools/rkcommon.c | 3 +++
- 1 file changed, 3 insertions(+)
+ tools/rkcommon.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/tools/rkcommon.c b/tools/rkcommon.c
-index 8f184c1301..0eef82419c 100644
+index 08d8a22903..aec510f3cf 100644
 --- a/tools/rkcommon.c
 +++ b/tools/rkcommon.c
-@@ -71,9 +71,12 @@ static struct spl_info spl_infos[] = {
+@@ -71,10 +71,12 @@ static struct spl_info spl_infos[] = {
  	{ "rk3036", "RK30", 0x1000, false },
  	{ "rk3066", "RK30", 0x8000, true, },
  	{ "rk3128", "RK31", 0x1800, false },
@@ -21,7 +21,7 @@ index 8f184c1301..0eef82419c 100644
  	{ "rk3188", "RK31", 0x8000 - 0x800, true },
  	{ "rk322x", "RK32", 0x8000 - 0x1000, false },
  	{ "rk3288", "RK32", 0x8000, false },
-+	{ "rk3308", "RK33", 0x2800, false },
+ 	{ "rk3308", "RK33", 0x40000 - 0x1000, false},
 +	{ "rk3326", "RK33", 0x2800, false },
  	{ "rk3328", "RK32", 0x8000 - 0x1000, false },
  	{ "rk3368", "RK33", 0x8000 - 0x1000, false },
