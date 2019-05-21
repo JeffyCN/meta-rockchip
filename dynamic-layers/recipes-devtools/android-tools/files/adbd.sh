@@ -5,8 +5,8 @@
 # Required-Stop:
 # Should-Start:
 # Should-Stop:
-# Default-Start:     S
-# Default-Stop:      0 6
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
 # Short-Description: Linux adbd
 ### END INIT INFO
 
