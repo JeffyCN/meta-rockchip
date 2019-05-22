@@ -9,7 +9,7 @@ SRC_URI = " \
 	file://cgroups.cfg \
 "
 
-SRCREV = "d50c0fdafe1bd24458831f0daf3dbfccf53f0ff6"
+SRCREV = "86c7569f60d61e11f244852579feb73091d8a13e"
 
 KERNEL_VERSION_SANITY_SKIP="1"
 LINUX_VERSION = "4.4"
