@@ -17,6 +17,11 @@ GN_ARGS += "is_debug=true is_official_build=false"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
+python() {
+    if not 'v4l2_device-Update-CanCreateEGLImageFrom-to-support-.patch' in d.getVar('SRC_URI'):
+        d.appendVar('SRC_URI', ' file://0001-v4l2_device-Update-CanCreateEGLImageFrom-to-support-.patch')
+}
+
 SRC_URI += "file://chromium-init.sh"
 
 do_install_append () {

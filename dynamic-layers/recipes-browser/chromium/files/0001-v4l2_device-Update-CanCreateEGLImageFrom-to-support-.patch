@@ -1,0 +1,35 @@
+Upstream-Status: Submitted [https://crrev.com/c/1624333]
+
+Signed-off-by: Peter Griffin <peter.griffin@linaro.org>
+---
+From b0f113571d82806ca37b920db3779cea8735c299 Mon Sep 17 00:00:00 2001
+From: Peter Griffin <peter.griffin@linaro.org>
+Date: Wed, 22 May 2019 12:10:48 +0100
+Subject: [PATCH] v4l2_device: Update CanCreateEGLImageFrom to support all ARM
+ SoCs for NV12/YVU420
+
+ARCH_CPU_ARM_FAMILY is set for both 32bit & 64bit SoCs.
+This allows V4L2 VDA to be used for aarch64 SoCs when
+they are using NV12 & YVU420 buffers.
+
+Signed-off-by: Peter Griffin <peter.griffin@linaro.org>
+---
+ media/gpu/v4l2/generic_v4l2_device.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/media/gpu/v4l2/generic_v4l2_device.cc b/media/gpu/v4l2/generic_v4l2_device.cc
+index d6bb0c6..530a7f8 100644
+--- a/media/gpu/v4l2/generic_v4l2_device.cc
++++ b/media/gpu/v4l2/generic_v4l2_device.cc
+@@ -200,7 +200,7 @@ std::vector<base::ScopedFD> GenericV4L2Device::GetDmabufsForV4L2Buffer(
+ bool GenericV4L2Device::CanCreateEGLImageFrom(uint32_t v4l2_pixfmt) {
+   static uint32_t kEGLImageDrmFmtsSupported[] = {
+     DRM_FORMAT_ARGB8888,
+-#if defined(ARCH_CPU_ARMEL)
++#if defined(ARCH_CPU_ARM_FAMILY)
+     DRM_FORMAT_NV12,
+     DRM_FORMAT_YVU420,
+ #endif
+-- 
+2.7.4
+
