@@ -1,0 +1,352 @@
+From 7929bcebb35a5b467b7824c8a8688a15d0e4d6dd Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 23 May 2019 14:35:26 +0800
+Subject: [PATCH 2/2] Revert "Don't wait for frame callback after submission"
+
+This reverts commit bbcdde0419246202a052abc436bcc73a600d1ff8.
+
+Fix:
+[1417:1417:0522/071513.432155:FATAL:wayland_buffer_manager.cc(253)] Check failed:
+buffer && buffer->wl_buffer.get() == wl_buffer. This is a severe error
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../wayland/gpu/gbm_surfaceless_wayland.cc         |  57 ++++++-----
+ .../platform/wayland/gpu/gbm_surfaceless_wayland.h |   2 +-
+ .../wayland/host/wayland_buffer_manager.cc         | 111 +++++++++------------
+ 3 files changed, 76 insertions(+), 94 deletions(-)
+
+diff --git a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc
+index b685692cb..97199961a 100644
+--- a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc
++++ b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc
+@@ -194,33 +194,33 @@ void GbmSurfacelessWayland::PendingFrame::Flush() {
+ 
+ void GbmSurfacelessWayland::SubmitFrame() {
+   DCHECK(!unsubmitted_frames_.empty());
+-  DCHECK(unsubmitted_frames_.front()->ready);
+-  DCHECK(last_swap_buffers_result_);
+ 
+-  auto frame = std::move(unsubmitted_frames_.front());
+-  unsubmitted_frames_.erase(unsubmitted_frames_.begin());
++  if (unsubmitted_frames_.front()->ready && !submitted_frame_) {
++    submitted_frame_ = std::move(unsubmitted_frames_.front());
++    unsubmitted_frames_.erase(unsubmitted_frames_.begin());
+ 
+-  bool schedule_planes_succeeded = frame->ScheduleOverlayPlanes(widget_);
++    bool schedule_planes_succeeded =
++        submitted_frame_->ScheduleOverlayPlanes(widget_);
+ 
+-  if (!schedule_planes_succeeded) {
+-    last_swap_buffers_result_ = false;
++    if (!schedule_planes_succeeded) {
++      last_swap_buffers_result_ = false;
+ 
+-    std::move(frame->completion_callback)
+-        .Run(gfx::SwapResult::SWAP_FAILED, nullptr);
+-    // Notify the caller, the buffer is never presented on a screen.
+-    std::move(frame->presentation_callback)
+-        .Run(gfx::PresentationFeedback::Failure());
+-    return;
+-  }
++      std::move(submitted_frame_->completion_callback)
++          .Run(gfx::SwapResult::SWAP_FAILED, nullptr);
++      // Notify the caller, the buffer is never presented on a screen.
++      std::move(submitted_frame_->presentation_callback)
++          .Run(gfx::PresentationFeedback::Failure());
+ 
+-  auto* frame_ptr = frame.get();
+-  submitted_frames_.push_back(std::move(frame));
++      submitted_frame_.reset();
++      return;
++    }
+ 
+-  frame_ptr->buffer_id = planes_.back().pixmap->GetUniqueId();
+-  connection_->CommitBuffer(widget_, frame_ptr->buffer_id,
+-                            frame_ptr->damage_region_);
++    submitted_frame_->buffer_id = planes_.back().pixmap->GetUniqueId();
++    connection_->CommitBuffer(widget_, submitted_frame_->buffer_id,
++                              submitted_frame_->damage_region_);
+ 
+-  planes_.clear();
++    planes_.clear();
++  }
+ }
+ 
+ EGLSyncKHR GbmSurfacelessWayland::InsertFence(bool implicit) {
+@@ -238,16 +238,19 @@ void GbmSurfacelessWayland::FenceRetired(PendingFrame* frame) {
+ 
+ void GbmSurfacelessWayland::OnSubmission(uint32_t buffer_id,
+                                          const gfx::SwapResult& swap_result) {
+-  auto frame = std::move(submitted_frames_.front());
+-  submitted_frames_.erase(submitted_frames_.begin());
+-  frame->overlays.clear();
++  submitted_frame_->overlays.clear();
+ 
+-  DCHECK_EQ(frame->buffer_id, buffer_id);
+-  std::move(frame->completion_callback).Run(swap_result, nullptr);
++  DCHECK_EQ(submitted_frame_->buffer_id, buffer_id);
++  std::move(submitted_frame_->completion_callback).Run(swap_result, nullptr);
+ 
+-  pending_presentation_frames_.push_back(std::move(frame));
++  pending_presentation_frames_.push_back(std::move(submitted_frame_));
+ 
+-  last_swap_buffers_result_ = swap_result == gfx::SwapResult::SWAP_ACK;
++  if (swap_result != gfx::SwapResult::SWAP_ACK) {
++    last_swap_buffers_result_ = false;
++    return;
++  }
++
++  SubmitFrame();
+ }
+ 
+ void GbmSurfacelessWayland::OnPresentation(
+diff --git a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.h b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.h
+index e866b65bd..dfd3d91fb 100644
+--- a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.h
++++ b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.h
+@@ -99,8 +99,8 @@ class GbmSurfacelessWayland : public gl::SurfacelessEGL {
+   // The native surface. Deleting this is allowed to free the EGLNativeWindow.
+   gfx::AcceleratedWidget widget_;
+   std::vector<std::unique_ptr<PendingFrame>> unsubmitted_frames_;
+-  std::vector<std::unique_ptr<PendingFrame>> submitted_frames_;
+   std::vector<std::unique_ptr<PendingFrame>> pending_presentation_frames_;
++  std::unique_ptr<PendingFrame> submitted_frame_;
+   bool has_implicit_external_sync_;
+   bool last_swap_buffers_result_ = true;
+   bool use_egl_fence_sync_ = true;
+diff --git a/ui/ozone/platform/wayland/host/wayland_buffer_manager.cc b/ui/ozone/platform/wayland/host/wayland_buffer_manager.cc
+index d751aa649..994396db1 100644
+--- a/ui/ozone/platform/wayland/host/wayland_buffer_manager.cc
++++ b/ui/ozone/platform/wayland/host/wayland_buffer_manager.cc
+@@ -56,6 +56,8 @@ class WaylandBufferManager::Surface {
+   ~Surface() = default;
+ 
+   bool CommitBuffer(uint32_t buffer_id, const gfx::Rect& damage_region) {
++    DCHECK(!submitted_buffer_);
++
+     WaylandBuffer* buffer = GetBuffer(buffer_id);
+     if (!buffer)
+       return false;
+@@ -67,26 +69,15 @@ class WaylandBufferManager::Surface {
+     // zwp linux dmabuf protocol version, the wl_buffer can be created
+     // immediately without asynchronous wait 2) the wl_buffer can have been
+     // created by this time.
+-    //
+-    // Another case, which always happen is waiting until the frame callback is
+-    // completed. Thus, wait here when the Wayland compositor fires the frame
+-    // callback.
+-    while (!buffer->wl_buffer || !!wl_frame_callback_) {
++    while (!buffer->wl_buffer) {
+       // If the wl_buffer has been attached, but the wl_buffer still has been
+       // null, it means the Wayland server failed to create the buffer and we
+       // have to fail here.
+-      if ((buffer->attached && !buffer->wl_buffer) ||
++      if (buffer->attached ||
+           wl_display_roundtrip(connection_->display()) == -1)
+         return false;
+     }
+ 
+-    // Once the BufferRelease is called. The buffer will be released.
+-    DCHECK(buffer->released);
+-    buffer->released = false;
+-
+-    prev_submitted_buffer_ = submitted_buffer_;
+-    submitted_buffer_ = buffer;
+-
+     AttachAndDamageBuffer(buffer, damage_region);
+ 
+     SetupFrameCallback();
+@@ -95,7 +86,6 @@ class WaylandBufferManager::Surface {
+     CommitSurface();
+ 
+     connection_->ScheduleFlush();
+-
+     return true;
+   }
+ 
+@@ -106,6 +96,8 @@ class WaylandBufferManager::Surface {
+   }
+ 
+   size_t DestroyBuffer(uint32_t buffer_id) {
++    if (submitted_buffer_ && submitted_buffer_->buffer_id == buffer_id)
++      submitted_buffer_ = nullptr;
+     auto result = buffers_.erase(buffer_id);
+     return result;
+   }
+@@ -120,9 +112,6 @@ class WaylandBufferManager::Surface {
+     DCHECK(!buffer->wl_buffer);
+     buffer->wl_buffer = std::move(new_buffer);
+     buffer->attached = true;
+-
+-    if (buffer->wl_buffer)
+-      SetupBufferReleaseListener(buffer);
+   }
+ 
+   void ClearState() {
+@@ -155,22 +144,16 @@ class WaylandBufferManager::Surface {
+ 
+     // A wl_buffer backed by a dmabuf created on the GPU side.
+     wl::Object<struct wl_buffer> wl_buffer;
+-
+     // Tells if the buffer has the wl_buffer attached. This can be used to
+     // identify potential problems, when the Wayland compositor fails to create
+     // wl_buffers.
+     bool attached = false;
+ 
+-    // Tells if the buffer has already been released aka not busy, and the
+-    // surface can tell the gpu about successful swap.
+-    bool released = true;
++    gfx::PresentationFeedback feedback;
+ 
+-    // Tells if the Wayland compositor has already presented the buffer contents
+-    // on screen.
++    bool swapped = false;
+     bool presented = false;
+ 
+-    gfx::PresentationFeedback feedback;
+-
+     DISALLOW_COPY_AND_ASSIGN(WaylandBuffer);
+   };
+ 
+@@ -189,6 +172,8 @@ class WaylandBufferManager::Surface {
+         surface, pending_damage_region.x(), pending_damage_region.y(),
+         pending_damage_region.width(), pending_damage_region.height());
+     wl_surface_attach(surface, buffer->wl_buffer.get(), 0, 0);
++
++    submitted_buffer_ = buffer;
+   }
+ 
+   void CommitSurface() { wl_surface_commit(window_->surface()); }
+@@ -219,13 +204,6 @@ class WaylandBufferManager::Surface {
+         presentation_feedbacks_.back().second.get(), &feedback_listener, this);
+   }
+ 
+-  void SetupBufferReleaseListener(WaylandBuffer* buffer) {
+-    static struct wl_buffer_listener buffer_listener = {
+-        &Surface::BufferRelease,
+-    };
+-    wl_buffer_add_listener(buffer->wl_buffer.get(), &buffer_listener, this);
+-  }
+-
+   WaylandBuffer* GetBuffer(uint32_t buffer_id) {
+     auto it = buffers_.find(buffer_id);
+     return it != buffers_.end() ? it->second.get() : nullptr;
+@@ -234,62 +212,63 @@ class WaylandBufferManager::Surface {
+   void OnFrameCallback(struct wl_callback* callback) {
+     DCHECK(wl_frame_callback_.get() == callback);
+     wl_frame_callback_.reset();
+-  }
+ 
+-  // wl_callback_listener
+-  static void FrameCallbackDone(void* data,
+-                                struct wl_callback* callback,
+-                                uint32_t time) {
+-    Surface* self = static_cast<Surface*>(data);
+-    DCHECK(self);
+-    self->OnFrameCallback(callback);
+-  }
++    if (!submitted_buffer_)
++      return;
+ 
+-  // wl_buffer_listener
+-  static void BufferRelease(void* data, struct wl_buffer* wl_buffer) {
+-    Surface* self = static_cast<Surface*>(data);
+-    DCHECK(self);
+-    auto* buffer = self->prev_submitted_buffer_;
+-    CHECK(buffer && buffer->wl_buffer.get() == wl_buffer)
+-        << "This is a severe error";
+-    self->OnSubmission(buffer);
+-  }
++    // TODO(msisov): remove these once pending buffers logic goes to the
++    // manager as long as it will always notify about successful swap once the
++    // surface is committed.
++    DCHECK(submitted_buffer_);
++    WaylandBuffer* buffer = submitted_buffer_;
++    submitted_buffer_ = nullptr;
+ 
+-  void OnSubmission(WaylandBuffer* buffer) {
+-    DCHECK(buffer);
++    buffer->swapped = true;
++    DCHECK(connection_);
+     connection_->OnSubmission(window_->GetWidget(), buffer->buffer_id,
+                               gfx::SwapResult::SWAP_ACK);
+-    buffer->released = true;
+ 
+     // If presentation feedback is not supported, use a fake feedback. This
+     // literally means there are no presentation feedback callbacks created.
+     if (!connection_->presentation()) {
+-      DCHECK(presentation_feedbacks_.empty());
++      DCHECK(presentation_feedbacks_.empty() && !buffer->presented);
+       OnPresentation(
+           buffer->buffer_id,
+           gfx::PresentationFeedback(base::TimeTicks::Now(), base::TimeDelta(),
+                                     GetPresentationKindFlags(0)));
+     } else if (buffer->presented) {
+-      // If buffer has already been presented, it couldn't run the presentation
+-      // callback, because chromium does not allow the presentation to come
+-      // earlier than the submission callback. Thus, trigger saved feedback
+-      // here.
++      // If the buffer has been presented before the frame callback aka
++      // completion callback (in the future, release callback is going to be
++      // used), present the feedback to the GPU.
+       OnPresentation(buffer->buffer_id, buffer->feedback);
++    } else {
++      DCHECK(!presentation_feedbacks_.empty());
+     }
+   }
+ 
++  // wl_callback_listener
++  static void FrameCallbackDone(void* data,
++                                struct wl_callback* callback,
++                                uint32_t time) {
++    Surface* self = static_cast<Surface*>(data);
++    DCHECK(self);
++    self->OnFrameCallback(callback);
++  }
++
+   void OnPresentation(uint32_t buffer_id,
+                       const gfx::PresentationFeedback& feedback) {
+     WaylandBuffer* buffer = GetBuffer(buffer_id);
+     DCHECK(buffer);
+ 
+-    buffer->presented = true;
+-    buffer->feedback = feedback;
++    if (buffer->swapped) {
++      DCHECK(connection_);
++      connection_->OnPresentation(window_->GetWidget(), buffer_id, feedback);
+ 
+-    if (buffer->released) {
+-      connection_->OnPresentation(window_->GetWidget(), buffer_id,
+-                                  std::move(buffer->feedback));
++      buffer->swapped = false;
+       buffer->presented = false;
++    } else {
++      buffer->presented = true;
++      buffer->feedback = feedback;
+     }
+   }
+ 
+@@ -343,6 +322,9 @@ class WaylandBufferManager::Surface {
+   // Non-owned pointer to the connection.
+   WaylandConnection* const connection_;
+ 
++  // A buffer the surface has committed. Reset on frame callback.
++  WaylandBuffer* submitted_buffer_ = nullptr;
++
+   // A container of created buffers.
+   base::flat_map<uint32_t, std::unique_ptr<WaylandBuffer>> buffers_;
+ 
+@@ -355,9 +337,6 @@ class WaylandBufferManager::Surface {
+   // shown.
+   PresentationFeedbackQueue presentation_feedbacks_;
+ 
+-  WaylandBuffer* submitted_buffer_ = nullptr;
+-  WaylandBuffer* prev_submitted_buffer_ = nullptr;
+-
+   DISALLOW_COPY_AND_ASSIGN(Surface);
+ };
+ 
+-- 
+2.11.0
+
