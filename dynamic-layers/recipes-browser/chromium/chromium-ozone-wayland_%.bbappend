@@ -5,9 +5,9 @@ MAJ_VER = "${@oe.utils.trim_version("${PV}", 3)}"
 PATCHPATH = "${CURDIR}/${PN}_${MAJ_VER}"
 inherit auto-patch
 
-PACKAGECONFIG ??= "use-egl use-linux-v4l2 component-build proprietary-codecs"
+PACKAGECONFIG ??= "use-egl use-linux-v4l2 proprietary-codecs"
 
-GN_ARGS += "is_debug=true is_official_build=false"
+GN_ARGS += "is_debug=false is_official_build=false"
 
 # GN_ARGS += " \
 # 	use_system_minigbm=false \
