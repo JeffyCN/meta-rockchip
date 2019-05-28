@@ -1,7 +1,7 @@
-From 1e1aa868a692f7fdcc85b319c3ac1578db6422a4 Mon Sep 17 00:00:00 2001
+From 724410486d2e029b15f7e413fef96fba7b1dd874 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 20 May 2019 14:07:59 +0800
-Subject: [PATCH] ui: ozone: wayland: Fix crash in
+Subject: [PATCH 6/6] ui: ozone: wayland: Fix crash in
  UpdateCursorPositionFromEvent
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
@@ -10,7 +10,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 4 insertions(+)
 
 diff --git a/ui/ozone/platform/wayland/host/wayland_window.cc b/ui/ozone/platform/wayland/host/wayland_window.cc
-index ccabb15..044b2f8 100644
+index ccabb157d..044b2f878 100644
 --- a/ui/ozone/platform/wayland/host/wayland_window.cc
 +++ b/ui/ozone/platform/wayland/host/wayland_window.cc
 @@ -773,6 +773,10 @@ void WaylandWindow::UpdateCursorPositionFromEvent(

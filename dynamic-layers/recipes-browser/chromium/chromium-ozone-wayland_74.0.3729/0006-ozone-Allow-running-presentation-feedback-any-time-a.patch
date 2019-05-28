@@ -1,7 +1,7 @@
-From 20d30de21f3e4b47f4b1477550c0dee6703fa99c Mon Sep 17 00:00:00 2001
+From b57908d1e977ac84f43869800b316634c23bdc7e Mon Sep 17 00:00:00 2001
 From: Maksim Sisov <msisov@igalia.com>
 Date: Tue, 26 Mar 2019 22:12:18 +0000
-Subject: [PATCH 1/2] ozone: Allow running presentation feedback any time after
+Subject: [PATCH 6/7] ozone: Allow running presentation feedback any time after
  swap ack.
 
 The previous limitation is artificial and blocks Wayland

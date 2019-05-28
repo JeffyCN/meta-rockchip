@@ -1,7 +1,7 @@
-From 7929bcebb35a5b467b7824c8a8688a15d0e4d6dd Mon Sep 17 00:00:00 2001
+From 0a4eb7cc6f801f355a015be5efcdc4f7b44bb58b Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 23 May 2019 14:35:26 +0800
-Subject: [PATCH 2/2] Revert "Don't wait for frame callback after submission"
+Subject: [PATCH 7/7] Revert "Don't wait for frame callback after submission"
 
 This reverts commit bbcdde0419246202a052abc436bcc73a600d1ff8.
 

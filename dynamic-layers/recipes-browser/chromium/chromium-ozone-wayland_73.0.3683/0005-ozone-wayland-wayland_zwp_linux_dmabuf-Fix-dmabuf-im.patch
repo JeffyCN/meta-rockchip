@@ -1,8 +1,8 @@
-From b9fcbd78e5303b61978c4c506b2e6cd61f330236 Mon Sep 17 00:00:00 2001
+From eb202160d19d20fcc2c0f01f01e4ae7772cdd499 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 15 May 2019 17:07:56 +0800
-Subject: [PATCH] ozone: wayland: wayland_zwp_linux_dmabuf: Fix dmabuf import
- error
+Subject: [PATCH 5/6] ozone: wayland: wayland_zwp_linux_dmabuf: Fix dmabuf
+ import error
 
 The wayland server(e.g. weston) might expect invalid modifier to be
 DRM_FORMAT_MOD_INVALID.
@@ -13,7 +13,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc b/ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc
-index 08d5dbf..f90e3c4 100644
+index 08d5dbf8b..f90e3c434 100644
 --- a/ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc
 +++ b/ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc
 @@ -54,12 +54,14 @@ void WaylandZwpLinuxDmabuf::CreateBuffer(base::File file,

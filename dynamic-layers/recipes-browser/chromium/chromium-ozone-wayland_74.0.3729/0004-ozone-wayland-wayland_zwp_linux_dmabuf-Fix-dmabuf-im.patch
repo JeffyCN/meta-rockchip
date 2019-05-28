@@ -1,7 +1,7 @@
-From 10e5a0885ac6bd4e0ea2315bb65e7847bdc94806 Mon Sep 17 00:00:00 2001
+From fe035bf45e12c9198ca49ee642a66ef2a227a894 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
-Date: Wed, 15 May 2019 17:07:56 +0800
-Subject: [PATCH 2/4] ozone: wayland: wayland_zwp_linux_dmabuf: Fix dmabuf
+Date: Tue, 28 May 2019 08:34:51 +0000
+Subject: [PATCH 4/7] ozone: wayland: wayland_zwp_linux_dmabuf: Fix dmabuf
  import error
 
 The wayland server(e.g. weston) might expect invalid modifier to be
@@ -9,29 +9,30 @@ DRM_FORMAT_MOD_INVALID.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc b/ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc
-index 8e99460..3547b3e 100644
+index 8e99460ce..e118fea45 100644
 --- a/ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc
 +++ b/ui/ozone/platform/wayland/host/wayland_zwp_linux_dmabuf.cc
-@@ -54,12 +54,14 @@ void WaylandZwpLinuxDmabuf::CreateBuffer(base::File file,
+@@ -54,13 +54,12 @@ void WaylandZwpLinuxDmabuf::CreateBuffer(base::File file,
    for (size_t i = 0; i < planes_count; i++) {
      uint32_t modifier_lo = 0;
      uint32_t modifier_hi = 0;
 -    if (modifiers[i] != DRM_FORMAT_MOD_INVALID) {
-+    if (modifiers[i] && modifiers[i] != DRM_FORMAT_MOD_INVALID) {
-       modifier_lo = modifiers[i] & UINT32_MAX;
-       modifier_hi = modifiers[i] >> 32;
-     } else {
+-      modifier_lo = modifiers[i] & UINT32_MAX;
+-      modifier_hi = modifiers[i] >> 32;
+-    } else {
++    if (modifiers[i] == DRM_FORMAT_MOD_INVALID) {
        DCHECK_EQ(planes_count, 1u) << "Invalid modifier may be passed only in "
                                       "case of single plane format being used";
-+      modifier_lo = DRM_FORMAT_MOD_INVALID & UINT32_MAX;
-+      modifier_hi = DRM_FORMAT_MOD_INVALID >> 32;
      }
++    modifier_lo = modifiers[i] & UINT32_MAX;
++    modifier_hi = modifiers[i] >> 32;
      zwp_linux_buffer_params_v1_add(params, fd.get(), i /* plane id */,
                                     offsets[i], strides[i], modifier_hi,
+                                    modifier_lo);
 -- 
 2.11.0
 

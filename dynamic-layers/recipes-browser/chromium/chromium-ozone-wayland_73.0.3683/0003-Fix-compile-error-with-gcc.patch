@@ -1,7 +1,7 @@
-From 9736e6409458b4cc4110d43d97a37ec65fd6efc6 Mon Sep 17 00:00:00 2001
+From eaef58c2491f92fbbed22d8706af19bd677cb95f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 17 Apr 2019 12:42:30 +0800
-Subject: [PATCH 1/2] Fix compile error with gcc
+Subject: [PATCH 3/6] Fix compile error with gcc
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -9,7 +9,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 8 insertions(+), 8 deletions(-)
 
 diff --git a/base/trace_event/trace_arguments.h b/base/trace_event/trace_arguments.h
-index 6a9af80..65c738e 100644
+index 6a9af808e..65c738ecc 100644
 --- a/base/trace_event/trace_arguments.h
 +++ b/base/trace_event/trace_arguments.h
 @@ -483,21 +483,21 @@ class BASE_EXPORT StringStorage {

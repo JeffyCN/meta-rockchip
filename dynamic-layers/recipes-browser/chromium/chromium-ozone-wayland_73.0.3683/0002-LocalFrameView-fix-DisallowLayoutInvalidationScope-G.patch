@@ -1,7 +1,7 @@
-From 1d0932807f63d60ec220d46e13dced1ede0ba0ac Mon Sep 17 00:00:00 2001
+From 8076b674b57b40dd6d950120c544ba58f78164f0 Mon Sep 17 00:00:00 2001
 From: Jose Dapena Paz <jose.dapena@lge.com>
 Date: Fri, 5 Apr 2019 18:43:11 +0000
-Subject: [PATCH 2/2] LocalFrameView: fix DisallowLayoutInvalidationScope GCC
+Subject: [PATCH 2/6] LocalFrameView: fix DisallowLayoutInvalidationScope GCC
  build
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -26,11 +26,11 @@ Cr-Commit-Position: refs/heads/master@{#648270}
  2 files changed, 26 insertions(+), 19 deletions(-)
 
 diff --git a/third_party/blink/renderer/core/frame/local_frame_view.cc b/third_party/blink/renderer/core/frame/local_frame_view.cc
-index cd245966..62ce4a74 100644
+index cb48172ae..1059dbb1a 100644
 --- a/third_party/blink/renderer/core/frame/local_frame_view.cc
 +++ b/third_party/blink/renderer/core/frame/local_frame_view.cc
-@@ -4406,4 +4406,28 @@ void LocalFrameView::UpdateVisibility(bool is_visible) {
-   }
+@@ -4267,4 +4267,28 @@ void LocalFrameView::UnregisterFromLifecycleNotifications(
+   lifecycle_observers_.erase(observer);
  }
  
 +#if DCHECK_IS_ON()
@@ -59,12 +59,12 @@ index cd245966..62ce4a74 100644
 +
  }  // namespace blink
 diff --git a/third_party/blink/renderer/core/frame/local_frame_view.h b/third_party/blink/renderer/core/frame/local_frame_view.h
-index 57218842..1c2c268c 100644
+index fb5bd13d6..e0294aabb 100644
 --- a/third_party/blink/renderer/core/frame/local_frame_view.h
 +++ b/third_party/blink/renderer/core/frame/local_frame_view.h
-@@ -732,25 +732,8 @@ class CORE_EXPORT LocalFrameView final
-     STACK_ALLOCATED();
- 
+@@ -728,25 +728,8 @@ class CORE_EXPORT LocalFrameView final
+ #if DCHECK_IS_ON()
+   class DisallowLayoutInvalidationScope {
     public:
 -    DisallowLayoutInvalidationScope(LocalFrameView* view)
 -        : local_frame_view_(view) {
