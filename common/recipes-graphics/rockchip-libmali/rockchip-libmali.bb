@@ -23,11 +23,13 @@ PROVIDES += "virtual/egl virtual/libgles1 virtual/libgles2 virtual/libgles3 virt
 RDEPENDS_${PN} = " \
         ${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
         ${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
+	${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'libx11 libxcb', '', d)} \
 "
 
 DEPENDS_append = " \
         ${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
         ${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
+	${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'libx11 libxcb', '', d)} \
 "
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
