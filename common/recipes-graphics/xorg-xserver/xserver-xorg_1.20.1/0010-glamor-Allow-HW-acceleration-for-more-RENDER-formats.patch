@@ -1,0 +1,43 @@
+From 2bf19bc478940378515d6f653f2c914d0b3346d2 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Michel=20D=C3=A4nzer?= <michel.daenzer@amd.com>
+Date: Wed, 19 Dec 2018 11:10:10 +0100
+Subject: [PATCH 10/29] glamor: Allow HW acceleration for more RENDER formats
+
+As long as the storage format is compatible.
+
+v2:
+* Remove explicit cases for formats handled by the default case.
+
+Reviewed-by: Eric Anholt <eric@anholt.net>
+(cherry picked from commit 2e256e8260648619e407b1de70fe43cf32819247)
+---
+ glamor/glamor_render.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/glamor/glamor_render.c b/glamor/glamor_render.c
+index d5737018f..7fd932452 100644
+--- a/glamor/glamor_render.c
++++ b/glamor/glamor_render.c
+@@ -780,15 +780,15 @@ glamor_render_format_is_supported(PicturePtr picture)
+     storage_format = format_for_depth(picture->pDrawable->depth);
+ 
+     switch (picture->format) {
+-    case PICT_x2r10g10b10:
++    case PICT_a2r10g10b10:
+         return storage_format == PICT_x2r10g10b10;
+     case PICT_a8r8g8b8:
+     case PICT_x8r8g8b8:
+         return storage_format == PICT_a8r8g8b8 || storage_format == PICT_x8r8g8b8;
+-    case PICT_a8:
+-        return storage_format == PICT_a8;
++    case PICT_a1r5g5b5:
++        return storage_format == PICT_x1r5g5b5;
+     default:
+-        return FALSE;
++        return picture->format == storage_format;
+     }
+ }
+ 
+-- 
+2.11.0
+

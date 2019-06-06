@@ -1,0 +1,55 @@
+From cba3a5d4f3e7a2d4597fcc3295743a5c61e7174a Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 5 Jun 2019 21:22:43 +0800
+Subject: [PATCH 29/29] HACK: glamor: gles: Use same render_format as DESKTOP
+ for depth 24/32
+
+The render_format for GLES changed in:
+d67d15c80 glamor: Introduce a central place for our pixmap format/type handling.
+
+That would break glamor_render_format_is_supported(), let's hack it
+back.
+
+And also fix a typo in glamor_picture.c
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ glamor/glamor.c         | 8 ++++----
+ glamor/glamor_picture.c | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/glamor/glamor.c b/glamor/glamor.c
+index 8f442e386..60c245936 100644
+--- a/glamor/glamor.c
++++ b/glamor/glamor.c
+@@ -557,10 +557,10 @@ glamor_setup_formats(ScreenPtr screen)
+ 
+     if (glamor_priv->is_gles) {
+         assert(X_BYTE_ORDER == X_LITTLE_ENDIAN);
+-        glamor_add_format(screen, 24, PICT_x8b8g8r8,
+-                          GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+-        glamor_add_format(screen, 32, PICT_a8b8g8r8,
+-                          GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
++        glamor_add_format(screen, 24, PICT_x8r8g8b8,
++                          GL_BGRA, GL_BGRA, GL_UNSIGNED_BYTE);
++        glamor_add_format(screen, 32, PICT_a8r8g8b8,
++                          GL_BGRA, GL_BGRA, GL_UNSIGNED_BYTE);
+     } else {
+         glamor_add_format(screen, 24, PICT_x8r8g8b8,
+                           GL_RGBA, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV);
+diff --git a/glamor/glamor_picture.c b/glamor/glamor_picture.c
+index 33b3bebd9..21dbd6d87 100644
+--- a/glamor/glamor_picture.c
++++ b/glamor/glamor_picture.c
+@@ -83,7 +83,7 @@ glamor_get_tex_format_type_from_pictformat(ScreenPtr pScreen,
+ 
+     switch (format) {
+     case PICT_a1:
+-        *tex_format = glamor_priv->formats[1].format;
++        *tex_format = glamor_priv->formats[8].format;
+         *tex_type = GL_UNSIGNED_BYTE;
+         *temp_format = PICT_a8;
+         break;
+-- 
+2.11.0
+

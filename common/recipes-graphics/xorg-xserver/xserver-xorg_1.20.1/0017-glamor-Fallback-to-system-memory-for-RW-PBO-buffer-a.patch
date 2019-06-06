@@ -1,0 +1,67 @@
+From 46329ce20cbe6f904f7973f4ff3a3abea7b9e870 Mon Sep 17 00:00:00 2001
+From: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+Date: Mon, 4 Mar 2019 11:52:43 +0100
+Subject: [PATCH 17/29] glamor: Fallback to system memory for RW PBO buffer
+ allocation
+
+We currently support two modes of operation for RW PBO buffers: one
+that allocates a pack buffer with GL memory and one that uses system
+memory when the former is not supported.
+
+Since allocation with system memory is less likely to fail, add a
+fallback to system memory when GL memory failed instead of bailing
+out.
+
+Signed-off-by: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+(cherry picked from commit 8c4e8d9eff03cefc987f13c900b0a47403946127)
+---
+ glamor/glamor_prepare.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/glamor/glamor_prepare.c b/glamor/glamor_prepare.c
+index 6b35936fc..c1a611f9a 100644
+--- a/glamor/glamor_prepare.c
++++ b/glamor/glamor_prepare.c
+@@ -107,9 +107,10 @@ glamor_prep_pixmap_box(PixmapPtr pixmap, glamor_access_t access, BoxPtr box)
+                 glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+                 glDeleteBuffers(1, &priv->pbo);
+                 priv->pbo = 0;
+-                return FALSE;
+             }
+-        } else {
++        }
++
++        if (!priv->pbo) {
+             pixmap->devPrivate.ptr = xallocarray(pixmap->devKind,
+                                                  pixmap->drawable.height);
+             if (!pixmap->devPrivate.ptr)
+@@ -123,7 +124,7 @@ glamor_prep_pixmap_box(PixmapPtr pixmap, glamor_access_t access, BoxPtr box)
+ 
+     RegionUninit(&region);
+ 
+-    if (glamor_priv->has_rw_pbo) {
++    if (priv->pbo) {
+         if (priv->map_access == GLAMOR_ACCESS_RW)
+             gl_access = GL_READ_WRITE;
+         else
+@@ -155,7 +156,7 @@ glamor_fini_pixmap(PixmapPtr pixmap)
+     if (!priv->prepared)
+         return;
+ 
+-    if (glamor_priv->has_rw_pbo) {
++    if (priv->pbo) {
+         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, priv->pbo);
+         glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+         pixmap->devPrivate.ptr = NULL;
+@@ -170,7 +171,7 @@ glamor_fini_pixmap(PixmapPtr pixmap)
+ 
+     RegionUninit(&priv->prepare_region);
+ 
+-    if (glamor_priv->has_rw_pbo) {
++    if (priv->pbo) {
+         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+         glDeleteBuffers(1, &priv->pbo);
+         priv->pbo = 0;
+-- 
+2.11.0
+

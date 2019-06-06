@@ -1,0 +1,117 @@
+From b67920882b0e9bf5e4d1cd8b8a41055ab395c8f0 Mon Sep 17 00:00:00 2001
+From: Julien Isorce <julien.isorce@gmail.com>
+Date: Thu, 6 Sep 2018 15:38:14 -0700
+Subject: [PATCH 02/29] glamor: add support for GL_RG
+
+Allow to upload the CbCr plane of an NV12 image into a GL texture.
+
+Signed-off-by: Julien Isorce <jisorce@oblong.com>
+Tested-by: Olivier Fourdan <ofourdan@redhat.com>
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit 44f5885686a30776160891e09cd4453afb9d5ade)
+---
+ glamor/glamor.c          |  2 ++
+ glamor/glamor.h          |  1 +
+ glamor/glamor_priv.h     |  4 +++-
+ glamor/glamor_transfer.c | 10 ++++++++--
+ glamor/glamor_utils.h    |  4 ++++
+ 5 files changed, 18 insertions(+), 3 deletions(-)
+
+diff --git a/glamor/glamor.c b/glamor/glamor.c
+index 9bf1707de..f24cc9fd1 100644
+--- a/glamor/glamor.c
++++ b/glamor/glamor.c
+@@ -204,6 +204,8 @@ glamor_create_pixmap(ScreenPtr screen, int w, int h, int depth,
+ 
+     pixmap_priv = glamor_get_pixmap_private(pixmap);
+ 
++    pixmap_priv->is_cbcr = (usage == GLAMOR_CREATE_FORMAT_CBCR);
++
+     format = gl_iformat_for_pixmap(pixmap);
+ 
+     pitch = (((w * pixmap->drawable.bitsPerPixel + 7) / 8) + 3) & ~3;
+diff --git a/glamor/glamor.h b/glamor/glamor.h
+index 09e9c895c..8d79597e2 100644
+--- a/glamor/glamor.h
++++ b/glamor/glamor.h
+@@ -126,6 +126,7 @@ extern _X_EXPORT Bool glamor_destroy_pixmap(PixmapPtr pixmap);
+ #define GLAMOR_CREATE_FBO_NO_FBO        0x103
+ #define GLAMOR_CREATE_NO_LARGE          0x105
+ #define GLAMOR_CREATE_PIXMAP_NO_TEXTURE 0x106
++#define GLAMOR_CREATE_FORMAT_CBCR       0x107
+ 
+ /* @glamor_egl_exchange_buffers: Exchange the underlying buffers(KHR image,fbo).
+  *
+diff --git a/glamor/glamor_priv.h b/glamor/glamor_priv.h
+index 7d9a7d4fb..68cb24865 100644
+--- a/glamor/glamor_priv.h
++++ b/glamor/glamor_priv.h
+@@ -378,6 +378,8 @@ typedef struct glamor_pixmap_private {
+      * names.
+      */
+     glamor_pixmap_fbo **fbo_array;
++
++    Bool is_cbcr;
+ } glamor_pixmap_private;
+ 
+ extern DevPrivateKeyRec glamor_pixmap_private_key;
+@@ -899,7 +901,7 @@ int glamor_xv_put_image(glamor_port_private *port_priv,
+                         Bool sync,
+                         RegionPtr clipBoxes);
+ void glamor_xv_core_init(ScreenPtr screen);
+-void glamor_xv_render(glamor_port_private *port_priv);
++void glamor_xv_render(glamor_port_private *port_priv, int id);
+ 
+ #include "glamor_utils.h"
+ 
+diff --git a/glamor/glamor_transfer.c b/glamor/glamor_transfer.c
+index ebb5101d1..421ed3a5f 100644
+--- a/glamor/glamor_transfer.c
++++ b/glamor/glamor_transfer.c
+@@ -27,6 +27,7 @@
+ void
+ glamor_format_for_pixmap(PixmapPtr pixmap, GLenum *format, GLenum *type)
+ {
++    glamor_pixmap_private       *priv = glamor_get_pixmap_private(pixmap);
+     switch (pixmap->drawable.depth) {
+     case 24:
+     case 32:
+@@ -38,8 +39,13 @@ glamor_format_for_pixmap(PixmapPtr pixmap, GLenum *format, GLenum *type)
+         *type = GL_UNSIGNED_INT_2_10_10_10_REV;
+         break;
+     case 16:
+-        *format = GL_RGB;
+-        *type = GL_UNSIGNED_SHORT_5_6_5;
++        if (priv->is_cbcr) {
++          *format = priv->fbo->format;
++          *type = GL_UNSIGNED_BYTE;
++        } else {
++          *format = GL_RGB;
++          *type = GL_UNSIGNED_SHORT_5_6_5;
++        }
+         break;
+     case 15:
+         *format = GL_BGRA;
+diff --git a/glamor/glamor_utils.h b/glamor/glamor_utils.h
+index 0d5674d63..1890c1fe5 100644
+--- a/glamor/glamor_utils.h
++++ b/glamor/glamor_utils.h
+@@ -613,11 +613,15 @@ gl_iformat_for_pixmap(PixmapPtr pixmap)
+ {
+     glamor_screen_private *glamor_priv =
+         glamor_get_screen_private((pixmap)->drawable.pScreen);
++    glamor_pixmap_private *pixmap_priv = glamor_get_pixmap_private(pixmap);
+ 
+     if (glamor_priv->gl_flavor == GLAMOR_GL_DESKTOP &&
+         ((pixmap)->drawable.depth == 1 || (pixmap)->drawable.depth == 8)) {
+         return glamor_priv->one_channel_format;
+     } else if (glamor_priv->gl_flavor == GLAMOR_GL_DESKTOP &&
++               (pixmap)->drawable.depth == 16 && pixmap_priv->is_cbcr) {
++        return GL_RG;
++    } else if (glamor_priv->gl_flavor == GLAMOR_GL_DESKTOP &&
+                (pixmap)->drawable.depth == 30) {
+         return GL_RGB10_A2;
+     } else {
+-- 
+2.11.0
+

@@ -1,0 +1,44 @@
+From 3148104a5988e1c2c6cd3f789c167eac1052c125 Mon Sep 17 00:00:00 2001
+From: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+Date: Mon, 4 Mar 2019 11:24:26 +0100
+Subject: [PATCH 14/29] glamor: Propagate FBO allocation failure for picture to
+ texture upload
+
+When uploading a picture to a texture, glamor_upload_picture_to_texture
+calls glamor_pixmap_ensure_fbo to ensure that there is backing FBO.
+The FBO will be allocated if the picture's drawable pixmap does not have
+one already, which can fail when there is no GL memory left.
+
+glamor_upload_picture_to_texture checks that the call succeeded and will
+enter the failure path if it did not. However, unlike many other
+functions in glamor, this one has ret set to TRUE initially, so it needs
+to be set to FALSE when a failure happens.
+
+Otherwise, the error is not propagated and the failure path return TRUE.
+This leads to a fault when trying to access the FBO pointer later on.
+
+Signed-off-by: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+(cherry picked from commit c98c7709c67d8ed6b7455ec700a49b58c396ec2c)
+---
+ glamor/glamor_picture.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/glamor/glamor_picture.c b/glamor/glamor_picture.c
+index 84a33ad6a..685d8d618 100644
+--- a/glamor/glamor_picture.c
++++ b/glamor/glamor_picture.c
+@@ -340,8 +340,10 @@ glamor_upload_picture_to_texture(PicturePtr picture)
+     else
+         iformat = format;
+ 
+-    if (!glamor_pixmap_ensure_fbo(pixmap, iformat, GLAMOR_CREATE_FBO_NO_FBO))
++    if (!glamor_pixmap_ensure_fbo(pixmap, iformat, GLAMOR_CREATE_FBO_NO_FBO)) {
++        ret = FALSE;
+         goto fail;
++    }
+ 
+     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+ 
+-- 
+2.11.0
+

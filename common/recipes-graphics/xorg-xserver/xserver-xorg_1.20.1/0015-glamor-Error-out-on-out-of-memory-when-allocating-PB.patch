@@ -1,0 +1,66 @@
+From b63568c381066a8b7ff374c193ebd372d732274d Mon Sep 17 00:00:00 2001
+From: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+Date: Mon, 4 Mar 2019 11:47:11 +0100
+Subject: [PATCH 15/29] glamor: Error out on out-of-memory when allocating PBO
+ for FBO access
+
+Packed buffer allocation (which happens at glBufferData time with the
+buffer bound) can fail when there is no GL memory left.
+
+Pick up the error when it happens, print a proper error message, do
+some cleanup and bail.
+
+Signed-off-by: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+(cherry picked from commit bc2e12239f86e5a4acd220744f42eb83ba55d328)
+---
+ glamor/glamor_prepare.c | 17 +++++++++++++++++
+ glamor/glamor_priv.h    |  1 +
+ 2 files changed, 18 insertions(+)
+
+diff --git a/glamor/glamor_prepare.c b/glamor/glamor_prepare.c
+index 5a73e6c7d..6b35936fc 100644
+--- a/glamor/glamor_prepare.c
++++ b/glamor/glamor_prepare.c
+@@ -88,10 +88,27 @@ glamor_prep_pixmap_box(PixmapPtr pixmap, glamor_access_t access, BoxPtr box)
+ 
+             gl_usage = GL_STREAM_READ;
+ 
++            glamor_priv->suppress_gl_out_of_memory_logging = true;
++
+             glBindBuffer(GL_PIXEL_PACK_BUFFER, priv->pbo);
+             glBufferData(GL_PIXEL_PACK_BUFFER,
+                          pixmap->devKind * pixmap->drawable.height, NULL,
+                          gl_usage);
++
++            glamor_priv->suppress_gl_out_of_memory_logging = false;
++
++            if (glGetError() == GL_OUT_OF_MEMORY) {
++                if (!glamor_priv->logged_any_pbo_allocation_failure) {
++                    LogMessageVerb(X_WARNING, 0, "glamor: Failed to allocate %d "
++                                   "bytes PBO due to GL_OUT_OF_MEMORY.\n",
++                                   pixmap->devKind * pixmap->drawable.height);
++                    glamor_priv->logged_any_pbo_allocation_failure = true;
++                }
++                glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
++                glDeleteBuffers(1, &priv->pbo);
++                priv->pbo = 0;
++                return FALSE;
++            }
+         } else {
+             pixmap->devPrivate.ptr = xallocarray(pixmap->devKind,
+                                                  pixmap->drawable.height);
+diff --git a/glamor/glamor_priv.h b/glamor/glamor_priv.h
+index 68cb24865..978749f54 100644
+--- a/glamor/glamor_priv.h
++++ b/glamor/glamor_priv.h
+@@ -288,6 +288,7 @@ typedef struct glamor_screen_private {
+ 
+     Bool suppress_gl_out_of_memory_logging;
+     Bool logged_any_fbo_allocation_failure;
++    Bool logged_any_pbo_allocation_failure;
+ 
+     /* xv */
+     glamor_program xv_prog;
+-- 
+2.11.0
+

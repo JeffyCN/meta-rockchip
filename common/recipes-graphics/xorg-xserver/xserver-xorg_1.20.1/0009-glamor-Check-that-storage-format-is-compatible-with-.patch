@@ -1,0 +1,81 @@
+From eb160689617d62a2dcbdea4785a305b34f0baa91 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Michel=20D=C3=A4nzer?= <michel.daenzer@amd.com>
+Date: Wed, 19 Dec 2018 10:06:23 +0100
+Subject: [PATCH 09/29] glamor: Check that storage format is compatible with
+ RENDER format
+
+Fixes x2r10g10b10 related rendercheck failures.
+
+Reviewed-by: Eric Anholt <eric@anholt.net>
+(cherry picked from commit 7e6faa5b3c05e0b7149ee840403885b0b40b5827)
+---
+ glamor/glamor_render.c | 25 +++++++++++++++++--------
+ 1 file changed, 17 insertions(+), 8 deletions(-)
+
+diff --git a/glamor/glamor_render.c b/glamor/glamor_render.c
+index 0417df4e6..d5737018f 100644
+--- a/glamor/glamor_render.c
++++ b/glamor/glamor_render.c
+@@ -766,18 +766,27 @@ glamor_set_normalize_tcoords_generic(PixmapPtr pixmap,
+  *
+  * We could support many more formats by using GL_ARB_texture_view to
+  * parse the same bits as different formats.  For now, we only support
+- * tweaking whether we sample the alpha bits of an a8r8g8b8, or just
+- * force them to 1.
++ * tweaking whether we sample the alpha bits, or just force them to 1.
+  */
+ static Bool
+-glamor_render_format_is_supported(PictFormatShort format)
++glamor_render_format_is_supported(PicturePtr picture)
+ {
+-    switch (format) {
++    PictFormatShort storage_format;
++
++    /* Source-only pictures should always work */
++    if (!picture->pDrawable)
++        return TRUE;
++
++    storage_format = format_for_depth(picture->pDrawable->depth);
++
++    switch (picture->format) {
+     case PICT_x2r10g10b10:
++        return storage_format == PICT_x2r10g10b10;
+     case PICT_a8r8g8b8:
+     case PICT_x8r8g8b8:
++        return storage_format == PICT_a8r8g8b8 || storage_format == PICT_x8r8g8b8;
+     case PICT_a8:
+-        return TRUE;
++        return storage_format == PICT_a8;
+     default:
+         return FALSE;
+     }
+@@ -815,7 +824,7 @@ glamor_composite_choose_shader(CARD8 op,
+         goto fail;
+     }
+ 
+-    if (!glamor_render_format_is_supported(dest->format)) {
++    if (!glamor_render_format_is_supported(dest)) {
+         glamor_fallback("Unsupported dest picture format.\n");
+         goto fail;
+     }
+@@ -978,7 +987,7 @@ glamor_composite_choose_shader(CARD8 op,
+                 goto fail;
+             }
+         } else {
+-            if (source && !glamor_render_format_is_supported(source->format)) {
++            if (source && !glamor_render_format_is_supported(source)) {
+                 glamor_fallback("Unsupported source picture format.\n");
+                 goto fail;
+             }
+@@ -990,7 +999,7 @@ glamor_composite_choose_shader(CARD8 op,
+                 goto fail;
+             }
+         } else if (mask) {
+-            if (!glamor_render_format_is_supported(mask->format)) {
++            if (!glamor_render_format_is_supported(mask)) {
+                 glamor_fallback("Unsupported mask picture format.\n");
+                 goto fail;
+             }
+-- 
+2.11.0
+

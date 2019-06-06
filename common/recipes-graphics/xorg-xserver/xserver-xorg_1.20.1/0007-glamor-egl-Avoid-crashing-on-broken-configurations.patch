@@ -1,0 +1,63 @@
+From ed616b98eb780c48aa783a8453bf7c4a810f396b Mon Sep 17 00:00:00 2001
+From: Adam Jackson <ajax@redhat.com>
+Date: Fri, 5 Oct 2018 14:50:20 -0400
+Subject: [PATCH 07/29] glamor/egl: Avoid crashing on broken configurations
+
+0a9415cf apparently can tickle bugs in the GL stack where glGetString
+returns NULL, presumably because the eglMakeCurrent() didn't manage to
+actually install a dispatch table and you're hitting a stub function.
+That's clearly not our bug, but if it happens we should at least not
+crash. Notice this case and fail gently.
+
+Signed-off-by: Adam Jackson <ajax@redhat.com>
+(cherry picked from commit af151895f3cb1755a7a5631f2398a3d3b219cbef)
+---
+ glamor/glamor_egl.c               | 5 +++++
+ hw/xwayland/xwayland-glamor-gbm.c | 8 +++++++-
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/glamor/glamor_egl.c b/glamor/glamor_egl.c
+index fb48d8d3d..0cc1c98b5 100644
+--- a/glamor/glamor_egl.c
++++ b/glamor/glamor_egl.c
+@@ -995,6 +995,11 @@ glamor_egl_init(ScrnInfoPtr scrn, int fd)
+     }
+ 
+     renderer = glGetString(GL_RENDERER);
++    if (!renderer) {
++        xf86DrvMsg(scrn->scrnIndex, X_ERROR,
++                   "glGetString() returned NULL, your GL is broken\n");
++        goto error;
++    }
+     if (strstr((const char *)renderer, "llvmpipe")) {
+         xf86DrvMsg(scrn->scrnIndex, X_INFO,
+                    "Refusing to try glamor on llvmpipe\n");
+diff --git a/hw/xwayland/xwayland-glamor-gbm.c b/hw/xwayland/xwayland-glamor-gbm.c
+index 25a354bf7..6aa1e4641 100644
+--- a/hw/xwayland/xwayland-glamor-gbm.c
++++ b/hw/xwayland/xwayland-glamor-gbm.c
+@@ -797,6 +797,7 @@ xwl_glamor_gbm_init_egl(struct xwl_screen *xwl_screen)
+         GLAMOR_GL_CORE_VER_MINOR,
+         EGL_NONE
+     };
++    const GLubyte *renderer;
+ 
+     if (!xwl_gbm->fd_render_node && !xwl_gbm->drm_authenticated) {
+         ErrorF("Failed to get wl_drm, disabling Glamor and DRI3\n");
+@@ -843,7 +844,12 @@ xwl_glamor_gbm_init_egl(struct xwl_screen *xwl_screen)
+         goto error;
+     }
+ 
+-    if (strstr((const char *)glGetString(GL_RENDERER), "llvmpipe")) {
++    renderer = glGetString(GL_RENDERER);
++    if (!renderer) {
++        ErrorF("glGetString() returned NULL, your GL is broken\n");
++        goto error;
++    }
++    if (strstr((const char *)renderer, "llvmpipe")) {
+         ErrorF("Refusing to try glamor on llvmpipe\n");
+         goto error;
+     }
+-- 
+2.11.0
+

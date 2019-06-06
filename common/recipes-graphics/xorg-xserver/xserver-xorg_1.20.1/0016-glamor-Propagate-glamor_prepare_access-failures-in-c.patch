@@ -1,0 +1,45 @@
+From 50f60280ff7dc348295f38beffad47e6c9fb1ca2 Mon Sep 17 00:00:00 2001
+From: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+Date: Mon, 4 Mar 2019 11:38:20 +0100
+Subject: [PATCH 16/29] glamor: Propagate glamor_prepare_access failures in
+ copy helpers
+
+glamor_prepare_access can fail for a few reasons, especially when
+failing to allocate a PBO buffer. Take this in account and bail in
+the copy helpers that call the helper when a failure happens.
+
+Signed-off-by: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+(cherry picked from commit de6b3fac1f26075ce915006c914c4a4755617715)
+---
+ glamor/glamor_copy.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/glamor/glamor_copy.c b/glamor/glamor_copy.c
+index e050c0220..1ab2be6c0 100644
+--- a/glamor/glamor_copy.c
++++ b/glamor/glamor_copy.c
+@@ -221,7 +221,9 @@ glamor_copy_cpu_fbo(DrawablePtr src,
+         goto bail;
+ 
+     glamor_make_current(glamor_priv);
+-    glamor_prepare_access(src, GLAMOR_ACCESS_RO);
++
++    if (!glamor_prepare_access(src, GLAMOR_ACCESS_RO))
++        goto bail;
+ 
+     glamor_get_drawable_deltas(dst, dst_pixmap, &dst_xoff, &dst_yoff);
+ 
+@@ -309,7 +311,9 @@ glamor_copy_fbo_cpu(DrawablePtr src,
+         goto bail;
+ 
+     glamor_make_current(glamor_priv);
+-    glamor_prepare_access(dst, GLAMOR_ACCESS_RW);
++
++    if (!glamor_prepare_access(dst, GLAMOR_ACCESS_RW))
++        goto bail;
+ 
+     glamor_get_drawable_deltas(src, src_pixmap, &src_xoff, &src_yoff);
+ 
+-- 
+2.11.0
+

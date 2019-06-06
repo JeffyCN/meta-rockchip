@@ -1,0 +1,33 @@
+From f7b003f48651c46d28a0b3b755f0aa5731a2f6b9 Mon Sep 17 00:00:00 2001
+From: Rohan Garg <rohan@garg.io>
+Date: Thu, 13 Dec 2018 19:15:01 +0100
+Subject: [PATCH 13/29] glamor/glamor_egl.c: EGL_NATIVE_PIXMAP_KHR do not
+ require contexts
+
+From https://www.khronos.org/registry/EGL/extensions/KHR/EGL_KHR_image_pixmap.txt
+
+ * If <target> is EGL_NATIVE_PIXMAP_KHR, and <ctx> is not EGL_NO_CONTEXT,
+   the error EGL_BAD_PARAMETER is generated.
+
+Fixes: a5321ea4 ("Allow to create textured pixmaps from gbm_bo without using gem names")
+(cherry picked from commit cc05c01925755310f027c61daa29648a10155f96)
+---
+ glamor/glamor_egl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/glamor/glamor_egl.c b/glamor/glamor_egl.c
+index fa854d65f..c098acb01 100644
+--- a/glamor/glamor_egl.c
++++ b/glamor/glamor_egl.c
+@@ -233,7 +233,7 @@ glamor_egl_create_textured_pixmap_from_gbm_bo(PixmapPtr pixmap,
+     glamor_make_current(glamor_priv);
+ 
+     image = eglCreateImageKHR(glamor_egl->display,
+-                              glamor_egl->context,
++                              EGL_NO_CONTEXT,
+                               EGL_NATIVE_PIXMAP_KHR, bo, NULL);
+     if (image == EGL_NO_IMAGE_KHR) {
+         glamor_set_pixmap_type(pixmap, GLAMOR_DRM_ONLY);
+-- 
+2.11.0
+

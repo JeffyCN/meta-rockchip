@@ -1,0 +1,36 @@
+From 9753c3fc39a38cc06d2804185f8bc7ad3c133651 Mon Sep 17 00:00:00 2001
+From: Olivier Fourdan <ofourdan@redhat.com>
+Date: Fri, 8 Mar 2019 18:19:16 +0100
+Subject: [PATCH 18/29] glamor: pixmap FBO may not be allocated
+
+If `_glamor_create_tex()` fails to allocate the FBO because of
+GL_OUT_OF_MEMORY error, the `pixmap_priv->fbo` is NULL.
+
+However, `glamor_get_pixmap_texture()` doesn't actually check whether
+the `pixmap_priv->fbo` is NULL and will segfault with a NULL pointer
+dereference trying to access the `pixmap_priv->fbo->tex`.
+
+Signed-off-by: Olivier Fourdan <ofourdan@redhat.com>
+Closes: https://gitlab.freedesktop.org/xorg/xserver/issues/647
+(cherry picked from commit 74479a99ecf18fdfdafd033b5efd8d785dd12c28)
+---
+ glamor/glamor.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/glamor/glamor.c b/glamor/glamor.c
+index f24cc9fd1..8a9895d95 100644
+--- a/glamor/glamor.c
++++ b/glamor/glamor.c
+@@ -136,6 +136,9 @@ glamor_get_pixmap_texture(PixmapPtr pixmap)
+     if (!pixmap_priv)
+         return 0;
+ 
++    if (!pixmap_priv->fbo)
++        return 0;
++
+     if (pixmap_priv->type != GLAMOR_TEXTURE_ONLY)
+         return 0;
+ 
+-- 
+2.11.0
+

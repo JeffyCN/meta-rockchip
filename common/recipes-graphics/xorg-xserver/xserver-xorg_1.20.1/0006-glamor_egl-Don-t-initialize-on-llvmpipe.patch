@@ -1,0 +1,92 @@
+From 0b671902226eae4702023f070a69f2c484652ff0 Mon Sep 17 00:00:00 2001
+From: Adam Jackson <ajax@redhat.com>
+Date: Fri, 14 Sep 2018 11:33:43 -0400
+Subject: [PATCH 06/29] glamor_egl: Don't initialize on llvmpipe
+
+Mesa started supporting GL_OES_EGL_image on llvmpipe in 17.3, after this
+commit:
+
+    commit bbdeddd5fd0b797e1e281f058338b3da4d98029d
+    Author: Gurchetan Singh <gurchetansingh@chromium.org>
+    Date:   Tue Aug 1 14:49:33 2017 -0700
+
+        st/dri: add drisw image extension
+
+That's pretty cool, but it means glamor now thinks it can initialize on
+llvmpipe. This is almost certainly not what anyone wants, as glamor on
+llvmpipe is pretty much uniformly slower than fb.
+
+This fixes both Xorg and Xwayland to refuse glamor in such a setup.
+Xephyr is left alone, both because glamor is not the default there and
+because Xephyr+glamor+llvmpipe is one of the easier ways to get xts to
+exercise glamor.
+
+The (very small) downside of this change is that you lose DRI3 support.
+This wouldn't have helped you very much (since an lp glamor blit is
+slower than a pixman blit), but it would eliminate the PutImage overhead
+for llvmpipe's glXSwapBuffers. A future change should add DRI3 support
+for the fb-only case.
+
+Reviewed-by: Eric Anholt <eric@anholt.net>
+Signed-off-by: Adam Jackson <ajax@redhat.com>
+(cherry picked from commit 0a9415cf793babed1f28c61f8047d51de04f1528)
+---
+ glamor/glamor_egl.c               | 11 ++++++++++-
+ hw/xwayland/xwayland-glamor-gbm.c |  5 +++++
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/glamor/glamor_egl.c b/glamor/glamor_egl.c
+index cf9368dc2..fb48d8d3d 100644
+--- a/glamor/glamor_egl.c
++++ b/glamor/glamor_egl.c
+@@ -898,6 +898,7 @@ Bool
+ glamor_egl_init(ScrnInfoPtr scrn, int fd)
+ {
+     struct glamor_egl_screen_private *glamor_egl;
++    const GLubyte *renderer;
+ 
+     glamor_egl = calloc(sizeof(*glamor_egl), 1);
+     if (glamor_egl == NULL)
+@@ -992,6 +993,14 @@ glamor_egl_init(ScrnInfoPtr scrn, int fd)
+                    "Failed to make EGL context current\n");
+         goto error;
+     }
++
++    renderer = glGetString(GL_RENDERER);
++    if (strstr((const char *)renderer, "llvmpipe")) {
++        xf86DrvMsg(scrn->scrnIndex, X_INFO,
++                   "Refusing to try glamor on llvmpipe\n");
++        goto error;
++    }
++
+     /*
+      * Force the next glamor_make_current call to set the right context
+      * (in case of multiple GPUs using glamor)
+@@ -1005,7 +1014,7 @@ glamor_egl_init(ScrnInfoPtr scrn, int fd)
+     }
+ 
+     xf86DrvMsg(scrn->scrnIndex, X_INFO, "glamor X acceleration enabled on %s\n",
+-               glGetString(GL_RENDERER));
++               renderer);
+ 
+ #ifdef GBM_BO_WITH_MODIFIERS
+     if (epoxy_has_egl_extension(glamor_egl->display,
+diff --git a/hw/xwayland/xwayland-glamor-gbm.c b/hw/xwayland/xwayland-glamor-gbm.c
+index 06fcf5239..25a354bf7 100644
+--- a/hw/xwayland/xwayland-glamor-gbm.c
++++ b/hw/xwayland/xwayland-glamor-gbm.c
+@@ -843,6 +843,11 @@ xwl_glamor_gbm_init_egl(struct xwl_screen *xwl_screen)
+         goto error;
+     }
+ 
++    if (strstr((const char *)glGetString(GL_RENDERER), "llvmpipe")) {
++        ErrorF("Refusing to try glamor on llvmpipe\n");
++        goto error;
++    }
++
+     if (!epoxy_has_gl_extension("GL_OES_EGL_image")) {
+         ErrorF("GL_OES_EGL_image not available\n");
+         goto error;
+-- 
+2.11.0
+

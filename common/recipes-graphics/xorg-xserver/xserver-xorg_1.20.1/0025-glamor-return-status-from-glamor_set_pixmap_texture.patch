@@ -1,0 +1,59 @@
+From b763ebe68fcb8dd63e10e0700bab01c3a1c3ed6d Mon Sep 17 00:00:00 2001
+From: Olivier Fourdan <ofourdan@redhat.com>
+Date: Tue, 12 Mar 2019 17:15:10 +0100
+Subject: [PATCH 25/29] glamor: return status from
+ `glamor_set_pixmap_texture()`
+
+Chnage the API for `glamor_set_pixmap_texture()` to return a status,
+so that the caller can know whether it succeeded or not.
+
+Signed-off-by: Olivier Fourdan <ofourdan@redhat.com>
+(cherry picked from commit 9e37e41fa78a33b95fd78e92b74b961086ab712b)
+---
+ glamor/glamor.c | 6 ++++--
+ glamor/glamor.h | 2 +-
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/glamor/glamor.c b/glamor/glamor.c
+index eee44c25d..4b935de59 100644
+--- a/glamor/glamor.c
++++ b/glamor/glamor.c
+@@ -99,7 +99,7 @@ glamor_set_pixmap_type(PixmapPtr pixmap, glamor_pixmap_type_t type)
+     glamor_init_pixmap_private_small(pixmap, pixmap_priv);
+ }
+ 
+-_X_EXPORT void
++_X_EXPORT Bool
+ glamor_set_pixmap_texture(PixmapPtr pixmap, unsigned int tex)
+ {
+     ScreenPtr screen = pixmap->drawable.pScreen;
+@@ -121,10 +121,12 @@ glamor_set_pixmap_texture(PixmapPtr pixmap, unsigned int tex)
+ 
+     if (fbo == NULL) {
+         ErrorF("XXX fail to create fbo.\n");
+-        return;
++        return FALSE;
+     }
+ 
+     glamor_pixmap_attach_fbo(pixmap, fbo);
++
++    return TRUE;
+ }
+ 
+ uint32_t
+diff --git a/glamor/glamor.h b/glamor/glamor.h
+index 8d79597e2..c972694e3 100644
+--- a/glamor/glamor.h
++++ b/glamor/glamor.h
+@@ -110,7 +110,7 @@ extern _X_EXPORT Bool glamor_close_screen(ScreenPtr screen);
+ 
+ extern _X_EXPORT uint32_t glamor_get_pixmap_texture(PixmapPtr pixmap);
+ 
+-extern _X_EXPORT void glamor_set_pixmap_texture(PixmapPtr pixmap,
++extern _X_EXPORT Bool glamor_set_pixmap_texture(PixmapPtr pixmap,
+                                                 unsigned int tex);
+ 
+ extern _X_EXPORT void glamor_set_pixmap_type(PixmapPtr pixmap,
+-- 
+2.11.0
+

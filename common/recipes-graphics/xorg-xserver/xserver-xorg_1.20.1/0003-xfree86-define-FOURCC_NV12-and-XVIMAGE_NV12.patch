@@ -1,0 +1,47 @@
+From 424b9d62526c41bc90f53e779b969ef7849c1b6f Mon Sep 17 00:00:00 2001
+From: Julien Isorce <julien.isorce@gmail.com>
+Date: Thu, 6 Sep 2018 15:38:13 -0700
+Subject: [PATCH 03/29] xfree86: define FOURCC_NV12 and XVIMAGE_NV12
+
+Useful for glamor.
+
+Signed-off-by: Julien Isorce <jisorce@oblong.com>
+Tested-by: Olivier Fourdan <ofourdan@redhat.com>
+Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit f98ff253c722da3f5ad747e6813752f9e74c54b5)
+---
+ hw/xfree86/common/fourcc.h | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/hw/xfree86/common/fourcc.h b/hw/xfree86/common/fourcc.h
+index e6126b7fe..a19e6869e 100644
+--- a/hw/xfree86/common/fourcc.h
++++ b/hw/xfree86/common/fourcc.h
+@@ -156,4 +156,24 @@
+         XvTopToBottom \
+    }
+ 
++#define FOURCC_NV12 0x3231564e
++#define XVIMAGE_NV12 \
++   { \
++        FOURCC_NV12, \
++        XvYUV, \
++        LSBFirst, \
++        {'N','V','1','2', \
++          0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
++        12, \
++        XvPlanar, \
++        2, \
++        0, 0, 0, 0, \
++        8, 8, 8, \
++        1, 2, 2, \
++        1, 2, 2, \
++        {'Y','U','V', \
++          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
++        XvTopToBottom \
++   }
++
+ #endif                          /* _XF86_FOURCC_H_ */
+-- 
+2.11.0
+

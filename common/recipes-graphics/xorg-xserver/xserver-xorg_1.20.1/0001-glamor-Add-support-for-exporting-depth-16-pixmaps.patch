@@ -1,0 +1,63 @@
+From 8f50ad89af8e4a2463336074295a1384e89c1f71 Mon Sep 17 00:00:00 2001
+From: Eric Anholt <eric@anholt.net>
+Date: Tue, 4 Sep 2018 20:52:57 -0700
+Subject: [PATCH 01/29] glamor: Add support for exporting depth 16 pixmaps.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+With a patch to mesa to expose rgb565 pbuffers even on a server with
+only depth 24 and 32 visuals, fixes
+dEQP-EGL.functional.render.single_context.gles2.rgb565_pbuffer.  Those
+pbuffers (or at least something renderable with 565) are required by
+the current CTS for GLES3, and having the server support DRI3 on those
+pixmaps means that we can avoid having a different path for EGL
+pbuffers compared to pixmaps.
+
+Signed-off-by: Eric Anholt <eric@anholt.net>
+Reviewed-by: Michel Dänzer <michel.daenzer@amd.com>
+(cherry picked from commit b3f64786a3fd428f7fdccd8c884478fd62b70c16)
+---
+ glamor/glamor_egl.c | 22 ++++++++++++++--------
+ 1 file changed, 14 insertions(+), 8 deletions(-)
+
+diff --git a/glamor/glamor_egl.c b/glamor/glamor_egl.c
+index 0edfa111c..cf9368dc2 100644
+--- a/glamor/glamor_egl.c
++++ b/glamor/glamor_egl.c
+@@ -280,18 +280,24 @@ glamor_make_pixmap_exportable(PixmapPtr pixmap, Bool modifiers_ok)
+         (modifiers_ok || !pixmap_priv->used_modifiers))
+         return TRUE;
+ 
+-    if (pixmap->drawable.bitsPerPixel != 32) {
++    switch (pixmap->drawable.depth) {
++    case 30:
++        format = GBM_FORMAT_ARGB2101010;
++        break;
++    case 32:
++    case 24:
++        format = GBM_FORMAT_ARGB8888;
++        break;
++    case 16:
++        format = GBM_FORMAT_RGB565;
++        break;
++    default:
+         xf86DrvMsg(scrn->scrnIndex, X_ERROR,
+-                   "Failed to make %dbpp pixmap exportable\n",
+-                   pixmap->drawable.bitsPerPixel);
++                   "Failed to make %d depth, %dbpp pixmap exportable\n",
++                   pixmap->drawable.depth, pixmap->drawable.bitsPerPixel);
+         return FALSE;
+     }
+ 
+-    if (pixmap->drawable.depth == 30)
+-	format = GBM_FORMAT_ARGB2101010;
+-    else
+-        format = GBM_FORMAT_ARGB8888;
+-
+ #ifdef GBM_BO_WITH_MODIFIERS
+     if (modifiers_ok && glamor_egl->dmabuf_capable) {
+         uint32_t num_modifiers;
+-- 
+2.11.0
+

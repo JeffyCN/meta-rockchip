@@ -1,0 +1,90 @@
+From ea1d35e6cd5b540e520b638d397b27d9e01c3527 Mon Sep 17 00:00:00 2001
+From: Olivier Fourdan <ofourdan@redhat.com>
+Date: Fri, 26 Apr 2019 13:37:09 +0200
+Subject: [PATCH 26/29] glamor: Make pixmap exportable from
+ `gbm_bo_from_pixmap()`
+
+If a pixmap is not exportable, `glamor_gbm_bo_from_pixmap()` would fail
+and the modesettings driver would consequently fail to do its page flip,
+which both prevents Present from working and also fill up the logs with
+error messages such as:
+
+  (EE) modeset(0): Failed to get GBM bo for flip to new front.
+  (EE) modeset(0): present flip failed
+
+Refactor the code so that `glamor_gbm_bo_from_pixmap()` takes care of
+making the pixmap exportable.
+
+Signed-off-by: Olivier Fourdan <ofourdan@redhat.com>
+Signed-off-by: Yuxuan Shui yshui@hadean.com
+See-also: https://gitlab.freedesktop.org/xorg/xserver/merge_requests/131
+Closes: https://gitlab.freedesktop.org/xorg/xserver/issues/68
+Fixes: 86b2d8740a "glamor: Reallocate pixmap storage without modifiers
+       if necessary"
+
+(cherry picked from commit 26fe29f4fa53cbb7d51892e2cf397c084093812f)
+---
+ glamor/glamor_egl.c | 19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
+
+diff --git a/glamor/glamor_egl.c b/glamor/glamor_egl.c
+index c098acb01..adccc6b6c 100644
+--- a/glamor/glamor_egl.c
++++ b/glamor/glamor_egl.c
+@@ -367,8 +367,8 @@ glamor_make_pixmap_exportable(PixmapPtr pixmap, Bool modifiers_ok)
+     return TRUE;
+ }
+ 
+-struct gbm_bo *
+-glamor_gbm_bo_from_pixmap(ScreenPtr screen, PixmapPtr pixmap)
++static struct gbm_bo *
++glamor_gbm_bo_from_pixmap_internal(ScreenPtr screen, PixmapPtr pixmap)
+ {
+     struct glamor_egl_screen_private *glamor_egl =
+         glamor_egl_get_screen_private(xf86ScreenToScrn(screen));
+@@ -382,6 +382,15 @@ glamor_gbm_bo_from_pixmap(ScreenPtr screen, PixmapPtr pixmap)
+                          pixmap_priv->image, 0);
+ }
+ 
++struct gbm_bo *
++glamor_gbm_bo_from_pixmap(ScreenPtr screen, PixmapPtr pixmap)
++{
++    if (!glamor_make_pixmap_exportable(pixmap, TRUE))
++        return NULL;
++
++    return glamor_gbm_bo_from_pixmap_internal(screen, pixmap);
++}
++
+ int
+ glamor_egl_fds_from_pixmap(ScreenPtr screen, PixmapPtr pixmap, int *fds,
+                            uint32_t *strides, uint32_t *offsets,
+@@ -397,7 +406,7 @@ glamor_egl_fds_from_pixmap(ScreenPtr screen, PixmapPtr pixmap, int *fds,
+     if (!glamor_make_pixmap_exportable(pixmap, TRUE))
+         return 0;
+ 
+-    bo = glamor_gbm_bo_from_pixmap(screen, pixmap);
++    bo = glamor_gbm_bo_from_pixmap_internal(screen, pixmap);
+     if (!bo)
+         return 0;
+ 
+@@ -435,7 +444,7 @@ glamor_egl_fd_from_pixmap(ScreenPtr screen, PixmapPtr pixmap,
+     if (!glamor_make_pixmap_exportable(pixmap, FALSE))
+         return -1;
+ 
+-    bo = glamor_gbm_bo_from_pixmap(screen, pixmap);
++    bo = glamor_gbm_bo_from_pixmap_internal(screen, pixmap);
+     if (!bo)
+         return -1;
+ 
+@@ -464,7 +473,7 @@ glamor_egl_fd_name_from_pixmap(ScreenPtr screen,
+     if (!glamor_make_pixmap_exportable(pixmap, FALSE))
+         goto failure;
+ 
+-    bo = glamor_gbm_bo_from_pixmap(screen, pixmap);
++    bo = glamor_gbm_bo_from_pixmap_internal(screen, pixmap);
+     if (!bo)
+         goto failure;
+ 
+-- 
+2.11.0
+
