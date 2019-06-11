@@ -26,15 +26,11 @@ FILESPATH_prepend := "${THISDIR}/${PN}:"
 
 inherit gettext autotools pkgconfig
 
-PACKAGECONFIG ??= " \
-    mpp             \
-"
-PACKAGECONFIG[mpp]    = "--enable-rockchipmpp,--disable-rockchipmpp,rockchip-mpp"
-PACKAGECONFIG[vpudec] = "--enable-vpudec,--disable-vpudec,rockchip-vpu"
+PACKAGECONFIG ??= "mpp ${@bb.utils.filter('DISTRO_FEATURES', 'x11', d)}"
 
-EXTRA_OECONF += "    \
-    --disable-rkximage \
-"
+PACKAGECONFIG[mpp]    = "--enable-rockchipmpp,--disable-rockchipmpp,rockchip-mpp"
+PACKAGECONFIG[x11]    = "--enable-rkximage,--disable-rkximage,libx11"
+
 EXTRA_OECONF_remove = "--disable-gtk-doc"
 
 do_configure[prefuncs] = " delete_pkg_m4_file"
