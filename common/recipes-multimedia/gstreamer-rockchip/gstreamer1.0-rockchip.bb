@@ -21,8 +21,8 @@ SRC_URI_remove = " \
     file://gtk-doc-tweaks.patch \
 "
 
-FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
-FILESPATH_prepend := "${THISDIR}/${PN}:"
+PATCHPATH = "${THISDIR}/files"
+inherit auto-patch
 
 inherit gettext autotools pkgconfig
 
