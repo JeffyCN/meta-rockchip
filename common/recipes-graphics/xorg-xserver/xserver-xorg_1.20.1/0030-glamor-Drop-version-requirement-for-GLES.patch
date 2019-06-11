@@ -1,0 +1,28 @@
+From 15e6896626abde8a63437d9d0f467eae8d689b46 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 11 Jun 2019 11:40:34 +0800
+Subject: [PATCH] glamor: Drop version requirement for GLES
+
+The GLES has different version definition.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ glamor/glamor_program.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/glamor/glamor_program.c b/glamor/glamor_program.c
+index b0a9d07..c0771dc 100644
+--- a/glamor/glamor_program.c
++++ b/glamor/glamor_program.c
+@@ -281,7 +281,7 @@ glamor_build_program(ScreenPtr          screen,
+     if (!fs_vars)
+         goto fail;
+ 
+-    if (version) {
++    if (version && !glamor_priv->is_gles) {
+         if (asprintf(&version_string, "#version %d\n", version) < 0)
+             version_string = NULL;
+         if (!version_string)
+-- 
+2.11.0
+
