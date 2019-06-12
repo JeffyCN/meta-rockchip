@@ -1,19 +1,7 @@
-# Copyright (C) 2017 Trevor Woerner <twoerner@gmail.com>
 # Copyright (C) 2019, Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-require recipes-bsp/u-boot/u-boot.inc
-
-PROVIDES += " u-boot"
-RPROVIDES_${PN} += " u-boot"
-
-DESCRIPTION = "Rockchip next-dev U-Boot"
-LICENSE = "GPLv2+"
-
-DEPENDS += "dtc-native bc-native swig-native rk-binary-native"
-
-LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
-S = "${WORKDIR}/git"
+DEPENDS += "rk-binary-native"
 
 # Generate rockchip style u-boot binary
 UBOOT_BINARY = "uboot.img"
