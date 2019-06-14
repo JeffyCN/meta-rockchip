@@ -1,0 +1,30 @@
+From a8b4a1ea0cecda1089739cfda1b247d17981062d Mon Sep 17 00:00:00 2001
+From: Wu-Cheng Li <wuchengli@chromium.org>
+Date: Fri, 2 Sep 2016 09:19:57 -0300
+Subject: [PATCH] [media] videodev2.h: add V4L2_PIX_FMT_VP9 format
+
+This adds VP9 video coding format, a successor to VP8.
+
+Signed-off-by: Wu-Cheng Li <wuchengli@chromium.org>
+Signed-off-by: Tiffany Lin <tiffany.lin@mediatek.com>
+Signed-off-by: Hans Verkuil <hans.verkuil@cisco.com>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+---
+ include/uapi/linux/videodev2.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 94f123f3e04e0..ad206de8eadae 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -603,6 +603,7 @@ struct v4l2_pix_format {
+ #define V4L2_PIX_FMT_VC1_ANNEX_G v4l2_fourcc('V', 'C', '1', 'G') /* SMPTE 421M Annex G compliant stream */
+ #define V4L2_PIX_FMT_VC1_ANNEX_L v4l2_fourcc('V', 'C', '1', 'L') /* SMPTE 421M Annex L compliant stream */
+ #define V4L2_PIX_FMT_VP8      v4l2_fourcc('V', 'P', '8', '0') /* VP8 */
++#define V4L2_PIX_FMT_VP9      v4l2_fourcc('V', 'P', '9', '0') /* VP9 */
+ 
+ /*  Vendor-specific formats   */
+ #define V4L2_PIX_FMT_CPIA1    v4l2_fourcc('C', 'P', 'I', 'A') /* cpia1 YUV */
+-- 
+2.11.0
+

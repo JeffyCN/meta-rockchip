@@ -18,9 +18,14 @@ GN_ARGS += "is_debug=false is_official_build=false"
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 python() {
+    if int(oe.utils.trim_version(d.getVar('PV'), 1)) > 74:
+        return
+
     if not 'v4l2_device-Update-CanCreateEGLImageFrom-to-support-.patch' in d.getVar('SRC_URI'):
         d.appendVar('SRC_URI', ' file://0001-v4l2_device-Update-CanCreateEGLImageFrom-to-support-.patch')
 }
+
+INSANE_SKIP_${PN} = "already-stripped"
 
 SRC_URI += "file://chromium-init.sh"
 

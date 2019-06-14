@@ -1,0 +1,130 @@
+From f74036ef2169d65248fe7ae2cbef0a0721d4d05d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 18 Jun 2019 15:27:38 +0800
+Subject: [PATCH 5/5] third_party: zlib: Fix symbol visibility error for gcc
+
+When funtion's return type is a pointer, the visibility attribute need
+to be placed before it.
+
+For example this would not work with gcc:
+const z_crc_t FAR * ZEXPORT get_crc_table()
+
+Should be:
+ZEXPORT const z_crc_t FAR * get_crc_table()
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ third_party/zlib/crc32.c  |  2 +-
+ third_party/zlib/gzlib.c  |  2 +-
+ third_party/zlib/gzread.c |  2 +-
+ third_party/zlib/zlib.h   | 10 +++++-----
+ third_party/zlib/zutil.c  |  4 ++--
+ 5 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/third_party/zlib/crc32.c b/third_party/zlib/crc32.c
+index e95b908..f3144e6 100644
+--- a/third_party/zlib/crc32.c
++++ b/third_party/zlib/crc32.c
+@@ -194,7 +194,7 @@ local void write_table(out, table)
+ /* =========================================================================
+  * This function can be used by asm versions of crc32()
+  */
+-const z_crc_t FAR * ZEXPORT get_crc_table()
++ZEXPORT const z_crc_t FAR * get_crc_table()
+ {
+ #ifdef DYNAMIC_CRC_TABLE
+     if (crc_table_empty)
+diff --git a/third_party/zlib/gzlib.c b/third_party/zlib/gzlib.c
+index 4105e6a..cfe2c6c 100644
+--- a/third_party/zlib/gzlib.c
++++ b/third_party/zlib/gzlib.c
+@@ -529,7 +529,7 @@ int ZEXPORT gzeof(file)
+ }
+ 
+ /* -- see zlib.h -- */
+-const char * ZEXPORT gzerror(file, errnum)
++ZEXPORT const char * gzerror(file, errnum)
+     gzFile file;
+     int *errnum;
+ {
+diff --git a/third_party/zlib/gzread.c b/third_party/zlib/gzread.c
+index 832d3ef..d5a1a98 100644
+--- a/third_party/zlib/gzread.c
++++ b/third_party/zlib/gzread.c
+@@ -544,7 +544,7 @@ int ZEXPORT gzungetc(c, file)
+ }
+ 
+ /* -- see zlib.h -- */
+-char * ZEXPORT gzgets(file, buf, len)
++ZEXPORT char * gzgets(file, buf, len)
+     gzFile file;
+     char *buf;
+     int len;
+diff --git a/third_party/zlib/zlib.h b/third_party/zlib/zlib.h
+index 99fd467..96729ee 100644
+--- a/third_party/zlib/zlib.h
++++ b/third_party/zlib/zlib.h
+@@ -217,7 +217,7 @@ typedef gz_header FAR *gz_headerp;
+ 
+                         /* basic functions */
+ 
+-ZEXTERN const char * ZEXPORT zlibVersion OF((void));
++ZEXTERN ZEXPORT const char * zlibVersion OF((void));
+ /* The application can compare zlibVersion and ZLIB_VERSION for consistency.
+    If the first character differs, the library code actually used is not
+    compatible with the zlib.h header file used by the application.  This check
+@@ -1488,7 +1488,7 @@ ZEXTERN int ZEXPORT gzputs OF((gzFile file, const char *s));
+      gzputs returns the number of characters written, or -1 in case of error.
+ */
+ 
+-ZEXTERN char * ZEXPORT gzgets OF((gzFile file, char *buf, int len));
++ZEXTERN ZEXPORT char * gzgets OF((gzFile file, char *buf, int len));
+ /*
+      Reads bytes from the compressed file until len-1 characters are read, or a
+    newline character is read and transferred to buf, or an end-of-file
+@@ -1652,7 +1652,7 @@ ZEXTERN int ZEXPORT gzclose_w OF((gzFile file));
+    zlib library.
+ */
+ 
+-ZEXTERN const char * ZEXPORT gzerror OF((gzFile file, int *errnum));
++ZEXTERN ZEXPORT const char * gzerror OF((gzFile file, int *errnum));
+ /*
+      Returns the error message for the last error which occurred on the given
+    compressed file.  errnum is set to zlib error number.  If an error occurred
+@@ -1908,9 +1908,9 @@ ZEXTERN int ZEXPORT gzgetc_ OF((gzFile file));  /* backward compatibility */
+ #endif /* !Z_SOLO */
+ 
+ /* undocumented functions */
+-ZEXTERN const char   * ZEXPORT zError           OF((int));
++ZEXTERN ZEXPORT const char   * zError           OF((int));
+ ZEXTERN int            ZEXPORT inflateSyncPoint OF((z_streamp));
+-ZEXTERN const z_crc_t FAR * ZEXPORT get_crc_table    OF((void));
++ZEXTERN ZEXPORT const z_crc_t FAR * get_crc_table    OF((void));
+ ZEXTERN int            ZEXPORT inflateUndermine OF((z_streamp, int));
+ ZEXTERN int            ZEXPORT inflateValidate OF((z_streamp, int));
+ ZEXTERN unsigned long  ZEXPORT inflateCodesUsed OF ((z_streamp));
+diff --git a/third_party/zlib/zutil.c b/third_party/zlib/zutil.c
+index a76c6b0..55154e4 100644
+--- a/third_party/zlib/zutil.c
++++ b/third_party/zlib/zutil.c
+@@ -24,7 +24,7 @@ z_const char * const z_errmsg[10] = {
+ };
+ 
+ 
+-const char * ZEXPORT zlibVersion()
++ZEXPORT const char * zlibVersion()
+ {
+     return ZLIB_VERSION;
+ }
+@@ -130,7 +130,7 @@ void ZLIB_INTERNAL z_error (m)
+ /* exported to allow conversion of error code to string for compress() and
+  * uncompress()
+  */
+-const char * ZEXPORT zError(err)
++ZEXPORT const char * zError(err)
+     int err;
+ {
+     return ERR_MSG(err);
+-- 
+2.11.0
+

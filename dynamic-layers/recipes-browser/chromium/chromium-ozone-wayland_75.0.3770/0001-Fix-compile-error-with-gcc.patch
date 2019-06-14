@@ -1,0 +1,128 @@
+From 64221fdc3b2d56b63964900c21e9ccdc8efa4f3f Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 17 Apr 2019 12:42:30 +0800
+Subject: [PATCH 1/5] Fix compile error with gcc
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ base/containers/any_internal.h            |  8 ++++----
+ base/containers/unique_any.h              |  4 ++--
+ base/trace_event/trace_arguments.h        | 16 ++++++++--------
+ ui/base/clipboard/clipboard_format_type.h |  1 -
+ 4 files changed, 14 insertions(+), 15 deletions(-)
+
+diff --git a/base/containers/any_internal.h b/base/containers/any_internal.h
+index d42ad56..d4bd504 100644
+--- a/base/containers/any_internal.h
++++ b/base/containers/any_internal.h
+@@ -23,7 +23,7 @@ namespace internal {
+ // (TypeOps would need to support copying).
+ class BASE_EXPORT AnyInternal {
+  public:
+-  constexpr AnyInternal() noexcept : type_ops_(nullptr), union_({}) {}
++  AnyInternal() noexcept : type_ops_(nullptr), union_({}) {}
+ 
+   AnyInternal(AnyInternal&& other) noexcept
+       : type_ops_(other.type_ops_), union_({}) {
+@@ -35,7 +35,7 @@ class BASE_EXPORT AnyInternal {
+ 
+   struct TypeOps;
+ 
+-  constexpr explicit AnyInternal(const TypeOps* type_ops)
++  explicit AnyInternal(const TypeOps* type_ops)
+       : type_ops_(type_ops), union_({}) {}
+ 
+   void operator=(AnyInternal&& other) noexcept {
+@@ -45,7 +45,7 @@ class BASE_EXPORT AnyInternal {
+     type_ops_ = other.type_ops_;
+   }
+ 
+-  constexpr bool has_value() const noexcept { return !!type_ops_; }
++  bool has_value() const noexcept { return !!type_ops_; }
+ 
+   TypeId type() const noexcept {
+     if (!type_ops_)
+@@ -160,7 +160,7 @@ class BASE_EXPORT AnyInternal {
+ 
+ // static
+ template <typename T>
+-const AnyInternal::TypeOps AnyInternal::TypeOpsHelper<T>::type_ops;
++constexpr AnyInternal::TypeOps AnyInternal::TypeOpsHelper<T>::type_ops;
+ 
+ template <typename T>
+ struct AnyInternal::ConstructHelper<T, /* UseInlineStorage */ true> {
+diff --git a/base/containers/unique_any.h b/base/containers/unique_any.h
+index 55d839b..fdc5eb9 100644
+--- a/base/containers/unique_any.h
++++ b/base/containers/unique_any.h
+@@ -102,11 +102,11 @@ class BASE_EXPORT unique_any {
+ 
+  public:
+   // Constructs an empty base::unique_any.
+-  constexpr unique_any() noexcept {}
++  unique_any() noexcept {}
+ 
+   // Constructs a base::unique_any with the value contained by |other| moved
+   // into it.
+-  constexpr unique_any(unique_any&& other) noexcept
++  unique_any(unique_any&& other) noexcept
+       : internal_(other.internal_.type_ops_) {
+     if (internal_.type_ops_)
+       internal_.type_ops_->move_fn_ptr(&other.internal_, &internal_);
+diff --git a/base/trace_event/trace_arguments.h b/base/trace_event/trace_arguments.h
+index 0abc127..541dcd6 100644
+--- a/base/trace_event/trace_arguments.h
++++ b/base/trace_event/trace_arguments.h
+@@ -490,21 +490,21 @@ class BASE_EXPORT StringStorage {
+   void Reset(size_t alloc_size = 0);
+ 
+   // Accessors.
+-  constexpr size_t size() const { return data_ ? data_->size : 0u; }
+-  constexpr const char* data() const { return data_ ? data_->chars : nullptr; }
+-  constexpr char* data() { return data_ ? data_->chars : nullptr; }
++  size_t size() const { return data_ ? data_->size : 0u; }
++  const char* data() const { return data_ ? data_->chars : nullptr; }
++  char* data() { return data_ ? data_->chars : nullptr; }
+ 
+-  constexpr const char* begin() const { return data(); }
+-  constexpr const char* end() const { return data() + size(); }
++  const char* begin() const { return data(); }
++  const char* end() const { return data() + size(); }
+   inline char* begin() { return data(); }
+   inline char* end() { return data() + size(); }
+ 
+   // True iff storage is empty.
+-  constexpr bool empty() const { return size() == 0; }
++  bool empty() const { return size() == 0; }
+ 
+   // Returns true if |ptr| is inside the storage area, false otherwise.
+   // Used during unit-testing.
+-  constexpr bool Contains(const void* ptr) const {
++  bool Contains(const void* ptr) const {
+     const char* char_ptr = static_cast<const char*>(ptr);
+     return (char_ptr >= begin() && char_ptr < end());
+   }
+@@ -515,7 +515,7 @@ class BASE_EXPORT StringStorage {
+ 
+   // Return an estimate of the memory overhead of this instance. This doesn't
+   // count the size of |data_| itself.
+-  constexpr size_t EstimateTraceMemoryOverhead() const {
++  size_t EstimateTraceMemoryOverhead() const {
+     return data_ ? sizeof(size_t) + data_->size : 0u;
+   }
+ 
+diff --git a/ui/base/clipboard/clipboard_format_type.h b/ui/base/clipboard/clipboard_format_type.h
+index eb5b91f..3e3b85c 100644
+--- a/ui/base/clipboard/clipboard_format_type.h
++++ b/ui/base/clipboard/clipboard_format_type.h
+@@ -86,7 +86,6 @@ struct COMPONENT_EXPORT(BASE_CLIPBOARD_TYPES) ClipboardFormatType {
+ 
+  private:
+   friend class base::NoDestructor<ClipboardFormatType>;
+-  friend struct ClipboardFormatType;
+ 
+   // Platform-specific glue used internally by the ClipboardFormatType struct.
+   // Each platform should define,at least one of each of the following:
+-- 
+2.11.0
+
