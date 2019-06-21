@@ -1,0 +1,88 @@
+From 6c8dbbc7d4edf10b3925cbffbfae041c51245a74 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 18 Jun 2019 19:03:42 +0800
+Subject: [PATCH 6/7] rkximagesink: Sync frame after flip
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/rkximage/ximagesink.c | 57 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 57 insertions(+)
+
+diff --git a/gst/rkximage/ximagesink.c b/gst/rkximage/ximagesink.c
+index 4b8049e..36c12cf 100644
+--- a/gst/rkximage/ximagesink.c
++++ b/gst/rkximage/ximagesink.c
+@@ -479,6 +479,57 @@ gst_x_image_sink_xwindow_draw_borders (GstRkXImageSink * ximagesink,
+   }
+ }
+ 
++static void
++sync_handler (gint fd, guint frame, guint sec, guint usec, gpointer data)
++{
++  gboolean *waiting;
++
++  waiting = data;
++  *waiting = FALSE;
++}
++
++static gboolean
++gst_x_image_sink_sync (GstRkXImageSink * self)
++{
++  gint ret;
++  gboolean waiting;
++  drmEventContext evctxt = {
++    .version = DRM_EVENT_CONTEXT_VERSION,
++    .page_flip_handler = sync_handler,
++  };
++
++  waiting = TRUE;
++  ret = drmModePageFlip (self->fd, self->crtc_id, self->buffer_id,
++      DRM_MODE_PAGE_FLIP_EVENT, &waiting);
++  if (ret)
++    goto pageflip_failed;
++
++  while (waiting) {
++    do {
++      ret = gst_poll_wait (self->poll, 3 * GST_SECOND);
++    } while (ret == -1 && (errno == EAGAIN || errno == EINTR));
++
++    ret = drmHandleEvent (self->fd, &evctxt);
++    if (ret)
++      goto event_failed;
++  }
++
++  return TRUE;
++
++pageflip_failed:
++  {
++    GST_WARNING_OBJECT (self, "drmModePageFlip failed: %s (%d)",
++        g_strerror (errno), errno);
++    return FALSE;
++  }
++event_failed:
++  {
++    GST_ERROR_OBJECT (self, "drmHandleEvent failed: %s (%d)",
++        g_strerror (errno), errno);
++    return FALSE;
++  }
++}
++
+ /* This function puts a GstXImageBuffer on a GstRkXImageSink's window */
+ static gboolean
+ gst_x_image_sink_ximage_put (GstRkXImageSink * ximagesink, GstBuffer * ximage)
+@@ -647,6 +698,12 @@ gst_x_image_sink_ximage_put (GstRkXImageSink * ximagesink, GstBuffer * ximage)
+     goto error;
+   }
+ 
++  /* Wait for the previous frame to complete redraw */
++  if (!gst_x_image_sink_sync (ximagesink)) {
++    GST_ERROR_OBJECT (ximagesink, "drmModesetplane failed: %d", ret);
++    goto error;
++  }
++
+   if (ximagesink->last_fb_id) {
+     drmModeRmFB (ximagesink->fd, ximagesink->last_fb_id);
+   }
+-- 
+2.11.0
+
