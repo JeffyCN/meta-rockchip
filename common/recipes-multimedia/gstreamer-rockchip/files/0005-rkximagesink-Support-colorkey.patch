@@ -1,7 +1,7 @@
-From 006c298acd37bdd9e47f87dad19fe60c417c06d0 Mon Sep 17 00:00:00 2001
+From 4c2c9baab000fd9b3f75970bf54f8b36839d5fa7 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
-Date: Wed, 19 Jun 2019 13:57:00 +0800
-Subject: [PATCH 7/7] rkximagesink: Support colorkey
+Date: Tue, 25 Jun 2019 19:05:17 +0800
+Subject: [PATCH 5/5] rkximagesink: Support colorkey
 
 Try to set colorkey on primary plane, then put target plane lower to
 blend with primary plane.
@@ -13,12 +13,12 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 142 insertions(+), 18 deletions(-)
 
 diff --git a/gst/rkximage/ximagesink.c b/gst/rkximage/ximagesink.c
-index 36c12cf..a6788be 100644
+index 668e6ed..94f9755 100644
 --- a/gst/rkximage/ximagesink.c
 +++ b/gst/rkximage/ximagesink.c
-@@ -28,9 +28,17 @@
- #include <string.h>
- #include <unistd.h>
+@@ -31,9 +31,17 @@
+ #include "gstkmsbufferpool.h"
+ #include "gstkmsallocator.h"
  
 +/* A random dark color */
 +#define RKXIMAGE_COLOR_KEY 0x010203
@@ -34,7 +34,7 @@ index 36c12cf..a6788be 100644
  typedef struct
  {
    unsigned long flags;
-@@ -105,10 +113,32 @@ G_DEFINE_TYPE_WITH_CODE (GstRkXImageSink, gst_x_image_sink, GST_TYPE_VIDEO_SINK,
+@@ -104,10 +112,32 @@ G_DEFINE_TYPE_WITH_CODE (GstRkXImageSink, gst_x_image_sink, GST_TYPE_VIDEO_SINK,
  /* ============================================================= */
  /*drm*/
  
@@ -69,7 +69,7 @@ index 36c12cf..a6788be 100644
  {
    drmModePlane *plane;
    int i, pipe;
-@@ -127,8 +157,10 @@ drm_find_plane_for_crtc (int fd, drmModeRes * res, drmModePlaneRes * pres,
+@@ -126,8 +156,10 @@ drm_find_plane_for_crtc (int fd, drmModeRes * res, drmModePlaneRes * pres,
  
    for (i = 0; i < pres->count_planes; i++) {
      plane = drmModeGetPlane (fd, pres->planes[i]);
@@ -82,10 +82,11 @@ index 36c12cf..a6788be 100644
      drmModeFreePlane (plane);
    }
  
-@@ -353,6 +385,73 @@ drm_ensure_allowed_caps (GstRkXImageSink * self, drmModePlane * plane,
+@@ -355,6 +387,73 @@ drm_ensure_allowed_caps (GstRkXImageSink * self, drmModePlane * plane,
+   return TRUE;
  }
  
- static gboolean
++static gboolean
 +drm_plane_set_property (GstRkXImageSink * self, drmModePlane * plane,
 +    const char *prop_name, uint64_t prop_value)
 +{
@@ -152,11 +153,10 @@ index 36c12cf..a6788be 100644
 +  return ret;
 +}
 +
-+static gboolean
- xwindow_calculate_display_ratio (GstRkXImageSink * self, int *x, int *y,
-     gint * window_width, gint * window_height)
- {
-@@ -443,6 +542,17 @@ xwindow_get_render_rectangle (GstRkXImageSink * ximagesink,
+ /*kms*/
+ static void
+ ensure_kms_allocator (GstRkXImageSink * self)
+@@ -794,6 +893,17 @@ xwindow_get_render_rectangle (GstRkXImageSink * ximagesink,
    }
  }
  
@@ -174,7 +174,7 @@ index 36c12cf..a6788be 100644
  /* We are called with the x_lock taken */
  static void
  gst_x_image_sink_xwindow_draw_borders (GstRkXImageSink * ximagesink,
-@@ -607,6 +717,17 @@ gst_x_image_sink_ximage_put (GstRkXImageSink * ximagesink, GstBuffer * ximage)
+@@ -895,6 +1005,17 @@ gst_x_image_sink_ximage_put (GstRkXImageSink * ximagesink, GstBuffer * buf)
  
    g_mutex_lock (&ximagesink->x_lock);
  
@@ -185,14 +185,14 @@ index 36c12cf..a6788be 100644
 +        ximagesink->xwindow, RKXIMAGE_COLOR_KEY);
 +
 +    /* Do an extra repaint when handing expose */
-+    if (ximage == ximagesink->cur_image)
++    if (expose)
 +      memset (&ximagesink->clip_rect, 0, sizeof (GstVideoRectangle));
 +  }
 +
    if (draw_border) {
      gst_x_image_sink_xwindow_draw_borders (ximagesink, ximagesink->xwindow,
          result);
-@@ -1989,11 +2110,9 @@ gst_x_image_sink_start (GstBaseSink * bsink)
+@@ -2226,11 +2347,9 @@ gst_x_image_sink_start (GstBaseSink * bsink)
    drmModeCrtc *crtc;
    drmModePlaneRes *pres;
    drmModePlane *plane;
@@ -204,7 +204,7 @@ index 36c12cf..a6788be 100644
    ret = FALSE;
    res = NULL;
    conn = NULL;
-@@ -2025,9 +2144,7 @@ gst_x_image_sink_start (GstBaseSink * bsink)
+@@ -2262,9 +2381,7 @@ gst_x_image_sink_start (GstBaseSink * bsink)
    if (!crtc)
      goto crtc_failed;
  
@@ -215,7 +215,7 @@ index 36c12cf..a6788be 100644
      goto set_cap_failed;
  
    pres = drmModeGetPlaneResources (self->fd);
-@@ -2035,9 +2152,15 @@ retry_find_plane:
+@@ -2272,9 +2389,15 @@ retry_find_plane:
      goto plane_resources_failed;
  
    if (self->plane_id == -1)
@@ -233,7 +233,7 @@ index 36c12cf..a6788be 100644
    if (!plane)
      goto plane_failed;
  
-@@ -2052,6 +2175,8 @@ retry_find_plane:
+@@ -2289,6 +2412,8 @@ retry_find_plane:
    GST_INFO_OBJECT (self, "connector id = %d / crtc id = %d / plane id = %d",
        self->conn_id, self->crtc_id, self->plane_id);
  
@@ -242,7 +242,7 @@ index 36c12cf..a6788be 100644
    self->hdisplay = crtc->mode.hdisplay;
    self->vdisplay = crtc->mode.vdisplay;
    self->buffer_id = crtc->buffer_id;
-@@ -2128,13 +2253,8 @@ plane_resources_failed:
+@@ -2365,13 +2490,8 @@ plane_resources_failed:
  
  plane_failed:
    {
@@ -258,7 +258,7 @@ index 36c12cf..a6788be 100644
    }
  }
  
-@@ -2145,6 +2265,9 @@ gst_x_image_sink_stop (GstBaseSink * bsink)
+@@ -2382,6 +2502,9 @@ gst_x_image_sink_stop (GstBaseSink * bsink)
  
    self = GST_X_IMAGE_SINK (bsink);
  
@@ -267,12 +267,12 @@ index 36c12cf..a6788be 100644
 +
    gst_buffer_replace (&self->last_buffer, NULL);
    gst_caps_replace (&self->allowed_caps, NULL);
-   gst_object_replace ((GstObject **) & self->allocator, NULL);
+   gst_object_replace ((GstObject **) & self->pool, NULL);
 diff --git a/gst/rkximage/ximagesink.h b/gst/rkximage/ximagesink.h
-index 535ded7..f0476d0 100644
+index 9075051..ddeec2a 100644
 --- a/gst/rkximage/ximagesink.h
 +++ b/gst/rkximage/ximagesink.h
-@@ -145,6 +145,7 @@ struct _GstRkXImageSink
+@@ -146,6 +146,7 @@ struct _GstRkXImageSink
    GstXContext *xcontext;
    GstXWindow *xwindow;
    GstBuffer *cur_image;

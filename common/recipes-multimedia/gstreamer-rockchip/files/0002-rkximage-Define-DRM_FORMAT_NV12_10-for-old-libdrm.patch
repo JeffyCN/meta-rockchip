@@ -1,7 +1,7 @@
-From 46945722f0895ff3d8fbae204924efdab582f2ef Mon Sep 17 00:00:00 2001
+From deb60130f2bc564f98853d3cc0f134bcbf720740 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 11 Jun 2019 13:57:46 +0800
-Subject: [PATCH 2/2] rkximage: Define DRM_FORMAT_NV12_10 for old libdrm
+Subject: [PATCH 2/5] rkximage: Define DRM_FORMAT_NV12_10 for old libdrm
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
