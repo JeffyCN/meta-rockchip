@@ -1,7 +1,7 @@
-From 9dc20a08b84a375ef7396e0097191babf5af7a29 Mon Sep 17 00:00:00 2001
+From ff22e84f4705120abb0c21c2a953a7aca4991b73 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 21 Jun 2019 18:02:17 +0800
-Subject: [PATCH] HACK: drm/rockchip: vop: support colorkey prop for
+Subject: [PATCH 3/3] HACK: drm/rockchip: vop: support colorkey prop for
  rk3399/rk3288
 
 Change-Id: I3509c4999101340bf698c5226c2dc4d47ba7b1f3
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 53 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
-index 1c7f78f3380b..493ddb223a74 100644
+index 3ee544bcac48..d3f4361778be 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
 @@ -180,6 +180,8 @@ struct vop_plane_state {
@@ -24,7 +24,7 @@ index 1c7f78f3380b..493ddb223a74 100644
  };
  
  struct rockchip_mcu_timing {
-@@ -207,6 +209,7 @@ struct vop_win {
+@@ -208,6 +210,7 @@ struct vop_win {
  	struct vop *vop;
  
  	struct drm_property *rotation_prop;
@@ -32,15 +32,15 @@ index 1c7f78f3380b..493ddb223a74 100644
  	struct vop_plane_state state;
  };
  
-@@ -1665,6 +1668,7 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
- 	struct rockchip_drm_fb *rk_fb;
- 	struct drm_gem_object *obj;
- 	struct rockchip_gem_object *rk_obj;
+@@ -1658,6 +1661,7 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
+ 	int ymirror, xmirror;
+ 	uint32_t val;
+ 	bool rb_swap, global_alpha_en;
 +	int colorkey;
  
- 	num_pages = 0;
- 	pages = NULL;
-@@ -1793,6 +1797,18 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
+ #if defined(CONFIG_ROCKCHIP_DRM_DEBUG)
+ 	bool AFBC_flag = false;
+@@ -1795,6 +1799,18 @@ static void vop_plane_atomic_update(struct drm_plane *plane,
  		VOP_WIN_SET_EXT(vop, win, csc, r2y_en, vop_plane_state->r2y_en);
  		VOP_WIN_SET_EXT(vop, win, csc, csc_mode, vop_plane_state->csc_mode);
  	}
@@ -59,7 +59,7 @@ index 1c7f78f3380b..493ddb223a74 100644
  	VOP_WIN_SET(vop, win, enable, 1);
  	VOP_WIN_SET(vop, win, gate, 1);
  	spin_unlock(&vop->reg_lock);
-@@ -1938,6 +1954,17 @@ static int vop_atomic_plane_set_property(struct drm_plane *plane,
+@@ -1940,6 +1956,17 @@ static int vop_atomic_plane_set_property(struct drm_plane *plane,
  		return 0;
  	}
  
@@ -77,7 +77,7 @@ index 1c7f78f3380b..493ddb223a74 100644
  	DRM_ERROR("failed to set vop plane property\n");
  	return -EINVAL;
  }
-@@ -1986,6 +2013,11 @@ static int vop_atomic_plane_get_property(struct drm_plane *plane,
+@@ -1988,6 +2015,11 @@ static int vop_atomic_plane_get_property(struct drm_plane *plane,
  		return 0;
  	}
  
@@ -89,7 +89,7 @@ index 1c7f78f3380b..493ddb223a74 100644
  	DRM_ERROR("failed to get vop plane property\n");
  	return -EINVAL;
  }
-@@ -4057,6 +4089,17 @@ static int vop_plane_init(struct vop *vop, struct vop_win *win,
+@@ -4059,6 +4091,17 @@ static int vop_plane_init(struct vop *vop, struct vop_win *win,
  		drm_object_attach_property(&win->base.base,
  					   private->pdaf_data_type, 0x2a);
  
@@ -108,7 +108,7 @@ index 1c7f78f3380b..493ddb223a74 100644
  }
  
 diff --git a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
-index 5ea33c412489..5ef7559ad2b6 100644
+index fbc634dc836c..b937ef7ee42e 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
 @@ -132,6 +132,8 @@ static const struct vop_win_phy rk3288_win01_data = {

@@ -1,7 +1,7 @@
-From cf4f7a5fb4f982ec4bb1a2827ac4cbc082673c45 Mon Sep 17 00:00:00 2001
+From eea5a7ecf5ab3899aa26bead46befaaf0e89b0f4 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 9 Apr 2019 20:30:05 +0800
-Subject: [PATCH] drm: rockchip: Use win0 as overlay for rk3126
+Subject: [PATCH 2/3] drm: rockchip: Use win0 as overlay for rk3126
 
 Only win0 supports NV12 format on rk3126.
 
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
-index 4d42451cb09d..a94444c1646b 100644
+index ead313b8387c..fbc634dc836c 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
 @@ -1438,10 +1438,10 @@ static const struct vop_win_phy rk3126_win1_data = {
