@@ -37,17 +37,3 @@ do_install_prepend() {
 		ln -sf zboot.img ${B}/arch/${ARCH}/boot/boot.img
 	fi
 }
-
-# Avoid installing kernel images to rootfs
-do_install_append() {
-	if [ "x${RK_INSTALL_KERNEL_IMAGES}" != "x1" ]; then
-		mv ${D}/${KERNEL_IMAGEDEST} ${WORKDIR}/
-	fi
-}
-
-# Move kernel images back for devicetree deploying
-do_deploy_prepend() {
-	if [ "x${RK_INSTALL_KERNEL_IMAGES}" != "x1" ]; then
-		mv ${WORKDIR}/${KERNEL_IMAGEDEST} ${D}/
-	fi
-}
