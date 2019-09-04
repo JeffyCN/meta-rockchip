@@ -11,7 +11,7 @@ LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6d1e4aa87f6192354d3de840cf774d93"
 DEPENDS += "gstreamer1.0-plugins-base rockchip-mpp"
 
-SRCREV = "c766879e0b750233b197a2dd495e562d64498244"
+SRCREV = "c927a1d1d7cf4e6a0becbbc1a2b7b593b0c07396"
 SRC_URI = "git://github.com/rockchip-linux/gstreamer-rockchip.git;branch=master"
 
 S = "${WORKDIR}/git"
