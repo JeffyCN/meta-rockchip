@@ -1,4 +1,4 @@
-From 60830c32e10a2421d038e9ded584ed7f6ac0d36a Mon Sep 17 00:00:00 2001
+From 634ebf545c951f5d9556a776b1fc14f82cb65b2e Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 9 Nov 2018 12:14:29 +0800
 Subject: [PATCH 1/3] init/do_mounts.c: Retry all fs after failed to mount with
