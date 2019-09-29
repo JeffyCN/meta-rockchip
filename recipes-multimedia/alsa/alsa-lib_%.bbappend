@@ -4,7 +4,7 @@
 SRC_URI += " \
 	git://github.com/rockchip-linux/alsa-config.git;branch=master;name=rk-alsa-config \
 "
-SRCREV_rk-alsa-config = "5a80dbcff93b5db40310910835649277f60048c4"
+SRCREV_rk-alsa-config = "${AUTOREV}"
 
 do_install_append() {
 	install -d ${D}/${datadir}/alsa/cards/

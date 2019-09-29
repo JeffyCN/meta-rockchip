@@ -7,9 +7,8 @@ SECTION = "kernel"
 LICENSE = "LICENSE.rockchip"
 LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecced26"
 
+SRCREV = "${AUTOREV}"
 SRC_URI = "git://github.com/rockchip-linux/rkwifibt.git"
-
-SRCREV = "fe914b4a6eceb2946b85e446a83ee77fb4a14220"
 
 S = "${WORKDIR}/git"
 

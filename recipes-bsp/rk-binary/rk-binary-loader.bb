@@ -8,8 +8,8 @@ LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecc
 
 DEPENDS = "u-boot-mkimage-native rk-binary-native"
 
+SRCREV = "${AUTOREV}"
 SRC_URI = "git://github.com/rockchip-linux/rkbin.git;branch=master"
-SRCREV = "9fc33aee92908b538ca6687550be437415efae8e"
 S = "${WORKDIR}/git"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"

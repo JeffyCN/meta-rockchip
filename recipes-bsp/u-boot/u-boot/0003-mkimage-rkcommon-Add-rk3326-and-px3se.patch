@@ -1,7 +1,7 @@
-From 26a72b2781590200015d6a87e9fdd98dba2ae55d Mon Sep 17 00:00:00 2001
+From cbf8932c6d1dcc3e1993f77acc664535e7b37660 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 22 Mar 2019 14:38:11 +0800
-Subject: [PATCH 6/6] mkimage: rkcommon: Add rk3326 and px3se
+Subject: [PATCH 3/3] mkimage: rkcommon: Add rk3326 and px3se
 
 Change-Id: I37f3292faaa9c4d4145ebb09542b36df55fe4303
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
@@ -10,7 +10,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 2 insertions(+)
 
 diff --git a/tools/rkcommon.c b/tools/rkcommon.c
-index 08d8a22903..aec510f3cf 100644
+index 27e0004eba..f92220f653 100644
 --- a/tools/rkcommon.c
 +++ b/tools/rkcommon.c
 @@ -71,10 +71,12 @@ static struct spl_info spl_infos[] = {

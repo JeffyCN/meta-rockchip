@@ -4,12 +4,11 @@
 require recipes-kernel/linux/linux-yocto.inc
 require linux-rockchip.inc
 
+SRCREV = "${AUTOREV}"
 SRC_URI = " \
 	git://github.com/rockchip-linux/kernel.git;branch=develop-4.4 \
 	file://cgroups.cfg \
 "
-
-SRCREV = "3175f913ab0b368313b1afe387a2834ff73b20b3"
 
 KERNEL_VERSION_SANITY_SKIP="1"
 LINUX_VERSION = "4.4"
