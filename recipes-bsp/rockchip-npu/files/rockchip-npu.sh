@@ -13,7 +13,7 @@
 {
 	npu_upgrade MiniLoaderAll.bin uboot.img trust.img boot.img
 	sleep 1
-	npu_transfer_proxy.proxy
+	npu_transfer_proxy
 } &
 
 exit 0

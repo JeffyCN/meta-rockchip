@@ -10,25 +10,29 @@ LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecc
 PATCHPATH = "${THISDIR}/files"
 
 SRC_URI = " \
-	git://github.com/JeffyCN/rockchip-npu.git;branch=master; \
+	git://github.com/rockchip-linux/rknpu-fw.git;branch=master \
 	file://rockchip-npu.sh \
 "
 SRCREV = "${AUTOREV}"
 S = "${WORKDIR}/git"
 
+PACKAGECONFIG ??= ""
+PACKAGECONFIG[n4] = ""
+
 do_install () {
 	install -d ${D}${datadir}/npu_fw
-	cp npu_fw/* ${D}${datadir}/npu_fw/
-
-	install -d ${D}${bindir}
-	if echo ${TUNE_FEATURES} | grep -wq arm; then
-		cp tools/armhf/* ${D}${bindir}
+	if echo "${PACKAGECONFIG}" | grep -qw "n4"; then
+		install -m 0644 npu_fw_n4/* ${D}${datadir}/npu_fw/
 	else
-		cp tools/aarch64/* ${D}${bindir}
+		install -m 0644 npu_fw/* ${D}${datadir}/npu_fw/
 	fi
 
-        install -d ${D}${sysconfdir}/init.d/
-        install -m 0755 ${WORKDIR}/rockchip-npu.sh ${D}${sysconfdir}/init.d/
+	install -d ${D}${bindir}
+	# FIXME: support different arch
+	install -m 0755 bin/* ${D}${bindir}
+
+	install -d ${D}${sysconfdir}/init.d/
+	install -m 0755 ${WORKDIR}/rockchip-npu.sh ${D}${sysconfdir}/init.d/
 }
 
 inherit update-rc.d
