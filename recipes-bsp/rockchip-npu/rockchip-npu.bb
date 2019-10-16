@@ -13,7 +13,7 @@ SRC_URI = " \
 	git://github.com/rockchip-linux/rknpu-fw.git;branch=master \
 	file://rockchip-npu.sh \
 "
-SRCREV = "${AUTOREV}"
+SRCREV = "e3a6c897977cbed02d111cdb755f19e00093d7f6"
 S = "${WORKDIR}/git"
 
 PACKAGECONFIG ??= ""

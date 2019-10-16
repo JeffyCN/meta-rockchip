@@ -10,7 +10,7 @@ LIC_FILES_CHKSUM = "file://END_USER_LICENCE_AGREEMENT.txt;md5=3918cc9836ad038c5a
 SRC_URI = " \
 	git://github.com/rockchip-linux/libmali.git;branch=master; \
 "
-SRCREV = "${AUTOREV}"
+SRCREV = "41a1cf80804839137dd2941514df09a2fb69efb1"
 S = "${WORKDIR}/git"
 
 PATCHPATH = "${THISDIR}/files"
