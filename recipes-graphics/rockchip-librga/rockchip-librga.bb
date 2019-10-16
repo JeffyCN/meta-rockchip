@@ -12,7 +12,7 @@ DEPENDS = "libdrm"
 SRC_URI = " \
 	git://github.com/rockchip-linux/linux-rga.git;branch=master; \
 "
-SRCREV = "${AUTOREV}"
+SRCREV = "98fe2301f14302aea1efaaf3954db31e2a849335"
 S = "${WORKDIR}/git"
 
 do_configure[noexec] = "1"

@@ -10,7 +10,7 @@ DEPENDS = "u-boot-mkimage-native rk-binary-native"
 
 PV = "1.0.0+git${SRCPV}"
 
-SRCREV = "${AUTOREV}"
+SRCREV = "02ace782a77e36c88e3954dea70b0c6ef42a484e"
 SRC_URI = "git://github.com/rockchip-linux/rkbin.git;branch=master"
 S = "${WORKDIR}/git"
 

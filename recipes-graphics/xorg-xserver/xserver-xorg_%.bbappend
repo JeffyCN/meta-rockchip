@@ -3,7 +3,7 @@
 
 DEPENDS += "util-macros-native font-util-native xtrans-native rockchip-librga"
 
-SRCREV = "${AUTOREV}"
+SRCREV = "f384e6dd965497104bcac6cb50f213f43d573392"
 SRC_URI = "git://github.com/JeffyCN/xorg-xserver;branch=1.20.1"
 S = "${WORKDIR}/git"
 

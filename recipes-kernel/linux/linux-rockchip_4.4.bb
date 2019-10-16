@@ -4,7 +4,7 @@
 require recipes-kernel/linux/linux-yocto.inc
 require linux-rockchip.inc
 
-SRCREV = "${AUTOREV}"
+SRCREV = "2b80fe5ba53f83c568072a7cdd7478d0b2b7c0fc"
 SRC_URI = " \
 	git://github.com/rockchip-linux/kernel.git;branch=develop-4.4 \
 	file://cgroups.cfg \
