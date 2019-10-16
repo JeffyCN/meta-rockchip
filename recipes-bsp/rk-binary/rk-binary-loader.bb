@@ -8,6 +8,8 @@ LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecc
 
 DEPENDS = "u-boot-mkimage-native rk-binary-native"
 
+PV = "1.0.0+git${SRCPV}"
+
 SRCREV = "${AUTOREV}"
 SRC_URI = "git://github.com/rockchip-linux/rkbin.git;branch=master"
 S = "${WORKDIR}/git"
@@ -71,8 +73,8 @@ do_compile() {
 
 do_deploy () {
 	for binary in "${RK_IDBLOCK_IMG}" "${RK_LOADER_BIN}" "${RK_TRUST_IMG}";do
-		install "${binary}" "${DEPLOYDIR}/${binary}-${SRCREV}"
-		ln -sf "${binary}-${SRCREV}" "${DEPLOYDIR}/${binary}"
+		install "${binary}" "${DEPLOYDIR}/${binary}-${PV}"
+		ln -sf "${binary}-${PV}" "${DEPLOYDIR}/${binary}"
         done
 }
 addtask deploy before do_build after do_compile
