@@ -12,11 +12,11 @@ Please see the corresponding sections below for details.
 This layer depends on:
 
 * URI: git://git.yoctoproject.org/poky
-* branch: rocko thud warrior
+* branch: thud warrior zeus
 
 * URI: git://git.openembedded.org/meta-openembedded
 * layers: meta-oe
-* branch: rocko thud warrior
+* branch: thud warrior zeus
 
 ## Table of Contents
 
