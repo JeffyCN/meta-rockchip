@@ -15,12 +15,5 @@ EXTRA_OECONF += " \
 	--disable-freedreno \
 	--disable-tegra-experimental-api \
 	--disable-vc4 \
-	--enable-rockchip-experimental-api \
 	--enable-install-test-programs \
 "
-
-PACKAGES_prepend += " \
-	${PN}-rockchip \
-"
-
-FILES_${PN}-rockchip = "${libdir}/libdrm_rockchip.so.*"
