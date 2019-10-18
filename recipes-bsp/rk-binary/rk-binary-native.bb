@@ -15,6 +15,7 @@ SRC_URI = " \
 
 SRCREV_rkbin = "${AUTOREV}"
 SRCREV_tools = "${AUTOREV}"
+SRCREV_FORMAT ?= "rkbin_tools"
 
 S = "${WORKDIR}/git"
 
