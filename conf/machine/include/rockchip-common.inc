@@ -17,6 +17,9 @@ PREFERRED_PROVIDER_virtual/kernel ?= "linux-rockchip"
 PREFERRED_VERSION_linux-rockchip ?= "4.4%"
 LINUXLIBCVERSION ?= "4.4%"
 
+# Custom kernel might not support newest python
+PACKAGECONFIG_remove_pn-perf += " scripting"
+
 PREFERRED_PROVIDER_virtual/egl ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libgles1 ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libgles2 ?= "rockchip-libmali"
