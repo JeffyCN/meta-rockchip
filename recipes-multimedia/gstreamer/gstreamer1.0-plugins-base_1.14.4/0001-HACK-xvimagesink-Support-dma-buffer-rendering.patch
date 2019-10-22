@@ -1,4 +1,4 @@
-From 26cb57fda3ebb88146f2ddf587b6d766db48b085 Mon Sep 17 00:00:00 2001
+From e69fd7c3421e5b8b511ac8835901577ab8a650f3 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 3 Jul 2019 19:54:36 +0800
 Subject: [PATCH] HACK: xvimagesink: Support dma buffer rendering
@@ -10,9 +10,9 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  sys/xvimage/Makefile.am   |   1 +
  sys/xvimage/xvcontext.c   |  11 ++-
- sys/xvimage/xvcontext.h   |   8 +++
- sys/xvimage/xvimagesink.c | 173 ++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 192 insertions(+), 1 deletion(-)
+ sys/xvimage/xvcontext.h   |   8 ++
+ sys/xvimage/xvimagesink.c | 199 ++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 218 insertions(+), 1 deletion(-)
 
 diff --git a/sys/xvimage/Makefile.am b/sys/xvimage/Makefile.am
 index 6ccc39edd..17fa0e9fb 100644
@@ -102,7 +102,7 @@ index af67877af..68831a0f4 100644
    GList *formats_list;
  
 diff --git a/sys/xvimage/xvimagesink.c b/sys/xvimage/xvimagesink.c
-index 50d9dd28c..b990e4780 100644
+index 50d9dd28c..4db7683a7 100644
 --- a/sys/xvimage/xvimagesink.c
 +++ b/sys/xvimage/xvimagesink.c
 @@ -121,6 +121,7 @@
@@ -125,7 +125,7 @@ index 50d9dd28c..b990e4780 100644
  GST_DEBUG_CATEGORY_EXTERN (gst_debug_xv_image_sink);
  #define GST_CAT_DEFAULT gst_debug_xv_image_sink
  GST_DEBUG_CATEGORY_STATIC (GST_CAT_PERFORMANCE);
-@@ -221,6 +227,142 @@ G_DEFINE_TYPE_WITH_CODE (GstXvImageSink, gst_xv_image_sink, GST_TYPE_VIDEO_SINK,
+@@ -221,6 +227,165 @@ G_DEFINE_TYPE_WITH_CODE (GstXvImageSink, gst_xv_image_sink, GST_TYPE_VIDEO_SINK,
  /*                                                               */
  /* ============================================================= */
  
@@ -148,6 +148,27 @@ index 50d9dd28c..b990e4780 100644
 +  g_mutex_unlock (&context->lock);
 +
 +  context->have_dma_client = xv_value > 0;
++}
++
++static void
++gst_xv_image_sink_flush_dma_client (GstXvImageSink *xvimagesink)
++{
++  GstXvContext *context = xvimagesink->context;
++  Atom prop_atom;
++  int xv_value;
++
++  if (!context->have_dma_client)
++    return;
++
++  g_mutex_lock (&context->lock);
++  prop_atom = XInternAtom (context->disp, XV_DMA_CLIENT_PROP, True);
++  if (prop_atom != None) {
++    XvSetPortAttribute (context->disp, context->xv_port_id,
++        prop_atom, xvimagesink->config.dma_client_id);
++    XvGetPortAttribute (context->disp, context->xv_port_id,
++        prop_atom, &xv_value);
++  }
++  g_mutex_unlock (&context->lock);
 +}
 +
 +static void
@@ -220,6 +241,8 @@ index 50d9dd28c..b990e4780 100644
 +  if (!context->have_dma_client)
 +    return FALSE;
 +
++  gst_xv_image_sink_flush_dma_client (xvimagesink);
++
 +  socket_fd = socket (PF_UNIX, SOCK_DGRAM, 0);
 +  if (socket_fd < 0)
 +    goto failed;
@@ -268,26 +291,29 @@ index 50d9dd28c..b990e4780 100644
  
  /* This function puts a GstXvImage on a GstXvImageSink's window. Returns FALSE
   * if no window was available  */
-@@ -236,6 +378,7 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
-   GstVideoRectangle dst = { 0, };
-   GstVideoRectangle mem_crop;
-   GstXWindow *xwindow;
-+  gint dma_fd;
+@@ -275,6 +440,7 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
+   }
  
-   /* We take the flow_lock. If expose is in there we don't want to run
-      concurrently from the data flow thread */
-@@ -308,6 +451,10 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
+   mem = (GstXvImageMemory *) gst_buffer_peek_memory (xvimage, 0);
++
+   gst_xvimage_memory_get_crop (mem, &mem_crop);
+ 
+   crop = gst_buffer_get_video_crop_meta (xvimage);
+@@ -308,6 +474,13 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
      memcpy (&result, &xwindow->render_rect, sizeof (GstVideoRectangle));
    }
  
-+  dma_fd = gst_dmabuf_memory_get_fd (gst_buffer_peek_memory (xvimage, 1));
-+  if (dma_fd >= 0)
-+    gst_xv_image_sink_send_dma_fd (xvimagesink, dma_fd);
++  if (gst_buffer_n_memory (xvimage) > 1) {
++    GstMemory *dma_mem = gst_buffer_peek_memory (xvimage, 1);
++    gint dma_fd = gst_dmabuf_memory_get_fd (dma_mem);
++    if (dma_fd >= 0)
++      gst_xv_image_sink_send_dma_fd (xvimagesink, dma_fd);
++  }
 +
    gst_xvimage_memory_render (mem, &src, xwindow, &result, draw_border);
  
    g_mutex_unlock (&xvimagesink->flow_lock);
-@@ -963,6 +1110,29 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+@@ -963,6 +1136,29 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
      if (res != GST_FLOW_OK)
        goto no_buffer;
  
@@ -317,7 +343,7 @@ index 50d9dd28c..b990e4780 100644
      GST_CAT_LOG_OBJECT (GST_CAT_PERFORMANCE, xvimagesink,
          "slow copy buffer %p into bufferpool buffer %p", buf, to_put);
  
-@@ -980,6 +1150,7 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+@@ -980,6 +1176,7 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
      gst_video_frame_unmap (&src);
    }
  
@@ -325,7 +351,7 @@ index 50d9dd28c..b990e4780 100644
    if (!gst_xv_image_sink_xvimage_put (xvimagesink, to_put))
      goto no_window;
  
-@@ -1866,6 +2037,8 @@ gst_xv_image_sink_init (GstXvImageSink * xvimagesink)
+@@ -1866,6 +2063,8 @@ gst_xv_image_sink_init (GstXvImageSink * xvimagesink)
    xvimagesink->config.contrast = xvimagesink->config.brightness = 0;
    xvimagesink->config.cb_changed = FALSE;
  

@@ -1,0 +1,28 @@
+From 73dcf33767f4309a1f5f45bafbfd8ec646c856a9 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 6 Dec 2018 17:37:24 +0800
+Subject: [PATCH 2/2] waylandsink: Only check for dmabuf format when available
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/wldisplay.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/ext/wayland/wldisplay.c b/ext/wayland/wldisplay.c
+index 9400095..16654bd 100644
+--- a/ext/wayland/wldisplay.c
++++ b/ext/wayland/wldisplay.c
+@@ -186,6 +186,10 @@ gst_wl_display_check_format_for_dmabuf (GstWlDisplay * display,
+       return TRUE;
+   }
+ 
++  // The dmabuf format event is deprecated.
++  if (!formats->len)
++    return TRUE;
++
+   return FALSE;
+ }
+ 
+-- 
+2.11.0
+

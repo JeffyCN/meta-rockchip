@@ -1,4 +1,4 @@
-From 65d6d9280c5ddee134a574c6da1ed580b087d81c Mon Sep 17 00:00:00 2001
+From 90b2f87cd136c34b0a8e549106f0308d49e27675 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 3 Jul 2019 19:54:36 +0800
 Subject: [PATCH] HACK: xvimagesink: Support dma buffer rendering
@@ -11,11 +11,11 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  sys/xvimage/Makefile.am   |   1 +
  sys/xvimage/xvcontext.c   |  11 ++-
  sys/xvimage/xvcontext.h   |   8 ++
- sys/xvimage/xvimagesink.c | 198 ++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 217 insertions(+), 1 deletion(-)
+ sys/xvimage/xvimagesink.c | 199 ++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 218 insertions(+), 1 deletion(-)
 
 diff --git a/sys/xvimage/Makefile.am b/sys/xvimage/Makefile.am
-index 4cf454a6c..d674bad32 100644
+index 6ccc39edd..17fa0e9fb 100644
 --- a/sys/xvimage/Makefile.am
 +++ b/sys/xvimage/Makefile.am
 @@ -6,6 +6,7 @@ libgstxvimagesink_la_LIBADD = \
@@ -102,7 +102,7 @@ index af67877af..68831a0f4 100644
    GList *formats_list;
  
 diff --git a/sys/xvimage/xvimagesink.c b/sys/xvimage/xvimagesink.c
-index 9cd0da1a4..de029ff05 100644
+index 50d9dd28c..4db7683a7 100644
 --- a/sys/xvimage/xvimagesink.c
 +++ b/sys/xvimage/xvimagesink.c
 @@ -121,6 +121,7 @@
@@ -123,9 +123,9 @@ index 9cd0da1a4..de029ff05 100644
 +#include <sys/un.h>
 +
  GST_DEBUG_CATEGORY_EXTERN (gst_debug_xv_image_sink);
- GST_DEBUG_CATEGORY_EXTERN (CAT_PERFORMANCE);
  #define GST_CAT_DEFAULT gst_debug_xv_image_sink
-@@ -220,6 +226,164 @@ G_DEFINE_TYPE_WITH_CODE (GstXvImageSink, gst_xv_image_sink, GST_TYPE_VIDEO_SINK,
+ GST_DEBUG_CATEGORY_STATIC (GST_CAT_PERFORMANCE);
+@@ -221,6 +227,165 @@ G_DEFINE_TYPE_WITH_CODE (GstXvImageSink, gst_xv_image_sink, GST_TYPE_VIDEO_SINK,
  /*                                                               */
  /* ============================================================= */
  
@@ -151,6 +151,7 @@ index 9cd0da1a4..de029ff05 100644
 +}
 +
 +static void
++gst_xv_image_sink_flush_dma_client (GstXvImageSink *xvimagesink)
 +{
 +  GstXvContext *context = xvimagesink->context;
 +  Atom prop_atom;
@@ -290,7 +291,7 @@ index 9cd0da1a4..de029ff05 100644
  
  /* This function puts a GstXvImage on a GstXvImageSink's window. Returns FALSE
   * if no window was available  */
-@@ -274,6 +438,7 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
+@@ -275,6 +440,7 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
    }
  
    mem = (GstXvImageMemory *) gst_buffer_peek_memory (xvimage, 0);
@@ -298,7 +299,7 @@ index 9cd0da1a4..de029ff05 100644
    gst_xvimage_memory_get_crop (mem, &mem_crop);
  
    crop = gst_buffer_get_video_crop_meta (xvimage);
-@@ -307,6 +472,13 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
+@@ -308,6 +474,13 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
      memcpy (&result, &xwindow->render_rect, sizeof (GstVideoRectangle));
    }
  
@@ -312,7 +313,7 @@ index 9cd0da1a4..de029ff05 100644
    gst_xvimage_memory_render (mem, &src, xwindow, &result, draw_border);
  
    g_mutex_unlock (&xvimagesink->flow_lock);
-@@ -955,6 +1127,29 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+@@ -963,6 +1136,29 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
      if (res != GST_FLOW_OK)
        goto no_buffer;
  
@@ -339,10 +340,10 @@ index 9cd0da1a4..de029ff05 100644
 +        goto put_image;
 +    }
 +
-     GST_CAT_LOG_OBJECT (CAT_PERFORMANCE, xvimagesink,
+     GST_CAT_LOG_OBJECT (GST_CAT_PERFORMANCE, xvimagesink,
          "slow copy buffer %p into bufferpool buffer %p", buf, to_put);
  
-@@ -972,6 +1167,7 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+@@ -980,6 +1176,7 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
      gst_video_frame_unmap (&src);
    }
  
@@ -350,7 +351,7 @@ index 9cd0da1a4..de029ff05 100644
    if (!gst_xv_image_sink_xvimage_put (xvimagesink, to_put))
      goto no_window;
  
-@@ -1852,6 +2048,8 @@ gst_xv_image_sink_init (GstXvImageSink * xvimagesink)
+@@ -1866,6 +2063,8 @@ gst_xv_image_sink_init (GstXvImageSink * xvimagesink)
    xvimagesink->config.contrast = xvimagesink->config.brightness = 0;
    xvimagesink->config.cb_changed = FALSE;
  

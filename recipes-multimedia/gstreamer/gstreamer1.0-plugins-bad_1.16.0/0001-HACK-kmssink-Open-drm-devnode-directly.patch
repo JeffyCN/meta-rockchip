@@ -1,0 +1,36 @@
+From cc2de9512483c63d88012f6c96e4b2b34f6aaac8 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 26 Mar 2019 17:33:37 +0800
+Subject: [PATCH 1/2] HACK: kmssink: Open drm devnode directly
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 0ffa6a7..b690243 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -56,6 +56,7 @@
+ #include <xf86drmMode.h>
+ #include <drm_fourcc.h>
+ 
++#include <fcntl.h>
+ #include <string.h>
+ 
+ #include "gstkmssink.h"
+@@ -717,6 +718,10 @@ gst_kms_sink_start (GstBaseSink * bsink)
+     self->fd = drmOpen (self->devname, self->bus_id);
+   else
+     self->fd = kms_open (&self->devname);
++
++  if (self->fd < 0)
++    self->fd = open ("/dev/dri/card0", O_RDWR);
++
+   if (self->fd < 0)
+     goto open_failed;
+ 
+-- 
+2.11.0
+
