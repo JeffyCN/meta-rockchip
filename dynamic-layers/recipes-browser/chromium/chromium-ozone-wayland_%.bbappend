@@ -25,6 +25,13 @@ python() {
         d.appendVar('SRC_URI', ' file://0001-v4l2_device-Update-CanCreateEGLImageFrom-to-support-.patch')
 }
 
+# Fixup v8_qemu_wrapper library search path
+do_configure_append() {
+	WRAPPER=${B}/v8-qemu-wrapper.sh
+	[ -e ${WRAPPER} ] &&
+		sed -i "s#\(LD_LIBRARY_PATH=\)#\1${B}:#" ${WRAPPER}
+}
+
 INSANE_SKIP_${PN} = "already-stripped"
 
 SRC_URI += "file://chromium-init.sh"
