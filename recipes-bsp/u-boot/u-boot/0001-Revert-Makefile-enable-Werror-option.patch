@@ -1,0 +1,26 @@
+From da9d2249a44684a81c034ebc96c537855a701fcc Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 22 Oct 2019 10:12:55 +0800
+Subject: [PATCH] Revert "Makefile: enable -Werror option"
+
+This reverts commit 76ba1d8a713bc964fc8e0a639f90344c4c60f026.
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index c60ad289ab..722c28879e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -360,7 +360,7 @@ KBUILD_CPPFLAGS := -D__KERNEL__ -D__UBOOT__
+ KBUILD_CFLAGS   := -Wall -Wstrict-prototypes \
+ 		   -Wno-format-security \
+ 		   -fno-builtin -ffreestanding
+-KBUILD_CFLAGS	+= -fshort-wchar -Werror
++KBUILD_CFLAGS	+= -fshort-wchar
+ KBUILD_AFLAGS   := -D__ASSEMBLY__
+ 
+ # Read UBOOTRELEASE from include/config/uboot.release (if it exists)
+-- 
+2.11.0
+
