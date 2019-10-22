@@ -1,4 +1,4 @@
-From 20357e1983988353bf1a26c456323054d85d4ab2 Mon Sep 17 00:00:00 2001
+From 2af5e25ac61bc83b51976d8be98213a2f58d383f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 6 Dec 2018 18:53:05 +0800
 Subject: [PATCH] gl-renderer: Workaround dmabuf import/attach for mali
@@ -8,23 +8,23 @@ mpp + waylandsink works.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- libweston/gl-renderer.c | 37 +++++++++++++++++++++++++++++++------
- 1 file changed, 31 insertions(+), 6 deletions(-)
+ libweston/renderer-gl/gl-renderer.c | 36 ++++++++++++++++++++++++++++++------
+ 1 file changed, 30 insertions(+), 6 deletions(-)
 
-diff --git a/libweston/gl-renderer.c b/libweston/gl-renderer.c
-index 2c50d2d..5367b60 100644
---- a/libweston/gl-renderer.c
-+++ b/libweston/gl-renderer.c
-@@ -260,6 +260,8 @@ struct gl_renderer {
- 	PFNEGLCREATESYNCKHRPROC create_sync;
- 	PFNEGLDESTROYSYNCKHRPROC destroy_sync;
- 	PFNEGLDUPNATIVEFENCEFDANDROIDPROC dup_native_fence_fd;
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index 54f8b1c..1712b00 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -270,6 +270,8 @@ struct gl_renderer {
+ 
+ 	bool has_wait_sync;
+ 	PFNEGLWAITSYNCKHRPROC wait_sync;
 +
 +	int is_mali_egl;
  };
  
  enum timeline_render_point_type {
-@@ -1779,6 +1781,14 @@ import_simple_dmabuf(struct gl_renderer *gr,
+@@ -2020,6 +2022,14 @@ import_simple_dmabuf(struct gl_renderer *gr,
  	attribs[atti++] = EGL_LINUX_DRM_FOURCC_EXT;
  	attribs[atti++] = attributes->format;
  
@@ -39,7 +39,7 @@ index 2c50d2d..5367b60 100644
  	if (attributes->modifier[0] != DRM_FORMAT_MOD_INVALID) {
  		if (!gr->has_dmabuf_import_modifiers)
  			return NULL;
-@@ -2113,7 +2123,7 @@ gl_renderer_query_dmabuf_formats(struct weston_compositor *wc,
+@@ -2354,7 +2364,7 @@ gl_renderer_query_dmabuf_formats(struct weston_compositor *wc,
  
  	if (!gr->has_dmabuf_import_modifiers ||
  	    !gr->query_dmabuf_formats(gr->egl_display, 0, NULL, &num)) {
@@ -48,8 +48,8 @@ index 2c50d2d..5367b60 100644
  		fallback = true;
  	}
  
-@@ -2232,7 +2242,7 @@ import_known_dmabuf(struct gl_renderer *gr,
- 	return true;
+@@ -2486,7 +2496,7 @@ dmabuf_is_opaque(struct linux_dmabuf_buffer *dmabuf)
+ 	return pixel_format_is_opaque(info);
  }
  
 -static void
@@ -57,7 +57,7 @@ index 2c50d2d..5367b60 100644
  gl_renderer_attach_dmabuf(struct weston_surface *surface,
  			  struct weston_buffer *buffer,
  			  struct linux_dmabuf_buffer *dmabuf)
-@@ -2246,7 +2256,7 @@ gl_renderer_attach_dmabuf(struct weston_surface *surface,
+@@ -2500,7 +2510,7 @@ gl_renderer_attach_dmabuf(struct weston_surface *surface,
  	if (!gr->has_dmabuf_import) {
  		linux_dmabuf_buffer_send_server_error(dmabuf,
  				"EGL dmabuf import not supported");
@@ -66,7 +66,7 @@ index 2c50d2d..5367b60 100644
  	}
  
  	buffer->width = dmabuf->attributes.width;
-@@ -2284,7 +2294,7 @@ gl_renderer_attach_dmabuf(struct weston_surface *surface,
+@@ -2538,7 +2548,7 @@ gl_renderer_attach_dmabuf(struct weston_surface *surface,
  
  	if (!import_known_dmabuf(gr, image)) {
  		linux_dmabuf_buffer_send_server_error(dmabuf, "EGL dmabuf import failed");
@@ -75,16 +75,16 @@ index 2c50d2d..5367b60 100644
  	}
  
  	gs->num_images = image->num_images;
-@@ -2304,6 +2314,8 @@ gl_renderer_attach_dmabuf(struct weston_surface *surface,
- 	gs->height = buffer->height;
+@@ -2559,6 +2569,8 @@ gl_renderer_attach_dmabuf(struct weston_surface *surface,
  	gs->buffer_type = BUFFER_TYPE_EGL;
  	gs->y_inverted = buffer->y_inverted;
+ 	surface->is_opaque = dmabuf_is_opaque(dmabuf);
 +
 +	return 0;
  }
  
  static void
-@@ -2339,7 +2351,16 @@ gl_renderer_attach(struct weston_surface *es, struct weston_buffer *buffer)
+@@ -2597,7 +2609,16 @@ gl_renderer_attach(struct weston_surface *es, struct weston_buffer *buffer)
  	else if (gr->has_bind_display &&
  		 gr->query_buffer(gr->egl_display, (void *)buffer->resource,
  				  EGL_TEXTURE_FORMAT, &format))
@@ -101,18 +101,16 @@ index 2c50d2d..5367b60 100644
  	else if ((dmabuf = linux_dmabuf_buffer_get(buffer->resource)))
  		gl_renderer_attach_dmabuf(es, buffer, dmabuf);
  	else {
-@@ -2815,8 +2836,9 @@ log_extensions(const char *name, const char *extensions)
+@@ -3100,7 +3121,7 @@ log_egl_info(EGLDisplay egldpy)
  }
  
  static void
--log_egl_gl_info(EGLDisplay egldpy)
-+log_egl_gl_info(struct gl_renderer *gr)
+-log_gl_info(void)
++log_gl_info(struct gl_renderer *gr)
  {
-+	EGLDisplay egldpy = gr->egl_display;
  	const char *str;
  
- 	str = eglQueryString(egldpy, EGL_VERSION);
-@@ -2843,6 +2865,9 @@ log_egl_gl_info(EGLDisplay egldpy)
+@@ -3116,6 +3137,9 @@ log_gl_info(void)
  	str = (char *)glGetString(GL_RENDERER);
  	weston_log("GL renderer: %s\n", str ? str : "(null)");
  
@@ -122,12 +120,12 @@ index 2c50d2d..5367b60 100644
  	str = (char *)glGetString(GL_EXTENSIONS);
  	log_extensions("GL extensions", str ? str : "(null)");
  }
-@@ -3713,7 +3738,7 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
+@@ -4022,7 +4046,7 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
  		gr->gl_version = GR_GL_VERSION(2, 0);
  	}
  
--	log_egl_gl_info(gr->egl_display);
-+	log_egl_gl_info(gr);
+-	log_gl_info();
++	log_gl_info(gr);
  
  	gr->image_target_texture_2d =
  		(void *) eglGetProcAddress("glEGLImageTargetTexture2DOES");
