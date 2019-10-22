@@ -7,7 +7,7 @@ inherit auto-patch
 
 PACKAGECONFIG ??= "use-egl use-linux-v4l2 proprietary-codecs"
 
-GN_ARGS += "is_debug=false is_official_build=false"
+GN_ARGS += "is_debug=false is_official_build=false fatal_linker_warnings=false"
 
 # GN_ARGS += " \
 # 	use_system_minigbm=false \
