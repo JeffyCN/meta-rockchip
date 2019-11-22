@@ -65,9 +65,20 @@ do_image_wic[depends] += " \
 RK_POST_ROOTFS_SCRIPTS ?= "${RK_OVERLAY_DIR}/${MACHINE}/post_rootfs.sh"
 RK_OVERLAY_DIRS ?= "${RK_OVERLAY_DIR}/${MACHINE}/fs-overlay"
 
+# <fslabel:mountpoint> e.g. "oem:/oem userdata:/userdata"
+RK_EXTRA_VOLUMES ?= ""
+
 ROOTFS_POSTPROCESS_COMMAND += "do_post_rootfs;"
 do_rootfs[depends] += "rsync-native:do_populate_sysroot"
 do_post_rootfs() {
+	for volume in ${RK_EXTRA_VOLUMES};do
+		echo "Creating ${volume##*:} for ${volume%:*}(fslabel)..."
+		mkdir -p "${IMAGE_ROOTFS}${volume##*:}"
+
+		echo "PARTLABEL=${volume%:*}\t${volume##*:}\tauto defaults 0 2" \
+			>> "${IMAGE_ROOTFS}/etc/fstab"
+	done
+
 	for overlay in ${RK_OVERLAY_DIRS};do
 		[ -d "${overlay}" ] || continue
 		echo "Installing overlay: ${overlay}..."
