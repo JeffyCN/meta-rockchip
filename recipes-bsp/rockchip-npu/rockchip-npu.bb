@@ -7,6 +7,8 @@ SECTION = "utils"
 LICENSE = "LICENSE.rockchip"
 LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecced26"
 
+RDEPENDS_${PN} = "bash"
+
 PATCHPATH = "${THISDIR}/files"
 
 SRC_URI = " \
@@ -16,16 +18,12 @@ SRC_URI = " \
 SRCREV = "${AUTOREV}"
 S = "${WORKDIR}/git"
 
-PACKAGECONFIG ??= ""
-PACKAGECONFIG[n4] = ""
-
 do_install () {
 	install -d ${D}${datadir}/npu_fw
-	if echo "${PACKAGECONFIG}" | grep -qw "n4"; then
-		install -m 0644 npu_fw_n4/* ${D}${datadir}/npu_fw/
-	else
-		install -m 0644 npu_fw/* ${D}${datadir}/npu_fw/
-	fi
+	install -m 0644 npu_fw/* ${D}${datadir}/npu_fw/
+
+	install -d ${D}${datadir}/npu_fw_pcie
+	install -m 0644 npu_fw_pcie/* ${D}${datadir}/npu_fw_pcie/
 
 	install -d ${D}${bindir}
 	# FIXME: support different arch
