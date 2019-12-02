@@ -32,8 +32,8 @@ need to download the corresponding tools described in the "Dependencies"
 section. Be sure that everything is in the same directory.
 
 ~ $ mkdir yocto; cd yocto  
-~/yocto $ git clone git://git.yoctoproject.org/poky -b rocko  
-~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b rocko  
+~/yocto $ git clone git://git.yoctoproject.org/poky -b thud  
+~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b thud  
 
 And put the meta-rockchip layer here too.
 
