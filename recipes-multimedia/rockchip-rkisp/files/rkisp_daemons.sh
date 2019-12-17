@@ -16,15 +16,17 @@ start_rkisp_daemons()
 {
 	for dev in /dev/media[0-9];do
 		echo "Creating rkisp daemon for ${dev}..."
-		start-stop-daemon -S -b -n "rkisp:${dev##*/}" -a \
-			/usr/bin/rkisp_3A_server --mmedia=${dev}
+		start-stop-daemon --start --background --oknodo \
+			-m --pidfile "/var/run/rkisp_${dev##*/}.pid" \
+			--startas /usr/bin/rkisp_3A_server -- --mmedia=${dev}
 	done
 }
 
 stop_rkisp_daemons()
 {
 	for dev in /dev/media[0-9];do
-		start-stop-daemon -K -n "rkisp:${dev##*/}"
+		start-stop-daemon --stop --quiet --oknodo \
+			--pidfile "/var/run/rkisp_${dev##*/}.pid"
 	done
 }
 
