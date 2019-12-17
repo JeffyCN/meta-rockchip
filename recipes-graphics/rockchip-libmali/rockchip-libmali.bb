@@ -105,6 +105,12 @@ do_install () {
 
 	install -d -m 0755 ${D}${includedir}
 	cp -r ${S}/include/* ${D}${includedir}/
+
+	# mali's pkgconfig doesn't provide MESA_EGL_NO_X11_HEADER
+	if ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'false', 'true', d)}; then
+		sed -i '/^#include <KHR\/khrplatform.h>/a#define MESA_EGL_NO_X11_HEADERS' \
+		${D}${includedir}/EGL/eglplatform.h
+	fi
 }
 
 INSANE_SKIP_${PN} = "already-stripped ldflags dev-so textrel"
