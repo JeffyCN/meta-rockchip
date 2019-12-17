@@ -13,7 +13,7 @@ SRC_URI = "git://github.com/JeffyCN/libv4l-rkmpp.git;branch=master"
 
 S = "${WORKDIR}/git"
 
-DEPENDS = "rockchip-mpp libv4l"
+DEPENDS = "rockchip-mpp rockchip-librga libv4l"
 
 inherit autotools pkgconfig
 
