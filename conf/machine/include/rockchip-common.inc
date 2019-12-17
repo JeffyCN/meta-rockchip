@@ -183,5 +183,6 @@ gen_rkupdateimg() {
 
 IMAGE_POSTPROCESS_COMMAND += "link_latest_image;"
 link_latest_image() {
+	rm -rf "${TOPDIR}/latest"
 	ln -sf "${DEPLOY_DIR_IMAGE}" "${TOPDIR}/latest"
 }
