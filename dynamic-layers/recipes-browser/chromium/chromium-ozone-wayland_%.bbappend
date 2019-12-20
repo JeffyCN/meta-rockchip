@@ -9,11 +9,7 @@ PACKAGECONFIG ??= "use-egl use-linux-v4l2 proprietary-codecs"
 
 GN_ARGS += "is_debug=false is_official_build=false fatal_linker_warnings=false"
 
-# GN_ARGS += " \
-# 	use_system_minigbm=false \
-# 	use_rockchip_minigbm=true \
-# 	use_wayland_gbm=false \
-# "
+CHROMIUM_EXTRA_ARGS += "--no-sandbox --gpu-sandbox-start-early --ignore-gpu-blacklist"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
