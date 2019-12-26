@@ -20,6 +20,8 @@ DEPENDS = "libdrm patchelf-native"
 
 PROVIDES += "virtual/egl virtual/libgles1 virtual/libgles2 virtual/libgles3 virtual/libopencl virtual/libgbm"
 
+RK_MALI_LIB ??= "libmali-midgard-t86x-r14p0-gbm.so"
+
 RDEPENDS_${PN} = " \
         ${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
         ${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
