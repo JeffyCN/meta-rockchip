@@ -13,8 +13,8 @@ SRC_URI = " \
 	git://github.com/rockchip-linux/tools.git;branch=master;name=tools;destsuffix=git/extra \
 "
 
-SRCREV_rkbin = "${AUTOREV}"
-SRCREV_tools = "${AUTOREV}"
+SRCREV_rkbin = "fb0e78940f0d9b8914f29cbb09ac3d6b09522236"
+SRCREV_tools = "376143e0ea7f9544477750256ee6bdbbb06c1ec8"
 SRCREV_FORMAT ?= "rkbin_tools"
 
 S = "${WORKDIR}/git"

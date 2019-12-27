@@ -6,7 +6,7 @@
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://inc/rk_mpi.h;beginline=4;endline=14;md5=acbba394ae5639b0c786f60c1f48e3d6"
 
-SRCREV = "${AUTOREV}"
+SRCREV = "53edbab5f47b6965793a6004291c5980f4754b01"
 SRC_URI = "git://github.com/rockchip-linux/mpp.git;branch=develop"
 
 S = "${WORKDIR}/git"
