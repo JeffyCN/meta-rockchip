@@ -12,13 +12,6 @@ GN_ARGS += "is_debug=false is_official_build=false fatal_linker_warnings=false"
 
 CHROMIUM_EXTRA_ARGS += "--no-sandbox --gpu-sandbox-start-early --ignore-gpu-blacklist"
 
-# Fix patch conflict for 79.0.3945
-# see https://github.com/OSSystems/meta-browser/issues/346
-SRC_URI_remove += " \
-	file://delete_not_yet_released_clang_warnings.patch \
-	file://0001-Fix-building-with-pulseaudio-13.patch \
-"
-
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 python() {

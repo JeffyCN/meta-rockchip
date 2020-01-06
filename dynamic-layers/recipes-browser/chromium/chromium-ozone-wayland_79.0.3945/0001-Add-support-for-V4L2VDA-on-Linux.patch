@@ -1,4 +1,4 @@
-From 5c7f144374e85b0d3a4e85c0847478b4ad30ca04 Mon Sep 17 00:00:00 2001
+From 7f9f3e59005de30193ad2854e5d748b180e8f567 Mon Sep 17 00:00:00 2001
 From: Maksim Sisov <msisov@igalia.com>
 Date: Wed, 31 Jul 2019 09:56:24 +0300
 Subject: [PATCH] Add support for V4L2VDA on Linux
@@ -24,9 +24,10 @@ with Venus v4l2 driver.
 
 Signed-off-by: Peter Griffin <peter.griffin@linaro.org>
 Signed-off-by: Stanimir Varbanov <stanimir.varbanov@linaro.org>
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  .../gpu_mjpeg_decode_accelerator_factory.cc        |  3 +-
- media/gpu/BUILD.gn                                 |  1 +
+ media/gpu/BUILD.gn                                 |  7 +++-
  media/gpu/args.gni                                 |  4 ++
  media/gpu/gpu_video_decode_accelerator_factory.cc  |  8 ++++
  media/gpu/gpu_video_decode_accelerator_factory.h   |  2 +
@@ -34,7 +35,7 @@ Signed-off-by: Stanimir Varbanov <stanimir.varbanov@linaro.org>
  media/gpu/v4l2/generic_v4l2_device.cc              |  4 ++
  media/gpu/v4l2/v4l2_device.cc                      | 33 +++++++++++++++
  media/gpu/v4l2/v4l2_video_decode_accelerator.cc    |  3 ++
- 9 files changed, 83 insertions(+), 24 deletions(-)
+ 9 files changed, 88 insertions(+), 25 deletions(-)
 
 diff --git a/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc b/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc
 index 016d6cd4..ef980401 100644
@@ -51,7 +52,7 @@ index 016d6cd4..ef980401 100644
  #endif
  
 diff --git a/media/gpu/BUILD.gn b/media/gpu/BUILD.gn
-index ba1b90e7..5e7bb075 100644
+index ba1b90e7..2c828044 100644
 --- a/media/gpu/BUILD.gn
 +++ b/media/gpu/BUILD.gn
 @@ -19,6 +19,7 @@ buildflag_header("buildflags") {
@@ -62,6 +63,21 @@ index ba1b90e7..5e7bb075 100644
    ]
  }
  
+@@ -86,9 +87,13 @@ component("gpu") {
+     public_deps += [
+       ":image_processor",
+       ":video_frame_mapper",
+-      "//media/gpu/chromeos",
+       "//media/gpu/linux:common",
+     ]
++    if (is_chromeos) {
++      public_deps += [
++        "//media/gpu/chromeos",
++      ]
++    }
+   }
+ 
+   if (is_mac) {
 diff --git a/media/gpu/args.gni b/media/gpu/args.gni
 index df4b0f98..ac740ffe 100644
 --- a/media/gpu/args.gni
