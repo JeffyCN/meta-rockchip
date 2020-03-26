@@ -1,0 +1,29 @@
+From c0d3287ca9ce73035dee7a080956e3955fa45dd1 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 20 May 2019 11:17:20 +0800
+Subject: [PATCH 4/7] ui: ozone: wayland: Fix crash in
+ UpdateCursorPositionFromEvent
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ui/ozone/platform/wayland/host/wayland_window.cc | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/ui/ozone/platform/wayland/host/wayland_window.cc b/ui/ozone/platform/wayland/host/wayland_window.cc
+index 4787a1f3b..b05a45007 100644
+--- a/ui/ozone/platform/wayland/host/wayland_window.cc
++++ b/ui/ozone/platform/wayland/host/wayland_window.cc
+@@ -968,6 +968,10 @@ void WaylandWindow::UpdateCursorPositionFromEvent(
+   DCHECK(event->IsLocatedEvent());
+   auto* window =
+       connection_->wayland_window_manager()->GetCurrentFocusedWindow();
++
++  if (!window)
++    return;
++
+   // This is a tricky part. Initially, Wayland sends events to surfaces the
+   // events are targeted for. But, in order to fulfill Chromium's assumptions
+   // about event targets, some of the events are rerouted and their locations
+-- 
+2.11.0
+

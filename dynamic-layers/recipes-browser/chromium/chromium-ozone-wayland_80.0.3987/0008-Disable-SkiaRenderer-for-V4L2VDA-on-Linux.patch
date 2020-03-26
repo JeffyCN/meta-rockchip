@@ -1,0 +1,39 @@
+From e0342ee806947ec6a9c69316685aab82c189f2d4 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 26 Mar 2020 16:52:16 +0800
+Subject: [PATCH] Disable SkiaRenderer for V4L2VDA on Linux
+
+The SkiaRenderer cause lots of crashes when testing V4L2VDA.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ components/viz/common/features.cc | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/components/viz/common/features.cc b/components/viz/common/features.cc
+index b2fb408c6..91e65f95d 100644
+--- a/components/viz/common/features.cc
++++ b/components/viz/common/features.cc
+@@ -8,6 +8,7 @@
+ #include "build/build_config.h"
+ #include "components/viz/common/switches.h"
+ #include "gpu/config/gpu_finch_features.h"
++#include "media/gpu/buildflags.h"
+ 
+ #if defined(OS_ANDROID)
+ #include "base/android/build_info.h"
+@@ -80,6 +81,11 @@ bool IsUsingSkiaRenderer() {
+     return false;
+ #endif
+ 
++#if BUILDFLAG(USE_LINUX_V4L2)
++  // SkiaRenderer seems buggy for VDA rendering.
++  return false;
++#endif
++
+   // We require OOP-D everywhere but WebView.
+   bool enabled = base::FeatureList::IsEnabled(kUseSkiaRenderer) ||
+                  base::FeatureList::IsEnabled(kVulkan);
+-- 
+2.20.1
+
