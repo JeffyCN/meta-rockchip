@@ -3,7 +3,8 @@
 # Released under the GNU GENERAL PUBLIC LICENSE Version 2
 # (see COPYING.GPLv2 for the terms)
 
-require recipes-multimedia/gstreamer/gstreamer1.0-plugins.inc
+include recipes-multimedia/gstreamer/gstreamer1.0-plugins.inc
+include recipes-multimedia/gstreamer/gstreamer1.0-plugins-packaging.inc
 
 DESCRIPTION = "GStreamer 1.0 plugins for Rockchip platforms"
 
@@ -33,7 +34,14 @@ PACKAGECONFIG[x11]    = "--enable-rkximage,--disable-rkximage,libx11"
 
 EXTRA_OECONF_remove = "--disable-gtk-doc"
 
-do_configure[prefuncs] = " delete_pkg_m4_file"
+delete_pkg_m4() {
+	# Delete m4 files which we provide patched versions of but will be
+	# ignored if these exist
+	rm -f "${S}/common/m4/pkg.m4"
+	rm -f "${S}/common/m4/gtk-doc.m4"
+}
+
+do_configure[prefuncs] = " delete_pkg_m4"
 
 do_configure() {
     NOCONFIGURE=true ${S}/autogen.sh
