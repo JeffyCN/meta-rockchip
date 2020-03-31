@@ -1,0 +1,128 @@
+From 64b5b7faad5308ef6d3473ea2901b749f34c8eff Mon Sep 17 00:00:00 2001
+From: Gleb Fotengauer-Malinovskiy <glebfm@altlinux.org>
+Date: Mon, 17 Jul 2017 16:29:46 +0300
+Subject: [PATCH] tty: Fix TIOCGPTPEER ioctl definition
+
+This ioctl does nothing to justify an _IOC_READ or _IOC_WRITE flag
+because it doesn't copy anything from/to userspace to access the
+argument.
+
+Fixes: 54ebbfb16034 ("tty: add TIOCGPTPEER ioctl")
+Signed-off-by: Gleb Fotengauer-Malinovskiy <glebfm@altlinux.org>
+Acked-by: Aleksa Sarai <asarai@suse.de>
+Acked-by: Arnd Bergmann <arnd@arndb.de>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+(cherry picked from commit c6325179238f1d4683edbec53d8322575d76d7e2)
+
+Change-Id: I65b21f864edcb818db285f63120418fa6de22433
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/alpha/include/uapi/asm/ioctls.h   | 1 +
+ arch/mips/include/uapi/asm/ioctls.h    | 1 +
+ arch/parisc/include/uapi/asm/ioctls.h  | 1 +
+ arch/powerpc/include/uapi/asm/ioctls.h | 1 +
+ arch/sh/include/uapi/asm/ioctls.h      | 1 +
+ arch/sparc/include/uapi/asm/ioctls.h   | 1 +
+ arch/xtensa/include/uapi/asm/ioctls.h  | 1 +
+ include/uapi/asm-generic/ioctls.h      | 1 +
+ 8 files changed, 8 insertions(+)
+
+diff --git a/arch/alpha/include/uapi/asm/ioctls.h b/arch/alpha/include/uapi/asm/ioctls.h
+index 7ee8ab577e11..e9e861dc59b2 100644
+--- a/arch/alpha/include/uapi/asm/ioctls.h
++++ b/arch/alpha/include/uapi/asm/ioctls.h
+@@ -105,6 +105,7 @@
+ #define TIOCGPKT	_IOR('T', 0x38, int) /* Get packet mode state */
+ #define TIOCGPTLCK	_IOR('T', 0x39, int) /* Get Pty lock state */
+ #define TIOCGEXCL	_IOR('T', 0x40, int) /* Get exclusive mode state */
++#define TIOCGPTPEER	_IO('T', 0x41) /* Safely open the slave */
+ 
+ #define TIOCSERCONFIG	0x5453
+ #define TIOCSERGWILD	0x5454
+diff --git a/arch/mips/include/uapi/asm/ioctls.h b/arch/mips/include/uapi/asm/ioctls.h
+index 740219c2c894..1609cb0907ac 100644
+--- a/arch/mips/include/uapi/asm/ioctls.h
++++ b/arch/mips/include/uapi/asm/ioctls.h
+@@ -91,6 +91,7 @@
+ #define TIOCGPKT	_IOR('T', 0x38, int) /* Get packet mode state */
+ #define TIOCGPTLCK	_IOR('T', 0x39, int) /* Get Pty lock state */
+ #define TIOCGEXCL	_IOR('T', 0x40, int) /* Get exclusive mode state */
++#define TIOCGPTPEER	_IO('T', 0x41) /* Safely open the slave */
+ 
+ /* I hope the range from 0x5480 on is free ... */
+ #define TIOCSCTTY	0x5480		/* become controlling tty */
+diff --git a/arch/parisc/include/uapi/asm/ioctls.h b/arch/parisc/include/uapi/asm/ioctls.h
+index b6572f051b67..d0e3321403be 100644
+--- a/arch/parisc/include/uapi/asm/ioctls.h
++++ b/arch/parisc/include/uapi/asm/ioctls.h
+@@ -60,6 +60,7 @@
+ #define TIOCGPKT	_IOR('T', 0x38, int) /* Get packet mode state */
+ #define TIOCGPTLCK	_IOR('T', 0x39, int) /* Get Pty lock state */
+ #define TIOCGEXCL	_IOR('T', 0x40, int) /* Get exclusive mode state */
++#define TIOCGPTPEER	_IO('T', 0x41) /* Safely open the slave */
+ 
+ #define FIONCLEX	0x5450  /* these numbers need to be adjusted. */
+ #define FIOCLEX		0x5451
+diff --git a/arch/powerpc/include/uapi/asm/ioctls.h b/arch/powerpc/include/uapi/asm/ioctls.h
+index 49a25796a61a..e3b10469f787 100644
+--- a/arch/powerpc/include/uapi/asm/ioctls.h
++++ b/arch/powerpc/include/uapi/asm/ioctls.h
+@@ -100,6 +100,7 @@
+ #define TIOCGPKT	_IOR('T', 0x38, int) /* Get packet mode state */
+ #define TIOCGPTLCK	_IOR('T', 0x39, int) /* Get Pty lock state */
+ #define TIOCGEXCL	_IOR('T', 0x40, int) /* Get exclusive mode state */
++#define TIOCGPTPEER	_IO('T', 0x41) /* Safely open the slave */
+ 
+ #define TIOCSERCONFIG	0x5453
+ #define TIOCSERGWILD	0x5454
+diff --git a/arch/sh/include/uapi/asm/ioctls.h b/arch/sh/include/uapi/asm/ioctls.h
+index c9903e56ccf4..787bac9f67da 100644
+--- a/arch/sh/include/uapi/asm/ioctls.h
++++ b/arch/sh/include/uapi/asm/ioctls.h
+@@ -93,6 +93,7 @@
+ #define TIOCGPKT	_IOR('T', 0x38, int) /* Get packet mode state */
+ #define TIOCGPTLCK	_IOR('T', 0x39, int) /* Get Pty lock state */
+ #define TIOCGEXCL	_IOR('T', 0x40, int) /* Get exclusive mode state */
++#define TIOCGPTPEER	_IO('T', 0x41) /* Safely open the slave */
+ 
+ #define TIOCSERCONFIG	_IO('T', 83) /* 0x5453 */
+ #define TIOCSERGWILD	_IOR('T', 84,  int) /* 0x5454 */
+diff --git a/arch/sparc/include/uapi/asm/ioctls.h b/arch/sparc/include/uapi/asm/ioctls.h
+index 06b3f6c3bb9a..909452a5ddd9 100644
+--- a/arch/sparc/include/uapi/asm/ioctls.h
++++ b/arch/sparc/include/uapi/asm/ioctls.h
+@@ -88,6 +88,7 @@
+ #define TIOCGPTN	_IOR('t', 134, unsigned int) /* Get Pty Number */
+ #define TIOCSPTLCK	_IOW('t', 135, int) /* Lock/unlock PTY */
+ #define TIOCSIG		_IOW('t', 136, int) /* Generate signal on Pty slave */
++#define TIOCGPTPEER	_IO('t', 137) /* Safely open the slave */
+ 
+ /* Little f */
+ #define FIOCLEX		_IO('f', 1)
+diff --git a/arch/xtensa/include/uapi/asm/ioctls.h b/arch/xtensa/include/uapi/asm/ioctls.h
+index 518954e74e6d..47d82c09be7b 100644
+--- a/arch/xtensa/include/uapi/asm/ioctls.h
++++ b/arch/xtensa/include/uapi/asm/ioctls.h
+@@ -105,6 +105,7 @@
+ #define TIOCGPKT	_IOR('T', 0x38, int) /* Get packet mode state */
+ #define TIOCGPTLCK	_IOR('T', 0x39, int) /* Get Pty lock state */
+ #define TIOCGEXCL	_IOR('T', 0x40, int) /* Get exclusive mode state */
++#define TIOCGPTPEER	_IO('T', 0x41) /* Safely open the slave */
+ 
+ #define TIOCSERCONFIG	_IO('T', 83)
+ #define TIOCSERGWILD	_IOR('T', 84,  int)
+diff --git a/include/uapi/asm-generic/ioctls.h b/include/uapi/asm-generic/ioctls.h
+index 143dacbb7d9a..14baf9f23a14 100644
+--- a/include/uapi/asm-generic/ioctls.h
++++ b/include/uapi/asm-generic/ioctls.h
+@@ -77,6 +77,7 @@
+ #define TIOCGPKT	_IOR('T', 0x38, int) /* Get packet mode state */
+ #define TIOCGPTLCK	_IOR('T', 0x39, int) /* Get Pty lock state */
+ #define TIOCGEXCL	_IOR('T', 0x40, int) /* Get exclusive mode state */
++#define TIOCGPTPEER	_IO('T', 0x41) /* Safely open the slave */
+ 
+ #define FIONCLEX	0x5450
+ #define FIOCLEX		0x5451
+-- 
+2.20.1
+
