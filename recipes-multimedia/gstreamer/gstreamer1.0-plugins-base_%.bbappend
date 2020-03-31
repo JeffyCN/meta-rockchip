@@ -2,3 +2,5 @@
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 inherit auto-patch
+
+DEPENDS += "rockchip-librga"
