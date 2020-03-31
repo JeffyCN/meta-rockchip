@@ -3,3 +3,4 @@
 
 # Override EXTRA_CFLAGSS and add -Wno-stringop-truncation for gcc 8+
 EXTRA_OEMAKE += 'EXTRA_CFLAGS="-ldw -Wno-stringop-truncation"'
+PERF_SRC += "include/"
