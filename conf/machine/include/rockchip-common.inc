@@ -28,8 +28,6 @@ PREFERRED_PROVIDER_virtual/libopencl ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libgbm ?= "rockchip-libmali"
 PACKAGECONFIG_pn-wayland = "${@ 'no-egl' if 'wayland' in d.getVar('RK_MALI_LIB') else '' }"
 
-# HACK: Use libmali's KHR headers
-PACKAGECONFIG_append_pn-mesa-gl += " no-khr-headers"
 DEPENDS_append_pn-mesa-gl += " rockchip-libmali"
 
 PREFERRED_PROVIDER_virtual/libgl ?= "mesa-gl"

@@ -110,7 +110,7 @@ do_install () {
 
 	# mali's pkgconfig doesn't provide MESA_EGL_NO_X11_HEADER
 	if ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'false', 'true', d)}; then
-		sed -i '/^#include <KHR\/khrplatform.h>/a#define MESA_EGL_NO_X11_HEADERS' \
+		sed -i '/^#include .*khrplatform.h>/a#define MESA_EGL_NO_X11_HEADERS' \
 		${D}${includedir}/EGL/eglplatform.h
 	fi
 }
