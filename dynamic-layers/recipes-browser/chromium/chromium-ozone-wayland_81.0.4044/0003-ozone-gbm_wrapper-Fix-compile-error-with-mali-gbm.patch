@@ -1,0 +1,217 @@
+From d6c20bf5a7fbff187c295330e6006535ab4f0925 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 17 Apr 2019 19:03:57 +0800
+Subject: [PATCH 03/10] ozone: gbm_wrapper: Fix compile error with mali gbm
+
+Currently mali gbm doesn't support multiple planes or modifitor.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ui/gfx/linux/gbm_device.h   | 15 +++++++++
+ ui/gfx/linux/gbm_wrapper.cc | 61 ++++++++++++++++++++++++++++++++++---
+ 2 files changed, 71 insertions(+), 5 deletions(-)
+
+diff --git a/ui/gfx/linux/gbm_device.h b/ui/gfx/linux/gbm_device.h
+index 50f7fe5..ead5af6 100644
+--- a/ui/gfx/linux/gbm_device.h
++++ b/ui/gfx/linux/gbm_device.h
+@@ -13,6 +13,21 @@
+ #include "ui/gfx/geometry/size.h"
+ #include "ui/gfx/native_pixmap_handle.h"
+ 
++#if !defined(MINIGBM)
++#if defined(MALIGBM)
++#define GBM_BO_USE_LINEAR           0
++#endif
++#define GBM_BO_USE_TEXTURING        0
++#define GBM_BO_USE_CAMERA_WRITE     0
++#define GBM_BO_USE_CAMERA_READ      0
++#define GBM_BO_USE_PROTECTED        0
++#define GBM_BO_USE_SW_READ_OFTEN    0
++#define GBM_BO_USE_SW_READ_RARELY   0
++#define GBM_BO_USE_SW_WRITE_OFTEN   0
++#define GBM_BO_USE_SW_WRITE_RARELY  0
++#define GBM_BO_USE_HW_VIDEO_DECODER 0
++#endif
++
+ namespace ui {
+ 
+ class GbmBuffer;
+diff --git a/ui/gfx/linux/gbm_wrapper.cc b/ui/gfx/linux/gbm_wrapper.cc
+index f0e0369..b5542f6 100644
+--- a/ui/gfx/linux/gbm_wrapper.cc
++++ b/ui/gfx/linux/gbm_wrapper.cc
+@@ -23,10 +23,15 @@
+ #include "base/strings/stringize_macros.h"
+ #endif
+ 
++#if defined(MALIGBM)
++#include <drm_fourcc.h>
++#endif
++
+ namespace gbm_wrapper {
+ 
+ namespace {
+ 
++#if !defined(MALIGBM)
+ // Function availability can be tested by checking if the address of gbm_* is
+ // not nullptr.
+ #define WEAK_GBM_FN(x) extern "C" __attribute__((weak)) decltype(x) x
+@@ -57,26 +62,46 @@ bool HaveGbmMultiplane() {
+   return gbm_bo_get_handle_for_plane && gbm_bo_get_offset &&
+          gbm_bo_get_plane_count && gbm_bo_get_stride_for_plane;
+ }
++#endif
+ 
+ uint32_t GetHandleForPlane(struct gbm_bo* bo, int plane) {
++#if defined(MALIGBM)
++  CHECK(plane == 0);
++  return gbm_bo_get_handle(bo).u32;
++#else
+   CHECK(HaveGbmMultiplane() || plane == 0);
+   return HaveGbmMultiplane() ? gbm_bo_get_handle_for_plane(bo, plane).u32
+                              : gbm_bo_get_handle(bo).u32;
++#endif
+ }
+ 
+ uint32_t GetStrideForPlane(struct gbm_bo* bo, int plane) {
++#if defined(MALIGBM)
++  CHECK(plane == 0);
++  return gbm_bo_get_stride(bo);
++#else
+   CHECK(HaveGbmMultiplane() || plane == 0);
+   return HaveGbmMultiplane() ? gbm_bo_get_stride_for_plane(bo, plane)
+                              : gbm_bo_get_stride(bo);
++#endif
+ }
+ 
+ uint32_t GetOffsetForPlane(struct gbm_bo* bo, int plane) {
++#if defined(MALIGBM)
++  CHECK(plane == 0);
++  return 0;
++#else
+   CHECK(HaveGbmMultiplane() || plane == 0);
+   return HaveGbmMultiplane() ? gbm_bo_get_offset(bo, plane) : 0;
++#endif
+ }
+ 
+ int GetPlaneCount(struct gbm_bo* bo) {
++#if defined(MALIGBM)
++  return 1;
++#else
+   return HaveGbmMultiplane() ? gbm_bo_get_plane_count(bo) : 1;
++#endif
+ }
+ 
+ int GetPlaneFdForBo(gbm_bo* bo, size_t plane) {
+@@ -204,18 +229,16 @@ class Buffer final : public ui::GbmBuffer {
+   }
+ 
+   sk_sp<SkSurface> GetSurface() override {
++#if defined(MALIGBM)
++    return nullptr;
++#else
+     CHECK(HaveGbmMap());
+     DCHECK(!mmap_data_);
+     uint32_t stride;
+     void* addr;
+     addr =
+-#if defined(MINIGBM)
+-        gbm_bo_map(bo_, 0, 0, gbm_bo_get_width(bo_), gbm_bo_get_height(bo_),
+-                   GBM_BO_TRANSFER_READ_WRITE, &stride, &mmap_data_, 0);
+-#else
+         gbm_bo_map(bo_, 0, 0, gbm_bo_get_width(bo_), gbm_bo_get_height(bo_),
+                    GBM_BO_TRANSFER_READ_WRITE, &stride, &mmap_data_);
+-#endif
+ 
+     if (!addr)
+       return nullptr;
+@@ -223,13 +246,18 @@ class Buffer final : public ui::GbmBuffer {
+         SkImageInfo::MakeN32Premul(size_.width(), size_.height());
+     return SkSurface::MakeRasterDirectReleaseProc(info, addr, stride,
+                                                   &Buffer::UnmapGbmBo, this);
++#endif
+   }
+ 
+  private:
+   static void UnmapGbmBo(void* pixels, void* context) {
++#if !defined(MALIGBM)
+     CHECK(HaveGbmMap());
++#endif
+     Buffer* buffer = static_cast<Buffer*>(context);
++#if !defined(MINIGBM)
+     gbm_bo_unmap(buffer->bo_, buffer->mmap_data_);
++#endif
+     buffer->mmap_data_ = nullptr;
+   }
+ 
+@@ -254,7 +282,11 @@ std::unique_ptr<Buffer> CreateBufferForBO(struct gbm_bo* bo,
+   DCHECK(bo);
+   gfx::NativePixmapHandle handle;
+ 
++#if defined(MALIGBM)
++  const uint64_t modifier = DRM_FORMAT_MOD_INVALID;
++#else
+   const uint64_t modifier = HaveGbmModifiers() ? gbm_bo_get_modifier(bo) : 0;
++#endif
+   const int plane_count = GetPlaneCount(bo);
+   // The Mesa's gbm implementation explicitly checks whether plane count <= and
+   // returns 1 if the condition is true. Nevertheless, use a DCHECK here to make
+@@ -317,6 +349,9 @@ class Device final : public ui::GbmDevice {
+       const std::vector<uint64_t>& modifiers) override {
+     if (modifiers.empty())
+       return CreateBuffer(format, size, flags);
++#if defined(MALIGBM)
++      return nullptr;
++#else
+     CHECK(HaveGbmModifiers());
+     struct gbm_bo* bo = gbm_bo_create_with_modifiers(
+         device_, size.width(), size.height(), format, modifiers.data(),
+@@ -325,6 +360,7 @@ class Device final : public ui::GbmDevice {
+       return nullptr;
+ 
+     return CreateBufferForBO(bo, format, size, flags);
++#endif
+   }
+ 
+   std::unique_ptr<ui::GbmBuffer> CreateBufferFromHandle(
+@@ -347,10 +383,20 @@ class Device final : public ui::GbmDevice {
+       return nullptr;
+     }
+ 
++#if defined(MALIGBM)
++    struct gbm_import_fd_data fd_data;
++    if (handle.modifier || handle.planes.size() != 1)
++      return nullptr;
++#else
+     struct gbm_import_fd_modifier_data fd_data;
++#endif
+     fd_data.width = size.width();
+     fd_data.height = size.height();
+     fd_data.format = format;
++#if defined(MALIGBM)
++    fd_data.fd = handle.planes[0].fd.get();
++    fd_data.stride = handle.planes[0].stride;
++#else
+     fd_data.num_fds = handle.planes.size();
+     fd_data.modifier = handle.modifier;
+ 
+@@ -360,10 +406,15 @@ class Device final : public ui::GbmDevice {
+       fd_data.strides[i] = handle.planes[i].stride;
+       fd_data.offsets[i] = handle.planes[i].offset;
+     }
++#endif
+ 
+     // The fd passed to gbm_bo_import is not ref-counted and need to be
+     // kept open for the lifetime of the buffer.
++#if defined(MALIGBM)
++    bo = gbm_bo_import(device_, GBM_BO_IMPORT_FD, &fd_data, gbm_flags);
++#else
+     bo = gbm_bo_import(device_, GBM_BO_IMPORT_FD_MODIFIER, &fd_data, gbm_flags);
++#endif
+     if (!bo) {
+       LOG(ERROR) << "nullptr returned from gbm_bo_import";
+       return nullptr;
+-- 
+2.20.1
+
