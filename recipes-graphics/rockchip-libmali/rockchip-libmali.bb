@@ -23,14 +23,14 @@ PROVIDES += "virtual/egl virtual/libgles1 virtual/libgles2 virtual/libgles3 virt
 RK_MALI_LIB ??= "libmali-midgard-t86x-r14p0-gbm.so"
 
 RDEPENDS_${PN} = " \
-        ${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
-        ${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
+	${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
+	${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
 	${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'libx11 libxcb', '', d)} \
 "
 
 DEPENDS_append = " \
-        ${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
-        ${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
+	${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
+	${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
 	${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'libx11 libxcb', '', d)} \
 "
 
@@ -71,20 +71,22 @@ do_install () {
 		cd ${S}/lib/aarch64-linux-gnu/
 	fi
 
-	install -m 0644 ${RK_MALI_LIB} ${D}/${libdir}/libMali.so.1
-	patchelf --set-soname "libMali.so.1" ${D}/${libdir}/libMali.so.1
+	install -m 0644 ${RK_MALI_LIB} ${D}/${libdir}/libmali.so.1
+	patchelf --set-soname "libmali.so.1" ${D}/${libdir}/libmali.so.1
 
-	ln -sf libMali.so.1 ${D}/${libdir}/${RK_MALI_LIB}
+	ln -sf libmali.so.1 ${D}/${libdir}/${RK_MALI_LIB}
+	ln -sf libmali.so.1 ${D}/${libdir}/libmali.so
+	ln -sf libmali.so.1 ${D}/${libdir}/libMali.so.1
 	ln -sf libMali.so.1 ${D}/${libdir}/libMali.so
-	ln -sf libMali.so.1 ${D}/${libdir}/libEGL.so.1
+	ln -sf libmali.so.1 ${D}/${libdir}/libEGL.so.1
 	ln -sf libEGL.so.1 ${D}/${libdir}/libEGL.so
-	ln -sf libMali.so.1 ${D}/${libdir}/libGLESv1_CM.so.1
+	ln -sf libmali.so.1 ${D}/${libdir}/libGLESv1_CM.so.1
 	ln -sf libGLESv1_CM.so.1 ${D}/${libdir}/libGLESv1_CM.so
-	ln -sf libMali.so.1 ${D}/${libdir}/libGLESv2.so.2
+	ln -sf libmali.so.1 ${D}/${libdir}/libGLESv2.so.2
 	ln -sf libGLESv2.so.2 ${D}/${libdir}/libGLESv2.so
-	ln -sf libMali.so.1 ${D}/${libdir}/libOpenCL.so.1
+	ln -sf libmali.so.1 ${D}/${libdir}/libOpenCL.so.1
 	ln -sf libOpenCL.so.1 ${D}/${libdir}/libOpenCL.so
-	ln -sf libMali.so.1 ${D}/${libdir}/libgbm.so.1
+	ln -sf libmali.so.1 ${D}/${libdir}/libgbm.so.1
 	ln -sf libgbm.so.1 ${D}/${libdir}/libgbm.so
 
 	PC_FILES="egl.pc gbm.pc glesv2.pc mali.pc OpenCL.pc"
@@ -93,7 +95,7 @@ do_install () {
 	install -m 0644 ${PC_FILES} ${D}${libdir}/pkgconfig/
 
 	if echo ${RK_MALI_LIB} | grep -q wayland; then
-		ln -sf libMali.so.1 ${D}/${libdir}/libwayland-egl.so.1
+		ln -sf libmali.so.1 ${D}/${libdir}/libwayland-egl.so.1
 		ln -sf libwayland-egl.so.1 ${D}/${libdir}/libwayland-egl.so
 
 		install -m 0644 ${WORKDIR}/build/wayland-egl.pc \
