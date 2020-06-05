@@ -74,6 +74,10 @@ do_install () {
 	install -m 0644 ${RK_MALI_LIB} ${D}/${libdir}/libmali.so.1
 	patchelf --set-soname "libmali.so.1" ${D}/${libdir}/libmali.so.1
 
+	# Yocto zeus would have libffi7
+	patchelf ${D}/${libdir}/libmali.so.1 \
+		--replace-needed libffi.so.6 libffi.so
+
 	ln -sf libmali.so.1 ${D}/${libdir}/${RK_MALI_LIB}
 	ln -sf libmali.so.1 ${D}/${libdir}/libmali.so
 	ln -sf libmali.so.1 ${D}/${libdir}/libMali.so.1
