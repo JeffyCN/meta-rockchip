@@ -32,6 +32,8 @@ PACKAGES =+ " \
 	${PN}-ap6255-bt \
 	${PN}-ap6354-wifi \
 	${PN}-ap6354-bt \
+	${PN}-ap6356-wifi \
+	${PN}-ap6356-bt \
 	${PN}-rtl8723ds-bt \
 "
 
@@ -74,6 +76,15 @@ FILES_${PN}-ap6354-wifi = " \
 "
 FILES_${PN}-ap6354-bt = " \
 	system/etc/firmware/bcm4354a1.hcd \
+"
+
+FILES_${PN}-ap6356-wifi = " \
+	system/etc/firmware/fw_bcm4356a2_ag.bin \
+	system/etc/firmware/nvram_ap6356.txt \
+	system/etc/firmware/nvram_ap6356s.txt \
+"
+FILES_${PN}-ap6356-bt = " \
+	system/etc/firmware/BCM4356A2.hcd \
 "
 
 FILES_${PN}-rtl8723ds-bt = " \
