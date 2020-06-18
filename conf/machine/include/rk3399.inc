@@ -4,4 +4,4 @@
 SOC_FAMILY ?= "rk3399"
 require conf/machine/include/rockchip-arm64-common.inc
 
-RK_MALI_LIB := "libmali-midgard-t86x-r14p0${@bb.utils.contains('DISTRO_FEATURES', 'wayland', '-wayland', bb.utils.contains('DISTRO_FEATURES', 'x11', '', '-gbm', d), d)}.so"
+RK_MALI_LIB := "libmali-midgard-t86x-r18p0${@bb.utils.contains('DISTRO_FEATURES', 'wayland', '-wayland', bb.utils.contains('DISTRO_FEATURES', 'x11', '', '-gbm', d), d)}.so"
