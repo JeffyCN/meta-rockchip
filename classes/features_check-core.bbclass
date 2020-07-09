@@ -1,0 +1,1 @@
+../../poky/meta/classes/features_check.bbclass
