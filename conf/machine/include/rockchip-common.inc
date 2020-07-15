@@ -60,8 +60,9 @@ do_image_wic[depends] += " \
 	rk-binary-loader:do_deploy \
 "
 
-RK_POST_ROOTFS_SCRIPTS ?= "${RK_OVERLAY_DIR}/${MACHINE}/post_rootfs.sh"
-RK_OVERLAY_DIRS ?= "${RK_OVERLAY_DIR}/${MACHINE}/fs-overlay"
+RK_POST_ROOTFS_SCRIPTS ?= ""
+RK_OVERLAY_DIRS ?= ""
+BB_HASHBASE_WHITELIST_append += " RK_POST_ROOTFS_SCRIPTS RK_OVERLAY_DIRS"
 
 # <fslabel:mountpoint> e.g. "oem:/oem userdata:/userdata"
 RK_EXTRA_VOLUMES ?= ""
