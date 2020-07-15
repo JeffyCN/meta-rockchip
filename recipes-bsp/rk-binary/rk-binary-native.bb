@@ -6,7 +6,7 @@ inherit native deploy
 DESCRIPTION = "Rockchip binary tools"
 
 LICENSE = "LICENSE.rockchip"
-LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecced26"
+LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=d63890e209bf038f44e708bbb13e4ed9"
 
 SRC_URI = " \
 	git://github.com/rockchip-linux/rkbin.git;branch=master;name=rkbin \
