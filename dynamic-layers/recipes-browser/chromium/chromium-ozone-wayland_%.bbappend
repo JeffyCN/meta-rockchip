@@ -14,14 +14,6 @@ CHROMIUM_EXTRA_ARGS += "--no-sandbox --gpu-sandbox-start-early --ignore-gpu-blac
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
-python() {
-    if int(oe.utils.trim_version(d.getVar('PV'), 1)) > 74:
-        return
-
-    if not 'v4l2_device-Update-CanCreateEGLImageFrom-to-support-.patch' in d.getVar('SRC_URI'):
-        d.appendVar('SRC_URI', ' file://0001-v4l2_device-Update-CanCreateEGLImageFrom-to-support-.patch')
-}
-
 # Fixup v8_qemu_wrapper library search path for component build
 # see https://github.com/OSSystems/meta-browser/issues/314
 do_configure_append() {

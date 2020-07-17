@@ -12,11 +12,11 @@ Please see the corresponding sections below for details.
 This layer depends on:
 
 * URI: git://git.yoctoproject.org/poky
-* branch: thud warrior zeus dunfell
+* branch: warrior zeus dunfell
 
 * URI: git://git.openembedded.org/meta-openembedded
 * layers: meta-oe
-* branch: thud warrior zeus dunfell
+* branch: warrior zeus dunfell
 
 ## Table of Contents
 
@@ -32,8 +32,8 @@ need to download the corresponding tools described in the "Dependencies"
 section. Be sure that everything is in the same directory.
 
 ~ $ mkdir yocto; cd yocto  
-~/yocto $ git clone git://git.yoctoproject.org/poky -b thud  
-~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b thud  
+~/yocto $ git clone git://git.yoctoproject.org/poky -b zeus
+~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b zeus
 
 And put the meta-rockchip layer here too.
 

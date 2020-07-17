@@ -5,11 +5,6 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 SRC_URI += "file://adbd.sh"
 
-python() {
-    if not 'adb-Allow-adbd-to-be-ran-as-root.patch' in d.getVar('SRC_URI'):
-        d.appendVar('SRC_URI', ' file://0008-adb-Allow-adbd-to-be-ran-as-root.patch;patchdir=system/core')
-}
-
 do_install_append() {
 	install -d ${D}${sysconfdir}/init.d
 	install -m 0755 ${WORKDIR}/adbd.sh ${D}${sysconfdir}/init.d/adbd.sh
