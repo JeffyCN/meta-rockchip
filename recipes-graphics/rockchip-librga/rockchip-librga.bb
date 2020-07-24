@@ -15,24 +15,6 @@ SRC_URI = " \
 SRCREV = "${AUTOREV}"
 S = "${WORKDIR}/git"
 
-do_configure[noexec] = "1"
+inherit meson pkgconfig
 
-do_compile() {
-	${CXX} ${CXXFLAGS} ${LDFLAGS} \
-		-fPIC -shared -Wl,-soname,librga.so.0 \
-		$(find . -name "*.cpp") -o librga.so.0 \
-		-I${STAGING_INCDIR}/libdrm -ldrm
-}
-
-do_install () {
-	install -m 0755 -d ${D}/${libdir}
-	install -m 0644 librga.so.0 ${D}${libdir}/
-	ln -s librga.so.0 ${D}${libdir}/librga.so
-
-	install -d -m 0755 ${D}${includedir}/rga
-	install -m 0644 rga.h ${D}${includedir}/rga
-	install -m 0644 drmrga.h ${D}${includedir}/rga
-	install -m 0644 RgaApi.h ${D}${includedir}/rga
-	install -m 0644 RockchipRga.h ${D}${includedir}/rga
-	install -m 0644 RockchipRgaMacro.h ${D}${includedir}/rga
-}
+EXTRA_OEMESON = "-Dlibdrm=true"
