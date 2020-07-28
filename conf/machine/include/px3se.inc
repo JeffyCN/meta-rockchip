@@ -5,4 +5,6 @@ SOC_FAMILY ?= "px3se"
 require conf/machine/include/tune-cortexa7.inc
 require conf/machine/include/rockchip-common.inc
 
-RK_MALI_LIB := "libmali-utgard-400-r7p0-r1p1-wayland.so"
+MALI_GPU := "utgard-400"
+MALI_VERSION := "r7p0"
+MALI_SUBVERSION := "r1p1"

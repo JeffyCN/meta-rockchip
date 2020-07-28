@@ -26,7 +26,7 @@ PREFERRED_PROVIDER_virtual/libgles2 ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libgles3 ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libopencl ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libgbm ?= "rockchip-libmali"
-PACKAGECONFIG_pn-wayland = "${@ 'no-egl' if 'wayland' in d.getVar('RK_MALI_LIB') else '' }"
+PACKAGECONFIG_pn-wayland ?= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'no-egl', '', d)}"
 
 DEPENDS_append_pn-mesa-gl += " rockchip-libmali"
 

@@ -5,4 +5,6 @@ SOC_FAMILY ?= "rk3288"
 require conf/machine/include/tune-cortexa17.inc
 require conf/machine/include/rockchip-common.inc
 
-RK_MALI_LIB := "libmali-midgard-t76x-r18p0-${@bb.utils.contains('MACHINE_FEATURES', 'rk3288w', 'r1p0', 'r0p0', d)}${@bb.utils.contains('DISTRO_FEATURES', 'wayland', '-wayland', bb.utils.contains('DISTRO_FEATURES', 'x11', '', '-gbm', d), d)}.so"
+MALI_GPU := "midgard-t76x"
+MALI_VERSION := "r18p0"
+MALI_SUBVERSION := "${@bb.utils.contains('MACHINE_FEATURES', 'rk3288w', 'r1p0', 'r0p0', d)}"

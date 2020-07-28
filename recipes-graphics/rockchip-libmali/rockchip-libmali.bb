@@ -16,30 +16,28 @@ S = "${WORKDIR}/git"
 PATCHPATH = "${THISDIR}/files"
 inherit auto-patch
 
-DEPENDS = "libdrm patchelf-native"
+DEPENDS = "libdrm"
 
 PROVIDES += "virtual/egl virtual/libgles1 virtual/libgles2 virtual/libgles3 virtual/libopencl virtual/libgbm"
 
-RK_MALI_LIB ??= "libmali-midgard-t86x-r18p0-gbm.so"
+MALI_GPU ??= "midgard-t86x"
+MALI_VERSION ??= "r18p0"
+MALI_SUBVERSION ??= "none"
+MALI_PLATFORM ??= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'wayland', bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11', 'gbm', d), d)}"
 
 RDEPENDS_${PN} = " \
-	${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
-	${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
-	${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'libx11 libxcb', '', d)} \
+	${@ 'wayland' if 'wayland' == d.getVar('MALI_PLATFORM') else ''} \
+	${@ 'libx11 libxcb' if 'x11' == d.getVar('MALI_PLATFORM') else ''} \
 "
 
 DEPENDS_append = " \
-	${@ 'libffi' if 'utgard' in d.getVar('RK_MALI_LIB') else ''} \
-	${@ 'wayland' if 'wayland' in d.getVar('RK_MALI_LIB') else ''} \
-	${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'libx11 libxcb', '', d)} \
+	${@ 'wayland' if 'wayland' == d.getVar('MALI_PLATFORM') else ''} \
+	${@ 'libx11 libxcb' if 'x11' == d.getVar('MALI_PLATFORM') else ''} \
 "
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 python () {
-    if not d.getVar('RK_MALI_LIB'):
-        raise bb.parse.SkipPackage('RK_MALI_LIB is not specified!')
-
     pn = d.getVar('PN')
     pn_dev = pn + "-dev"
     d.setVar("DEBIAN_NOAUTONAME_" + pn, "1")
@@ -60,78 +58,18 @@ python () {
         d.appendVar("RCONFLICTS_" + pn_dev, pkgs)
 }
 
-inherit cmake
+inherit meson pkgconfig
 
-do_install () {
-	install -m 0755 -d ${D}/${libdir}
-
-	if echo ${TUNE_FEATURES} | grep -wq arm; then
-		cd ${S}/lib/arm-linux-gnueabihf/
-	else
-		cd ${S}/lib/aarch64-linux-gnu/
-	fi
-
-	install -m 0644 ${RK_MALI_LIB} ${D}/${libdir}/libmali.so.1
-	patchelf --set-soname "libmali.so.1" ${D}/${libdir}/libmali.so.1
-
-	# Yocto zeus would have libffi7
-	patchelf ${D}/${libdir}/libmali.so.1 \
-		--replace-needed libffi.so.6 libffi.so
-
-	ln -sf libmali.so.1 ${D}/${libdir}/${RK_MALI_LIB}
-	ln -sf libmali.so.1 ${D}/${libdir}/libmali.so
-	ln -sf libmali.so.1 ${D}/${libdir}/libMali.so.1
-	ln -sf libMali.so.1 ${D}/${libdir}/libMali.so
-	ln -sf libmali.so.1 ${D}/${libdir}/libEGL.so.1
-	ln -sf libEGL.so.1 ${D}/${libdir}/libEGL.so
-	ln -sf libmali.so.1 ${D}/${libdir}/libGLESv1_CM.so.1
-	ln -sf libGLESv1_CM.so.1 ${D}/${libdir}/libGLESv1_CM.so
-	ln -sf libmali.so.1 ${D}/${libdir}/libGLESv2.so.2
-	ln -sf libGLESv2.so.2 ${D}/${libdir}/libGLESv2.so
-	ln -sf libmali.so.1 ${D}/${libdir}/libOpenCL.so.1
-	ln -sf libOpenCL.so.1 ${D}/${libdir}/libOpenCL.so
-	ln -sf libmali.so.1 ${D}/${libdir}/libgbm.so.1
-	ln -sf libgbm.so.1 ${D}/${libdir}/libgbm.so
-
-	PC_FILES="egl.pc gbm.pc glesv2.pc mali.pc OpenCL.pc"
-	install -d -m 0755 ${D}${libdir}/pkgconfig
-	cd ${WORKDIR}/build/
-	install -m 0644 ${PC_FILES} ${D}${libdir}/pkgconfig/
-
-	if echo ${RK_MALI_LIB} | grep -q wayland; then
-		ln -sf libmali.so.1 ${D}/${libdir}/libwayland-egl.so.1
-		ln -sf libwayland-egl.so.1 ${D}/${libdir}/libwayland-egl.so
-
-		install -m 0644 ${WORKDIR}/build/wayland-egl.pc \
-			${D}${libdir}/pkgconfig/
-
-		cd ${D}${libdir}/pkgconfig/
-		for f in ${PC_FILES} wayland-egl.pc; do
-			sed -i "s/^Libs:/Libs:-lwayland-client -lwayland-server /" ${f}
-		done
-	fi
-
-	install -d -m 0755 ${D}${includedir}
-	cp -r ${S}/include/* ${D}${includedir}/
-
-	# mali's pkgconfig doesn't provide MESA_EGL_NO_X11_HEADER
-	if ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'false', 'true', d)}; then
-		sed -i '/^#include .*khrplatform.h>/a#define MESA_EGL_NO_X11_HEADERS' \
-		${D}${includedir}/EGL/eglplatform.h
-	fi
-}
+EXTRA_OEMESON = " \
+	-Dgpu=${MALI_GPU} \
+	-Dversion=${MALI_VERSION} \
+	-Dsubversion=${MALI_SUBVERSION} \
+	-Dplatform=${MALI_PLATFORM} \
+"
 
 INSANE_SKIP_${PN} = "already-stripped ldflags dev-so textrel"
 
 INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 INHIBIT_PACKAGE_STRIP = "1"
-
-FILES_${PN} = " \
-	${libdir} \
-"
-FILES_${PN}-dev = " \
-	${includedir} \
-	${libdir}/pkgconfig \
-"
 
 RPROVIDES_${PN} += "libmali"
