@@ -1,7 +1,7 @@
-From e2e143a2198e29494051e6c3529e235a95955315 Mon Sep 17 00:00:00 2001
+From 990c1d4c7db317fc19ce3da19525aeac2de0da37 Mon Sep 17 00:00:00 2001
 From: Stefano Babic <sbabic@denx.de>
 Date: Wed, 13 Mar 2019 09:46:45 +0100
-Subject: [PATCH] Add target to generate initial environment
+Subject: [PATCH 6/6] Add target to generate initial environment
 
 The initial environment is linked to the u-boot binary. Modifying the
 environment from User Space with the env tools requires that the tools
@@ -27,10 +27,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 7 insertions(+)
 
 diff --git a/Makefile b/Makefile
-index 2f134ccbf3..cacd69cb8a 100644
+index 85bcd0c800..cbadc21da3 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1683,6 +1683,13 @@ endif
+@@ -1698,6 +1698,13 @@ endif
  	$(build)=$(build-dir) $(@:.ko=.o)
  	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
  

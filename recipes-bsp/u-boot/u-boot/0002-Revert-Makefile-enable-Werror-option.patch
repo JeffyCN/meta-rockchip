@@ -1,7 +1,7 @@
-From da9d2249a44684a81c034ebc96c537855a701fcc Mon Sep 17 00:00:00 2001
+From 9c912dae89b111a7c9818e0f4ef275e4d740eb4b Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 22 Oct 2019 10:12:55 +0800
-Subject: [PATCH] Revert "Makefile: enable -Werror option"
+Subject: [PATCH 2/6] Revert "Makefile: enable -Werror option"
 
 This reverts commit 76ba1d8a713bc964fc8e0a639f90344c4c60f026.
 ---
@@ -9,7 +9,7 @@ This reverts commit 76ba1d8a713bc964fc8e0a639f90344c4c60f026.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Makefile b/Makefile
-index c60ad289ab..722c28879e 100644
+index 17fde7b4aa..85bcd0c800 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -360,7 +360,7 @@ KBUILD_CPPFLAGS := -D__KERNEL__ -D__UBOOT__
@@ -22,5 +22,5 @@ index c60ad289ab..722c28879e 100644
  
  # Read UBOOTRELEASE from include/config/uboot.release (if it exists)
 -- 
-2.11.0
+2.20.1
 

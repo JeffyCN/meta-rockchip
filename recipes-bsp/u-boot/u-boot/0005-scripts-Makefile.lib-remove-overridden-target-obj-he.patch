@@ -1,7 +1,7 @@
-From b30bea90ff996469ba4981c44c4b46a8295ee3f1 Mon Sep 17 00:00:00 2001
+From da62a3139226e3889ed6a08a03084d88a36635f7 Mon Sep 17 00:00:00 2001
 From: Heinrich Schuchardt <xypron.glpk@gmx.de>
 Date: Sun, 3 Sep 2017 08:17:46 +0200
-Subject: [PATCH] scripts/Makefile.lib: remove overridden target
+Subject: [PATCH 5/6] scripts/Makefile.lib: remove overridden target
  $(obj)/helloworld.so:
 
 The target
