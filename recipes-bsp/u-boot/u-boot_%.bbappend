@@ -3,6 +3,17 @@
 
 DEPENDS += "rk-binary-native coreutils-native"
 
+# Force using python2 for BSP u-boot
+DEPENDS += "python-native"
+EXTRA_OEMAKE += "PYTHON=nativepython"
+
+# Make sure we use nativepython
+do_configure_prepend() {
+	for s in `grep -rIl python ${S}`; do
+		sed -i -e '1s|^#!.*python[23]*|#!/usr/bin/env nativepython|' $s
+	done
+}
+
 # Generate rockchip style u-boot binary
 UBOOT_BINARY = "uboot.img"
 do_compile_append () {
