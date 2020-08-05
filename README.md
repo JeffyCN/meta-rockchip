@@ -18,6 +18,9 @@ This layer depends on:
 * layers: meta-oe
 * branch: warrior zeus dunfell
 
+* URI: git://git.openembedded.org/meta-python2
+* branch: warrior zeus dunfell
+
 ## Table of Contents
 
   I. Configure yocto/oe environment  
@@ -34,6 +37,7 @@ section. Be sure that everything is in the same directory.
 ~ $ mkdir yocto; cd yocto  
 ~/yocto $ git clone git://git.yoctoproject.org/poky -b zeus
 ~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b zeus
+~/yocto $ git clone git://git.openembedded.org/meta-python2.git -b zeus
 
 And put the meta-rockchip layer here too.
 
@@ -49,6 +53,7 @@ other layers needed e.g.:
   ${TOPDIR}/../poky/meta-poky \
   ${TOPDIR}/../poky/meta-yocto-bsp \
   ${TOPDIR}/../meta-openembedded/meta-oe \
+  ${TOPDIR}/../meta-python2 \
 
 To enable a particular machine, you need to add a MACHINE line naming
 the BSP to the local.conf file:
