@@ -37,6 +37,8 @@ DEPENDS_append = " \
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
+ASNEEDED = ""
+
 python () {
     pn = d.getVar('PN')
     pn_dev = pn + "-dev"
