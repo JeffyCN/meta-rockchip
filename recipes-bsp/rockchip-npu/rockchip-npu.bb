@@ -11,6 +11,8 @@ RDEPENDS_${PN} = "bash"
 
 PATCHPATH = "${THISDIR}/files"
 
+inherit freeze-rev
+
 SRC_URI = " \
 	git://github.com/rockchip-linux/rknpu-fw.git;branch=master \
 	file://rockchip-npu.sh \

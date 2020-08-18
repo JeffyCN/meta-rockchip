@@ -13,6 +13,8 @@ SRC_URI = " \
 	git://github.com/rockchip-linux/tools.git;branch=master;name=tools;destsuffix=git/extra \
 "
 
+inherit freeze-rev
+
 SRCREV_rkbin = "${AUTOREV}"
 SRCREV_tools = "${AUTOREV}"
 SRCREV_FORMAT ?= "rkbin_tools"

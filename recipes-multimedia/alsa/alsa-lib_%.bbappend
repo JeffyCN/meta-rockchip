@@ -1,6 +1,8 @@
 # Copyright (C) 2019, Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
+inherit freeze-rev
+
 SRC_URI += " \
 	git://github.com/rockchip-linux/alsa-config.git;branch=master;name=rk-alsa-config \
 "

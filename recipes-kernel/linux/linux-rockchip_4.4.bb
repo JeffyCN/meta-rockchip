@@ -4,6 +4,8 @@
 require recipes-kernel/linux/linux-yocto.inc
 require linux-rockchip.inc
 
+inherit freeze-rev
+
 SRCREV = "${AUTOREV}"
 SRC_URI = " \
 	git://github.com/rockchip-linux/kernel.git;branch=develop-4.4 \
