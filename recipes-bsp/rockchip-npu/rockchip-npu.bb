@@ -11,6 +11,8 @@ RDEPENDS_${PN} = "bash"
 
 PATCHPATH = "${THISDIR}/files"
 
+PV_append = "+git${SRCPV}"
+
 inherit freeze-rev
 
 SRC_URI = " \

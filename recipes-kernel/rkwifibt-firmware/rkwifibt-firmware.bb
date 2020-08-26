@@ -7,6 +7,8 @@ SECTION = "kernel"
 LICENSE = "LICENSE.rockchip"
 LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf038f44e708bbb13e4ed9"
 
+PV_append = "+git${SRCPV}"
+
 inherit freeze-rev
 
 SRCREV = "${AUTOREV}"

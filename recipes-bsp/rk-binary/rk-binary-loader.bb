@@ -8,7 +8,7 @@ LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf0
 
 DEPENDS = "u-boot-mkimage-native rk-binary-native"
 
-PV = "1.0.0+git${SRCPV}"
+PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
 
