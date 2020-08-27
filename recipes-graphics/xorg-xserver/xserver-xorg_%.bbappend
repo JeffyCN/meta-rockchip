@@ -3,9 +3,7 @@
 
 DEPENDS += "util-macros-native font-util-native xtrans-native rockchip-librga"
 
-inherit freeze-rev
-
-SRCREV = "${AUTOREV}"
+SRCREV = "${PV}_2020_8_27"
 SRC_URI += "git://github.com/JeffyCN/xorg-xserver;branch=${PV}"
 SRC_URI_remove = "https://www.x.org/releases//individual/xserver/xorg-server-${PV}.tar.bz2"
 S = "${WORKDIR}/git"
