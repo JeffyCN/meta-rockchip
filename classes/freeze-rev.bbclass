@@ -1,7 +1,7 @@
 # Copyright (C) 2020, Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-CURDIR := "${THISDIR}/"
+BB_FILE := "${FILE}"
 
 python () {
     import glob
@@ -10,14 +10,7 @@ python () {
     if d.getVar('FREEZE_REV') != '1':
         return
 
-    cmd = 'grep -rl SRCREV %s' % d.getVar('CURDIR')
-    try:
-        files = subprocess.check_output(cmd, shell=True).decode('utf-8')
-        if not files:
-            return
-    except subprocess.CalledProcessError:
-        return
-
+    file = d.getVar('BB_FILE')
     fetcher = bb.fetch2.Fetch(d.getVar('SRC_URI').split(), d)
     urldata = fetcher.ud
     for u in urldata:
@@ -32,8 +25,8 @@ python () {
             if name != 'default':
                 var += '_' + name
 
-            cmd = 'sed -i "/\<%s\>/s/=.*/= \\"%s\\"/" %s' % (var, rev, files)
+            cmd = 'sed -i "/\<%s\>/s/=.*/= \\"%s\\"/" %s' % (var, rev, file)
             subprocess.call(cmd, shell=True)
 
-            bb.debug(2, 'Freezing %s to %s in %s' % (var, rev, files))
+            bb.debug(2, 'Freezing %s to %s in %s' % (var, rev, file))
 }
