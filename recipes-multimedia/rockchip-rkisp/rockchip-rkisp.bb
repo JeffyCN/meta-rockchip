@@ -12,7 +12,11 @@ DEPENDS = "coreutils-native chrpath-replacement-native libdrm"
 RDEPENDS_${PN}-tests = "${PN}"
 RDEPENDS_${PN}-server = "${PN}"
 
-SRCREV = "861f69c45bcc4f659307191368e6c11bdd4ac47b"
+PV_append = "+git${SRCPV}"
+
+inherit freeze-rev
+
+SRCREV = "${AUTOREV}"
 SRC_URI = " \
 	git://github.com/rockchip-linux/camera_engine_rkisp.git;branch=master \
 	file://rkisp_daemons.sh \
