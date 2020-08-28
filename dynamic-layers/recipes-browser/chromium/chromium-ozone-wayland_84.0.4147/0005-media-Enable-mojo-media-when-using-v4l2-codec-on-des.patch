@@ -1,0 +1,30 @@
+From 26e31353f2c71338f7dc1bcba862047268080a34 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 19 Dec 2019 14:22:32 +0800
+Subject: [PATCH 5/8] media: Enable mojo media when using v4l2 codec on desktop
+ linux
+
+The newest chromium turns to use mojo video decoder instead of gpu video
+decoder.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/media_options.gni | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/media/media_options.gni b/media/media_options.gni
+index ef8fbe4de..d16e011b5 100644
+--- a/media/media_options.gni
++++ b/media/media_options.gni
+@@ -203,7 +203,7 @@ if (is_chromecast) {
+     "video_decoder",
+   ]
+   _default_mojo_media_host = "gpu"
+-} else if (is_chromeos || is_mac || is_win || (is_desktop_linux && use_vaapi)) {
++} else if (is_chromeos || is_mac || is_win || (is_desktop_linux && use_vaapi || use_v4l2_codec)) {
+   _default_mojo_media_services = [ "video_decoder" ]
+   _default_mojo_media_host = "gpu"
+ }
+-- 
+2.20.1
+
