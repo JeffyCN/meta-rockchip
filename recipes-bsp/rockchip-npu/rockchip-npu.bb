@@ -19,7 +19,7 @@ SRC_URI = " \
 	git://github.com/rockchip-linux/rknpu-fw.git;branch=master \
 	file://rockchip-npu.sh \
 "
-SRCREV = "${AUTOREV}"
+SRCREV = "2a532b012b5179dd573d8b7f98fc2c51b3046409"
 S = "${WORKDIR}/git"
 
 do_install () {

@@ -14,7 +14,7 @@ inherit freeze-rev
 SRC_URI = " \
 	git://github.com/rockchip-linux/alsa-config.git;branch=master \
 "
-SRCREV = "${AUTOREV}"
+SRCREV = "16078cdc78d9d4961a60c60c527a1a14972fa30d"
 S = "${WORKDIR}/git"
 
 inherit meson

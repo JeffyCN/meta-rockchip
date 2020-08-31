@@ -16,7 +16,7 @@ inherit freeze-rev
 SRC_URI = " \
 	git://github.com/rockchip-linux/linux-rga.git;branch=master; \
 "
-SRCREV = "${AUTOREV}"
+SRCREV = "959479493a3076782699733de065e482779a6fbd"
 S = "${WORKDIR}/git"
 
 inherit meson pkgconfig

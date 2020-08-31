@@ -16,7 +16,7 @@ PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
 
-SRCREV = "${AUTOREV}"
+SRCREV = "66874dce46531ccaa3534fcddc5f89415f6349d3"
 SRC_URI = " \
 	git://github.com/rockchip-linux/camera_engine_rkisp.git;branch=master \
 	file://rkisp_daemons.sh \
