@@ -1,0 +1,40 @@
+From 444929b78ccc73e3cbec908bd675874ac2f9c6c1 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 1 Sep 2020 08:51:17 +0800
+Subject: [PATCH 2/2] gl-renderer: Consider zero modifier as invalid
+
+Some clients(e.g. chromium) might pass zero modifier as invalid
+modifier.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/gl-renderer.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/libweston/gl-renderer.c b/libweston/gl-renderer.c
+index 4aca567..d70b317 100644
+--- a/libweston/gl-renderer.c
++++ b/libweston/gl-renderer.c
+@@ -1789,7 +1789,8 @@ import_simple_dmabuf(struct gl_renderer *gr,
+ 		attribs[atti++] = EGL_YUV_NARROW_RANGE_EXT;
+ 	}
+ 
+-	if (attributes->modifier[0] != DRM_FORMAT_MOD_INVALID) {
++	if (attributes->modifier[0] &&
++	    attributes->modifier[0] != DRM_FORMAT_MOD_INVALID) {
+ 		if (!gr->has_dmabuf_import_modifiers)
+ 			return NULL;
+ 		has_modifier = true;
+@@ -2192,7 +2193,8 @@ gl_renderer_import_dmabuf(struct weston_compositor *ec,
+ 
+ 	for (i = 0; i < dmabuf->attributes.n_planes; i++) {
+ 		/* return if EGL doesn't support import modifiers */
+-		if (dmabuf->attributes.modifier[i] != DRM_FORMAT_MOD_INVALID)
++		if (dmabuf->attributes.modifier[i] &&
++		    dmabuf->attributes.modifier[i] != DRM_FORMAT_MOD_INVALID)
+ 			if (!gr->has_dmabuf_import_modifiers)
+ 				return false;
+ 
+-- 
+2.20.1
+
