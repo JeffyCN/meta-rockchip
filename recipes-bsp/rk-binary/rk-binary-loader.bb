@@ -12,7 +12,7 @@ PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
 
-SRCREV = "219afc549841dc28dbbe97f183d845cda254eab5"
+SRCREV = "d671d47b5674acb930d6e180c049a50a8e932259"
 SRC_URI = "git://github.com/rockchip-linux/rkbin.git;branch=master"
 S = "${WORKDIR}/git"
 
