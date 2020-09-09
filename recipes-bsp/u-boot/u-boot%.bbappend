@@ -10,7 +10,7 @@ LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
 
 inherit freeze-rev
 
-SRCREV = "b8fa09953a482ff52aa3783a909fd5dcbffa1414"
+SRCREV = "65c356141d79b7380748344d558b3871061c907a"
 SRC_URI = " \
 	git://github.com/rockchip-linux/u-boot.git;branch=next-dev \
 "
