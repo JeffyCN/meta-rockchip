@@ -1,0 +1,26 @@
+From fa55fbc794c0f032604a0be9e6cbfb833875f6f6 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 11 Sep 2020 21:00:44 +0800
+Subject: [PATCH] image.h: Include missing stdbool.h
+
+Change-Id: I0cd0d18738a440b14739cf483359d1e3b8277b4f
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ include/image.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/image.h b/include/image.h
+index 295d160380..b38efe46d8 100644
+--- a/include/image.h
++++ b/include/image.h
+@@ -17,6 +17,7 @@
+ #define __IMAGE_H__
+ 
+ #include "compiler.h"
++#include <stdbool.h>
+ #include <asm/byteorder.h>
+ 
+ /* Define this to avoid #ifdefs later on */
+-- 
+2.20.1
+
