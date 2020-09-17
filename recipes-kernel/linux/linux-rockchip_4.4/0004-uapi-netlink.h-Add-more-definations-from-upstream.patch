@@ -1,15 +1,18 @@
-From 4a38a3bd75e091b312adda9f7c7566433200d824 Mon Sep 17 00:00:00 2001
+From 3dcce79f0fce7b188e977aae173c394994ed090b Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 27 May 2020 15:24:19 +0800
-Subject: [PATCH] uapi: netlink.h: Add more definations from upstream
+Subject: [PATCH 04/12] uapi: netlink.h: Add more definations from upstream
 
+No functional changes.
+
+Change-Id: I7fb817dda7f9755e6d068594cbc71e2202a5ade5
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  include/uapi/linux/netlink.h | 27 +++++++++++++++++++++++++++
  1 file changed, 27 insertions(+)
 
 diff --git a/include/uapi/linux/netlink.h b/include/uapi/linux/netlink.h
-index f095155..867b3fc 100644
+index 0dba4e4ed2be..c4999c6552f1 100644
 --- a/include/uapi/linux/netlink.h
 +++ b/include/uapi/linux/netlink.h
 @@ -68,6 +68,10 @@ struct nlmsghdr {
@@ -52,7 +55,7 @@ index f095155..867b3fc 100644
  #define NETLINK_ADD_MEMBERSHIP		1
  #define NETLINK_DROP_MEMBERSHIP		2
  #define NETLINK_PKTINFO			3
-@@ -112,6 +138,7 @@ struct nlmsgerr {
+@@ -114,6 +140,7 @@ struct nlmsgerr {
  #define NETLINK_LISTEN_ALL_NSID		8
  #define NETLINK_LIST_MEMBERSHIPS	9
  #define NETLINK_CAP_ACK			10

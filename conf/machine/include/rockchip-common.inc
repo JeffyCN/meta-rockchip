@@ -15,7 +15,7 @@ MACHINEOVERRIDES .= ":rockchip"
 
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-rockchip"
 PREFERRED_VERSION_linux-rockchip ?= "4.4%"
-LINUXLIBCVERSION ?= "4.4%"
+LINUXLIBCVERSION ?= "custom%"
 
 # Custom kernel might not support newest python
 PACKAGECONFIG_remove_pn-perf += " scripting"

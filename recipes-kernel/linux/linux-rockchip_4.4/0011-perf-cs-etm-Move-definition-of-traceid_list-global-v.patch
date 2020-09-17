@@ -1,7 +1,7 @@
-From ddd82d5dfaa289ab914d8b91ce07b862bbaa8ccd Mon Sep 17 00:00:00 2001
+From 2dfb2bedf89cfe7e9b1c6f1b9a42c7f2a2ff143f Mon Sep 17 00:00:00 2001
 From: Leo Yan <leo.yan@linaro.org>
 Date: Tue, 5 May 2020 21:36:42 +0800
-Subject: [PATCH] perf cs-etm: Move definition of 'traceid_list' global
+Subject: [PATCH 11/12] perf cs-etm: Move definition of 'traceid_list' global
  variable from header file
 
 The variable 'traceid_list' is defined in the header file cs-etm.h,
