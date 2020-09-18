@@ -14,7 +14,7 @@ inherit freeze-rev
 SRC_URI = " \
 	git://github.com/rockchip-linux/libmali.git;branch=master; \
 "
-SRCREV = "b91d4b95726ba3fb0a287d0cb60752bc3d968bc9"
+SRCREV = "77feb338531272bd3bea25ced5de0317330f9aee"
 S = "${WORKDIR}/git"
 
 PATCHPATH = "${THISDIR}/files"

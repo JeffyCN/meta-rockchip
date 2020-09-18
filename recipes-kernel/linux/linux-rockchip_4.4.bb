@@ -6,7 +6,7 @@ require linux-rockchip.inc
 
 inherit freeze-rev
 
-SRCREV = "47ad5864e458fc8441d71b5d29406c12e4b4d25f"
+SRCREV = "5b374ca16f86fbaa8331500b33cb2a20e4cfdcef"
 SRC_URI = " \
 	git://github.com/rockchip-linux/kernel.git;branch=develop-4.4 \
 	file://cgroups.cfg \
