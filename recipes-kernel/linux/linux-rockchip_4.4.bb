@@ -12,8 +12,7 @@ SRC_URI = " \
 	file://cgroups.cfg \
 "
 
-KERNEL_VERSION_SANITY_SKIP="1"
-LINUX_VERSION = "4.4"
+KERNEL_VERSION_SANITY_SKIP = "1"
 
 SRC_URI_append += "${@bb.utils.contains('IMAGE_FSTYPES', 'ext4', \
 		   ' file://ext4.cfg', \

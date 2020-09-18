@@ -3,6 +3,8 @@
 
 require recipes-kernel/linux-libc-headers/linux-libc-headers.inc
 
+PV = "${LINUX_VERSION}-custom"
+
 S = "${STAGING_KERNEL_DIR}"
 deltask do_fetch
 deltask do_unpack
