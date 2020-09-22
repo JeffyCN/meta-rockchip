@@ -1,8 +1,8 @@
-From 82eb8014f024a1e347f912118e194b1e0840eb5e Mon Sep 17 00:00:00 2001
+From 7d7db0ecbf76cf26692c1c6ffba8dc787a672bbf Mon Sep 17 00:00:00 2001
 From: Arnaldo Carvalho de Melo <acme@redhat.com>
 Date: Mon, 2 Mar 2020 12:09:38 -0300
-Subject: [PATCH 09/12] perf bench: Share some global variables to fix build
- with gcc 10
+Subject: [PATCH 4/7] perf bench: Share some global variables to fix build with
+ gcc 10
 
 Noticed with gcc 10 (fedora rawhide) that those variables were not being
 declared as static, so end up with:

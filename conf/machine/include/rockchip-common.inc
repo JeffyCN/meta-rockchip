@@ -13,10 +13,9 @@ KERNEL_IMAGETYPE ?= "Image"
 KBUILD_DEFCONFIG ?= "rockchip_linux_defconfig"
 MACHINEOVERRIDES .= ":rockchip"
 
-LINUX_VERSION ?= "4.4"
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-rockchip"
-PREFERRED_VERSION_linux-rockchip ?= "${LINUX_VERSION}%"
-LINUXLIBCVERSION ?= "${LINUX_VERSION}-custom"
+PREFERRED_VERSION_linux-rockchip ?= "4.4%"
+LINUXLIBCVERSION ?= "4.4-custom%"
 
 # Custom kernel might not support newest python
 PACKAGECONFIG_remove_pn-perf += " scripting"

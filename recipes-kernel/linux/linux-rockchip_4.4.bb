@@ -13,6 +13,7 @@ SRC_URI = " \
 "
 
 KERNEL_VERSION_SANITY_SKIP = "1"
+LINUX_VERSION ?= "4.4"
 
 SRC_URI_append += "${@bb.utils.contains('IMAGE_FSTYPES', 'ext4', \
 		   ' file://ext4.cfg', \

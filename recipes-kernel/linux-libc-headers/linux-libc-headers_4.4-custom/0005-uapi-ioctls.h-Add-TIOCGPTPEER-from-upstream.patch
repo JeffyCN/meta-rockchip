@@ -1,7 +1,7 @@
-From ac0c80352283f4ed4194c727f0cb9a50d1966eeb Mon Sep 17 00:00:00 2001
+From deb6bd966f6b26a0892e4b35069aafb1abe38dd2 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 17 Sep 2020 17:51:12 +0800
-Subject: [PATCH 05/12] uapi: ioctls.h: Add TIOCGPTPEER from upstream
+Subject: [PATCH 5/5] uapi: ioctls.h: Add TIOCGPTPEER from upstream
 
 No functional changes.
 

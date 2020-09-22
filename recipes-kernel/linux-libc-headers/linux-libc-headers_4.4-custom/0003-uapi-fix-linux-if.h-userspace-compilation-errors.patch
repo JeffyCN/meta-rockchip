@@ -1,7 +1,7 @@
-From 8b2a4dfa206df78986b6f5d9a511e45245bc785d Mon Sep 17 00:00:00 2001
+From e9b500b3fea1ab678502f85a4bd360119e737215 Mon Sep 17 00:00:00 2001
 From: "Dmitry V. Levin" <ldv@altlinux.org>
 Date: Mon, 20 Feb 2017 14:58:41 +0300
-Subject: [PATCH 03/12] uapi: fix linux/if.h userspace compilation errors
+Subject: [PATCH 3/5] uapi: fix linux/if.h userspace compilation errors
 
 Include <sys/socket.h> (guarded by ifndef __KERNEL__) to fix
 the following linux/if.h userspace compilation errors:

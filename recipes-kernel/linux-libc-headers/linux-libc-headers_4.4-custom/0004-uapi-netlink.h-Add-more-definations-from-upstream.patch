@@ -1,7 +1,7 @@
-From 3dcce79f0fce7b188e977aae173c394994ed090b Mon Sep 17 00:00:00 2001
+From 30ff5d1f742e2ed1be3fd9c42dcc902b6f3a19cc Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 27 May 2020 15:24:19 +0800
-Subject: [PATCH 04/12] uapi: netlink.h: Add more definations from upstream
+Subject: [PATCH 4/5] uapi: netlink.h: Add more definations from upstream
 
 No functional changes.
 

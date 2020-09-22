@@ -1,7 +1,7 @@
-From f32999d3d5f515be7a52584271c65b09009857d8 Mon Sep 17 00:00:00 2001
+From 4b8d34fdfeb4a83f0cf87a6a750ac3260c000792 Mon Sep 17 00:00:00 2001
 From: Tiffany Lin <tiffany.lin@mediatek.com>
 Date: Fri, 9 Sep 2016 12:48:04 -0300
-Subject: [PATCH 01/12] [media] v4l: add Mediatek compressed video block format
+Subject: [PATCH 1/5] v4l: add Mediatek compressed video block format
 
 Add V4L2_PIX_FMT_MT21C format used on MT8173 driver.
 It is compressed format and need MT8173 MDP driver to transfer to other
