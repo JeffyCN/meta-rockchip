@@ -87,3 +87,10 @@ INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 INHIBIT_PACKAGE_STRIP = "1"
 
 RPROVIDES_${PN} += "libmali"
+
+# Library symlinks are required by utgard DDK(for internal dlopen)
+FILES_${PN} += "${libdir}/lib*.so"
+FILES_${PN}-dev = " \
+	${includedir} \
+	${libdir}/pkgconfig \
+"
