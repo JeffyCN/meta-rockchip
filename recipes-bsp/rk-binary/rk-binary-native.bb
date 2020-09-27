@@ -17,8 +17,8 @@ PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
 
-SRCREV_rkbin = "fb17fcc584698ff8d734d9033a1601c77bce049f"
-SRCREV_tools = "e837004897e0cb1ec3cd1542ddcd211263a3e7c1"
+SRCREV_rkbin = "6aaf2ec85e0f37e0e550659cde7537e21d24b808"
+SRCREV_tools = "84b24f5cd537de9976abbc39204339ea046b76c4"
 SRCREV_FORMAT ?= "rkbin_tools"
 
 S = "${WORKDIR}/git"
