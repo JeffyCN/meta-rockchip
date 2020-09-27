@@ -22,12 +22,16 @@ inherit auto-patch
 
 DEPENDS = "libdrm"
 
-PROVIDES += "virtual/egl virtual/libgles1 virtual/libgles2 virtual/libgles3 virtual/libopencl virtual/libgbm"
+PROVIDES += "virtual/egl virtual/libgles1 virtual/libgles2 virtual/libgles3 virtual/libgbm"
 
 MALI_GPU ??= "midgard-t86x"
 MALI_VERSION ??= "r18p0"
 MALI_SUBVERSION ??= "none"
 MALI_PLATFORM ??= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'wayland', bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11', 'gbm', d), d)}"
+
+# The utgard DDK and 'without-cl' subversion are not providing OpenCL.
+# The ICD OpenCL implementation should work with opencl-icd-loader.
+PROVIDES += "${@ 'virtual/opencl-icd' if not d.getVar('MALI_GPU').startswith('utgard') and d.getVar('MALI_SUBVERSION') != 'without-cl' else ''}"
 
 RDEPENDS_${PN} = " \
 	${@ 'wayland' if 'wayland' == d.getVar('MALI_PLATFORM') else ''} \
@@ -43,7 +47,8 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 ASNEEDED = ""
 
-python () {
+# Inject RPROVIDEs/RCONFLICTs on the generic lib name.
+python __anonymous() {
     pn = d.getVar('PN')
     pn_dev = pn + "-dev"
     d.setVar("DEBIAN_NOAUTONAME_" + pn, "1")
@@ -52,13 +57,14 @@ python () {
     for p in (("libegl", "libegl1"),
               ("libgles1", "libglesv1-cm1"),
               ("libgles2", "libglesv2-2"),
-              ("libgles3",), ("libopencl",)):
+              ("libgles3",)):
         pkgs = " " + " ".join(p)
         d.appendVar("RREPLACES_" + pn, pkgs)
         d.appendVar("RPROVIDES_" + pn, pkgs)
         d.appendVar("RCONFLICTS_" + pn, pkgs)
 
-        pkgs = " " + p[0] + "-dev "
+        # For -dev, the first element is both the Debian and original name
+        pkgs = " " + p[0] + "-dev"
         d.appendVar("RREPLACES_" + pn_dev, pkgs)
         d.appendVar("RPROVIDES_" + pn_dev, pkgs)
         d.appendVar("RCONFLICTS_" + pn_dev, pkgs)
