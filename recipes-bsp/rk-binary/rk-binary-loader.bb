@@ -77,6 +77,6 @@ do_deploy () {
 	for binary in "${RK_IDBLOCK_IMG}" "${RK_LOADER_BIN}" "${RK_TRUST_IMG}";do
 		install "${binary}" "${DEPLOYDIR}/${binary}-${PV}"
 		ln -sf "${binary}-${PV}" "${DEPLOYDIR}/${binary}"
-        done
+	done
 }
 addtask deploy before do_build after do_compile

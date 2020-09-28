@@ -27,8 +27,8 @@ INSANE_SKIP_${PN} = "already-stripped"
 SRC_URI += "file://chromium-init.sh"
 
 do_install_append () {
-        install -d ${D}${sysconfdir}/init.d/
-        install -m 0755 ${WORKDIR}/chromium-init.sh ${D}${sysconfdir}/init.d/
+	install -d ${D}${sysconfdir}/init.d/
+	install -m 0755 ${WORKDIR}/chromium-init.sh ${D}${sysconfdir}/init.d/
 }
 
 inherit update-rc.d
