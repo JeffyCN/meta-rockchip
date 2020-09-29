@@ -1,0 +1,1 @@
+chromium-ozone-wayland_%.bbappend
