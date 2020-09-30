@@ -1,7 +1,7 @@
 From 3e7b510173dfce43a717ed3b0cbdddccceb920ce Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 1 Jul 2019 10:37:35 +0800
-Subject: [PATCH 3/8] media: capture: linux: Support libv4l2 plugins
+Subject: [PATCH 3/9] media: capture: linux: Support libv4l2 plugins
 
 Allow using libv4l2 plugins for linux v4l2 capture devices.
 

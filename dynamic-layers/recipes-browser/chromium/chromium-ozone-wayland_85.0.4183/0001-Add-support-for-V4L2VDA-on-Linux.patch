@@ -1,7 +1,7 @@
-From 484b7c32224eb838b94c1b10ededaa4f348370bd Mon Sep 17 00:00:00 2001
+From 1741fdbacb4e8472cc83db8dd8a79b5f52cef7fc Mon Sep 17 00:00:00 2001
 From: Maksim Sisov <msisov@igalia.com>
 Date: Wed, 31 Jul 2019 09:56:24 +0300
-Subject: [PATCH 1/8] Add support for V4L2VDA on Linux
+Subject: [PATCH 1/9] Add support for V4L2VDA on Linux
 
 This patch enables hardware assisted video decoding via the
 Chromium V4L2VDA. Including changes when Linux is used. In
@@ -38,7 +38,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  9 files changed, 122 insertions(+), 18 deletions(-)
 
 diff --git a/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc b/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc
-index 6f319e88..4f8f0b7d 100644
+index 6f319e8..4f8f0b7 100644
 --- a/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc
 +++ b/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc
 @@ -13,7 +13,8 @@
@@ -52,7 +52,7 @@ index 6f319e88..4f8f0b7d 100644
  #endif
  
 diff --git a/media/gpu/BUILD.gn b/media/gpu/BUILD.gn
-index ec65dea1..60a1ab29 100644
+index ec65dea..60a1ab2 100644
 --- a/media/gpu/BUILD.gn
 +++ b/media/gpu/BUILD.gn
 @@ -18,6 +18,7 @@ buildflag_header("buildflags") {
@@ -64,7 +64,7 @@ index ec65dea1..60a1ab29 100644
  }
  
 diff --git a/media/gpu/args.gni b/media/gpu/args.gni
-index 2a87b998..7e905aeb 100644
+index 2a87b99..7e905ae 100644
 --- a/media/gpu/args.gni
 +++ b/media/gpu/args.gni
 @@ -10,6 +10,10 @@ declare_args() {
@@ -79,7 +79,7 @@ index 2a87b998..7e905aeb 100644
    # platforms which have v4l2 hardware encoder
    use_v4l2_codec_aml = false
 diff --git a/media/gpu/gpu_video_decode_accelerator_factory.cc b/media/gpu/gpu_video_decode_accelerator_factory.cc
-index 3d519b99..cb44aecb 100644
+index 3d519b9..cb44aec 100644
 --- a/media/gpu/gpu_video_decode_accelerator_factory.cc
 +++ b/media/gpu/gpu_video_decode_accelerator_factory.cc
 @@ -26,7 +26,9 @@
@@ -133,7 +133,7 @@ index 3d519b99..cb44aecb 100644
  #if BUILDFLAG(USE_VAAPI)
  std::unique_ptr<VideoDecodeAccelerator>
 diff --git a/media/gpu/gpu_video_decode_accelerator_factory.h b/media/gpu/gpu_video_decode_accelerator_factory.h
-index 74f10ebe..e779ef50 100644
+index 74f10eb..e779ef5 100644
 --- a/media/gpu/gpu_video_decode_accelerator_factory.h
 +++ b/media/gpu/gpu_video_decode_accelerator_factory.h
 @@ -111,11 +111,13 @@ class MEDIA_GPU_EXPORT GpuVideoDecodeAcceleratorFactory {
@@ -151,7 +151,7 @@ index 74f10ebe..e779ef50 100644
    std::unique_ptr<VideoDecodeAccelerator> CreateVaapiVDA(
        const gpu::GpuDriverBugWorkarounds& workarounds,
 diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
-index 38d0bb24..68fac954 100644
+index 38d0bb2..68fac95 100644
 --- a/media/gpu/v4l2/BUILD.gn
 +++ b/media/gpu/v4l2/BUILD.gn
 @@ -26,21 +26,12 @@ source_set("v4l2") {
@@ -218,7 +218,7 @@ index 38d0bb24..68fac954 100644
      "EGL",
      "GLESv2",
 diff --git a/media/gpu/v4l2/generic_v4l2_device.cc b/media/gpu/v4l2/generic_v4l2_device.cc
-index 6742dc14..f0f10345 100644
+index 6742dc1..f0f1034 100644
 --- a/media/gpu/v4l2/generic_v4l2_device.cc
 +++ b/media/gpu/v4l2/generic_v4l2_device.cc
 @@ -415,7 +415,11 @@ bool GenericV4L2Device::OpenDevicePath(const std::string& path, Type type) {
@@ -234,7 +234,7 @@ index 6742dc14..f0f10345 100644
            -1) {
      DVLOGF(3) << "Using libv4l2 for " << path;
 diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
-index ba9b5184..23573134 100644
+index ba9b518..2357313 100644
 --- a/media/gpu/v4l2/v4l2_device.cc
 +++ b/media/gpu/v4l2/v4l2_device.cc
 @@ -752,7 +752,9 @@ void V4L2WritableBufferRef::SetConfigStore(uint32_t config_store) {
@@ -428,7 +428,7 @@ index ba9b5184..23573134 100644
  
  base::Optional<V4L2RequestRef> V4L2RequestsQueue::GetFreeRequest() {
 diff --git a/media/gpu/v4l2/v4l2_video_decoder.cc b/media/gpu/v4l2/v4l2_video_decoder.cc
-index 4c747eb8..5aa402d0 100644
+index 4c747eb..5aa402d 100644
 --- a/media/gpu/v4l2/v4l2_video_decoder.cc
 +++ b/media/gpu/v4l2/v4l2_video_decoder.cc
 @@ -18,7 +18,10 @@

@@ -1,7 +1,7 @@
-From cef34246c8270580e10f3cae7025ceb0c0c6cd1f Mon Sep 17 00:00:00 2001
+From 8d4de85a22b40bc03aba81df774cb1d49d82cb12 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 10 Apr 2020 16:16:08 +0800
-Subject: [PATCH 8/8] media: gpu: v4l2: Use POLLIN for pending event
+Subject: [PATCH 7/9] media: gpu: v4l2: Use POLLIN for pending event
 
 The v4l-rkmpp is using eventfd to fake poll events which not supporting
 POLLPRI.
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/media/gpu/v4l2/generic_v4l2_device.cc b/media/gpu/v4l2/generic_v4l2_device.cc
-index 70a15d04..b0e6757f 100644
+index 70a15d0..b0e6757 100644
 --- a/media/gpu/v4l2/generic_v4l2_device.cc
 +++ b/media/gpu/v4l2/generic_v4l2_device.cc
 @@ -89,7 +89,7 @@ bool GenericV4L2Device::Poll(bool poll_device, bool* event_pending) {
