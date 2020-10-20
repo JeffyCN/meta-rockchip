@@ -10,6 +10,9 @@ python () {
     if d.getVar('FREEZE_REV') != '1':
         return
 
+    if d.getVar('PN').startswith('nativesdk'):
+        return
+
     file = d.getVar('BB_FILE')
     fetcher = bb.fetch2.Fetch(d.getVar('SRC_URI').split(), d)
     urldata = fetcher.ud
