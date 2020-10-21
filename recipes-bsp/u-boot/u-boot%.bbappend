@@ -12,5 +12,5 @@ inherit freeze-rev
 
 SRCREV = "65c356141d79b7380748344d558b3871061c907a"
 SRC_URI = " \
-	git://github.com/rockchip-linux/u-boot.git;branch=next-dev \
+	git://github.com/JeffyCN/mirrors.git;branch=u-boot; \
 "

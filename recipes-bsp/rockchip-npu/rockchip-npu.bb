@@ -16,7 +16,7 @@ PV_append = "+git${SRCPV}"
 inherit freeze-rev
 
 SRC_URI = " \
-	git://github.com/rockchip-linux/rknpu-fw.git;branch=master \
+	git://github.com/JeffyCN/mirrors.git;branch=rknpu-fw; \
 	file://rockchip-npu.sh \
 "
 SRCREV = "2a532b012b5179dd573d8b7f98fc2c51b3046409"
