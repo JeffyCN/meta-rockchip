@@ -12,7 +12,7 @@ PV_append = "+git${SRCPV}"
 inherit freeze-rev
 
 SRC_URI = " \
-	git://github.com/rockchip-linux/alsa-config.git;branch=master \
+	git://github.com/JeffyCN/mirrors.git;branch=alsa-config; \
 "
 SRCREV = "16078cdc78d9d4961a60c60c527a1a14972fa30d"
 S = "${WORKDIR}/git"

@@ -8,7 +8,7 @@ inherit freeze-rev
 
 SRCREV = "762bf2ad94f545951fd232e2fceb7d54766b9600"
 SRC_URI = " \
-	git://github.com/rockchip-linux/kernel.git;branch=develop-4.4 \
+	git://github.com/JeffyCN/mirrors.git;branch=kernel; \
 	file://cgroups.cfg \
 "
 

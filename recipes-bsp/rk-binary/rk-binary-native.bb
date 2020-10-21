@@ -9,8 +9,8 @@ LICENSE = "LICENSE.rockchip"
 LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf038f44e708bbb13e4ed9"
 
 SRC_URI = " \
-	git://github.com/rockchip-linux/rkbin.git;branch=master;name=rkbin \
-	git://github.com/rockchip-linux/tools.git;branch=master;name=tools;destsuffix=git/extra \
+	git://github.com/JeffyCN/mirrors.git;branch=rkbin;name=rkbin \
+	git://github.com/JeffyCN/mirrors.git;branch=tools;name=tools;destsuffix=git/extra \
 "
 
 PV_append = "+git${SRCPV}"

@@ -9,7 +9,7 @@ inherit freeze-rev
 
 SRCREV = "5b374ca16f86fbaa8331500b33cb2a20e4cfdcef"
 SRC_URI = " \
-	git://github.com/rockchip-linux/kernel.git;branch=develop-4.4 \
+	git://github.com/JeffyCN/mirrors.git;branch=kernel; \
 "
 
 S = "${WORKDIR}/git"

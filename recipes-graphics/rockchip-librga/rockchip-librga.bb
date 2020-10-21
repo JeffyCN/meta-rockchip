@@ -14,7 +14,7 @@ PV_append = "+git${SRCPV}"
 inherit freeze-rev
 
 SRC_URI = " \
-	git://github.com/rockchip-linux/linux-rga.git;branch=master; \
+	git://github.com/JeffyCN/mirrors.git;branch=linux-rga; \
 "
 SRCREV = "261c7ba851930865806a6473c5f58e7144e96762"
 S = "${WORKDIR}/git"
