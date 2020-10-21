@@ -10,7 +10,7 @@ LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecc
 PATCHPATH = "${THISDIR}/files"
 
 SRC_URI = " \
-	git://github.com/rockchip-linux/rknpu-fw.git;branch=master \
+	git://github.com/JeffyCN/mirrors.git;branch=rknpu-fw; \
 	file://rockchip-npu.sh \
 "
 SRCREV = "f83f83792dba7d3ce8ff55b4dc8e1a8f37407d0c"

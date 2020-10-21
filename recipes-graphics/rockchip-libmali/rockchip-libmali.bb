@@ -8,7 +8,7 @@ LICENSE = "CLOSED"
 LIC_FILES_CHKSUM = "file://END_USER_LICENCE_AGREEMENT.txt;md5=3918cc9836ad038c5a090a0280233eea"
 
 SRC_URI = " \
-	git://github.com/rockchip-linux/libmali.git;branch=master; \
+	git://github.com/JeffyCN/mirrors.git;branch=libmali; \
 "
 SRCREV = "721653b5b3b525a4f80d15aa7e2f9df7b7e60427"
 S = "${WORKDIR}/git"

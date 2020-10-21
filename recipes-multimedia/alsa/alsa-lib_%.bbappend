@@ -2,7 +2,7 @@
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 SRC_URI += " \
-	git://github.com/rockchip-linux/alsa-config.git;branch=master;name=rk-alsa-config \
+	git://github.com/JeffyCN/mirrors.git;branch=alsa-config;name=rk-alsa-config \
 "
 SRCREV_rk-alsa-config = "30d750e5dc846d15d1a5159e47bf3e1121953eb3"
 

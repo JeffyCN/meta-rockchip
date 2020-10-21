@@ -8,7 +8,7 @@ LICENSE = "LICENSE.rockchip"
 LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecced26"
 
 SRCREV = "e93c9ce3082707891ac0d514580e06d1629af819"
-SRC_URI = "git://github.com/rockchip-linux/rkwifibt.git"
+SRC_URI = "git://github.com/JeffyCN/mirrors.git;branch=rkwifibt;"
 
 S = "${WORKDIR}/git"
 

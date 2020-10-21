@@ -10,7 +10,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=6d1e4aa87f6192354d3de840cf774d93"
 DEPENDS = "libdrm"
 
 SRC_URI = " \
-	git://github.com/rockchip-linux/linux-rga.git;branch=master; \
+	git://github.com/JeffyCN/mirrors.git;branch=linux-rga; \
 "
 SRCREV = "98fe2301f14302aea1efaaf3954db31e2a849335"
 S = "${WORKDIR}/git"
