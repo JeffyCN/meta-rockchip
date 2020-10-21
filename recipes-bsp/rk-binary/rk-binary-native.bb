@@ -9,8 +9,8 @@ LICENSE = "LICENSE.rockchip"
 LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecced26"
 
 SRC_URI = " \
-	git://github.com/rockchip-linux/rkbin.git;branch=master;name=rkbin \
-	git://github.com/rockchip-linux/tools.git;branch=master;name=tools;destsuffix=git/extra \
+	git://github.com/JeffyCN/mirrors.git;branch=rkbin;name=rkbin \
+	git://github.com/JeffyCN/mirrors.git;branch=tools;name=tools;destsuffix=git/extra \
 "
 
 SRCREV_rkbin = "e4feede8316740301685d4439b9a9de22b5c4e44"

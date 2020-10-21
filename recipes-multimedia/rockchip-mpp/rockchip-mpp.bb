@@ -7,7 +7,7 @@ LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://inc/rk_mpi.h;beginline=4;endline=14;md5=acbba394ae5639b0c786f60c1f48e3d6"
 
 SRCREV = "4ef69884a6ff7b9a9ba4d70c73cc7c406f645c44"
-SRC_URI = "git://github.com/rockchip-linux/mpp.git;branch=develop"
+SRC_URI = "git://github.com/JeffyCN/mirrors.git;branch=mpp"
 
 S = "${WORKDIR}/git"
 

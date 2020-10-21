@@ -11,7 +11,7 @@ DEPENDS = "u-boot-mkimage-native rk-binary-native"
 PV = "1.0.0+git${SRCPV}"
 
 SRCREV = "e4feede8316740301685d4439b9a9de22b5c4e44"
-SRC_URI = "git://github.com/rockchip-linux/rkbin.git;branch=master"
+SRC_URI = "git://github.com/JeffyCN/mirrors.git;branch=rkbin;"
 S = "${WORKDIR}/git"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
