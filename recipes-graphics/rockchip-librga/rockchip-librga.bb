@@ -16,7 +16,7 @@ inherit freeze-rev
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=linux-rga; \
 "
-SRCREV = "261c7ba851930865806a6473c5f58e7144e96762"
+SRCREV = "410eab0619afe823b83ad0c45cee17a0ad68f2a4"
 S = "${WORKDIR}/git"
 
 inherit meson pkgconfig

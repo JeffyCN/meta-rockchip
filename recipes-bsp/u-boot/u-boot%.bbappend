@@ -10,7 +10,7 @@ LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
 
 inherit freeze-rev
 
-SRCREV = "4857df5d78578761a779e6d0f99264795272882d"
+SRCREV = "3ac03e839f717bde5e0faf0290e872fffcfa4861"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=u-boot; \
 "
