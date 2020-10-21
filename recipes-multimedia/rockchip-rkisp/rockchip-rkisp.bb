@@ -14,7 +14,7 @@ RDEPENDS_${PN}-server = "${PN}"
 
 SRCREV = "861f69c45bcc4f659307191368e6c11bdd4ac47b"
 SRC_URI = " \
-	git://github.com/rockchip-linux/camera_engine_rkisp.git;branch=master \
+	git://github.com/JeffyCN/mirrors.git;branch=camera_engine_rkisp; \
 	file://rkisp_daemons.sh \
 "
 

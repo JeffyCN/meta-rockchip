@@ -6,7 +6,7 @@ require linux-rockchip.inc
 
 SRCREV = "13ad065bcf3a952edecda7ec73524518b28cf031"
 SRC_URI = " \
-	git://github.com/rockchip-linux/kernel.git;branch=develop-4.4 \
+	git://github.com/JeffyCN/mirrors.git;branch=kernel; \
 	file://cgroups.cfg \
 "
 

@@ -12,7 +12,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=6d1e4aa87f6192354d3de840cf774d93"
 DEPENDS += "gstreamer1.0-plugins-base rockchip-mpp"
 
 SRCREV = "d7c55cb060f7e416a78ba38184f4653fa9d8f2d6"
-SRC_URI = "git://github.com/rockchip-linux/gstreamer-rockchip.git;branch=master"
+SRC_URI = "git://github.com/JeffyCN/mirrors.git;branch=gstreamer-rockchip;"
 
 S = "${WORKDIR}/git"
 

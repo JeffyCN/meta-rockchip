@@ -12,7 +12,7 @@ RDEPENDS_${PN} = "bash"
 PATCHPATH = "${THISDIR}/files"
 
 SRC_URI = " \
-	git://github.com/rockchip-linux/rknpu-fw.git;branch=master \
+	git://github.com/JeffyCN/mirrors.git;branch=rknpu-fw; \
 	file://rockchip-npu.sh \
 "
 SRCREV = "23d2a0b92d5484b8d6a0618e7b32aa39e7c171f2"
