@@ -14,6 +14,10 @@ KBUILD_DEFCONFIG ?= "rockchip_linux_defconfig"
 MACHINEOVERRIDES .= ":rockchip"
 
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-rockchip"
+
+# Prefer using Rockchip BSP kernel 4.4
+#PREFERRED_VERSION_linux-rockchip ?= "4.19%"
+#LINUXLIBCVERSION ?= "4.19-custom%"
 PREFERRED_VERSION_linux-rockchip ?= "4.4%"
 LINUXLIBCVERSION ?= "4.4-custom%"
 
