@@ -14,4 +14,8 @@
 echo dec > /dev/video-dec0
 echo enc > /dev/video-enc0
 
+# Link /usr/lib64 for dlopen libv4l2.so
+[ -e /lib/ld-linux-aarch64.so.1 -a ! -e /usr/lib64 ] && \
+	ln -s lib /usr/lib64
+
 exit 0
