@@ -7,7 +7,7 @@ inherit auto-patch
 
 inherit freeze-rev
 
-SRCREV = "22b0348057cbda9437e01c93715407f1967822a8"
+SRCREV = "d8734f498053ceaaf00ec36f45ec2c1976e76b2b"
 SRC_URI = " \
     git://${TOPDIR}/../../../kernel;protocol=file;usehead=1 \
 "
