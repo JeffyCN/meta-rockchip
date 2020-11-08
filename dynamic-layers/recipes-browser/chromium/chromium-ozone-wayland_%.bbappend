@@ -10,7 +10,7 @@ PACKAGECONFIG[use-linux-v4l2] = "use_v4l2_codec=true use_v4lplugin=true use_linu
 
 GN_ARGS += "is_debug=false is_official_build=false fatal_linker_warnings=false"
 
-CHROMIUM_EXTRA_ARGS += "--no-sandbox --gpu-sandbox-start-early --ignore-gpu-blacklist"
+CHROMIUM_EXTRA_ARGS += "--no-sandbox --gpu-sandbox-start-early --ignore-gpu-blacklist --ignore-gpu-blocklist --enable-accelerated-video-decode"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
