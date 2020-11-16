@@ -16,7 +16,7 @@ PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
 
-SRCREV = "70c8a002a542412c6f5c44694ebcca62fc1c3d10"
+SRCREV = "4741cbf840ae5e2d9b69673eaf0ac6f48f1e193c"
 SRC_URI = "git://github.com/JeffyCN/mirrors.git;branch=gstreamer-rockchip;"
 
 S = "${WORKDIR}/git"
