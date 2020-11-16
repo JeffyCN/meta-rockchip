@@ -1,7 +1,7 @@
-From c202b678e3b3d428e08007a2d309f3720559498b Mon Sep 17 00:00:00 2001
+From 7285ffd5a99844154932be3b24305d8d1938aeb7 Mon Sep 17 00:00:00 2001
 From: Arnaldo Carvalho de Melo <acme@redhat.com>
 Date: Mon, 2 Mar 2020 12:09:38 -0300
-Subject: [PATCH 2/6] perf bench: Share some global variables to fix build with
+Subject: [PATCH 2/5] perf bench: Share some global variables to fix build with
  gcc 10
 
 Noticed with gcc 10 (fedora rawhide) that those variables were not being

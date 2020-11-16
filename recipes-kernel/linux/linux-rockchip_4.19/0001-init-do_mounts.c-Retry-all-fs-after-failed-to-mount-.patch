@@ -1,7 +1,7 @@
-From 5370aa471205003010cf1ea392fb79f29dc49f2d Mon Sep 17 00:00:00 2001
+From 39b6936a428ea1c1db76cb64d9aef4caba1e7c03 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 9 Nov 2018 12:14:29 +0800
-Subject: [PATCH 1/6] init/do_mounts.c: Retry all fs after failed to mount with
+Subject: [PATCH 1/5] init/do_mounts.c: Retry all fs after failed to mount with
  "rootfstype="
 
 Retry all filesystems when failed to mount with specified ones.
