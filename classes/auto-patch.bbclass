@@ -9,6 +9,8 @@ python () {
     if not os.path.isdir(dir):
         return
 
+    bb.parse.mark_dependency(d, dir)
+
     files = os.listdir(dir)
     files.sort()
     for file in files:
