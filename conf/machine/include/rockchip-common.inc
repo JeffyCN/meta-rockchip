@@ -45,24 +45,30 @@ export RK_PARTITION_GROW ?= "1"
 RK_USE_COMPRESSED_KERNEL ?= "1"
 RDEPENDS_${KERNEL_PACKAGE_NAME}-base = ""
 
-RK_MINILOADER_INI ?= "${@d.getVar('SOC_FAMILY').upper() + 'MINIALL.ini'}"
-RK_TRUST_INI ?= "${@d.getVar('SOC_FAMILY').upper() + 'TOS.ini'}"
-RK_IGNORE_BL32 ?= "0"
-
-# loader's size(K) and backup num
-RK_LOADER_SIZE ?= "1024"
-RK_LOADER_BACKUP_NUM ?= "4"
-
 IMAGE_FSTYPES_remove += "iso live"
 export RK_ROOTFS_TYPE ?= "ext4"
 
 IMAGE_FSTYPES += "${RK_ROOTFS_TYPE} wic"
 WKS_FILE ?= "generic-gptdisk.wks.in"
-do_image_wic[depends] += " \
+
+# Some partitons, e.g. trust, are allowed to be optional.
+do_fixup_wks[depends] += " \
 	virtual/kernel:do_deploy \
 	virtual/bootloader:do_deploy \
-	rk-binary-loader:do_deploy \
 "
+do_fixup_wks() {
+	[ -f "${WKS_FULL_PATH}" ] || return
+
+	IMAGES=$(grep -o "[^=]*\.img" "${WKS_FULL_PATH}")
+
+	for image in ${IMAGES};do
+		if [ ! -f "${DEPLOY_DIR_IMAGE}/${image}" ];then
+			echo "${image} not provided, ignoring it."
+			sed -i "/file=${image}/d" "${WKS_FULL_PATH}"
+		fi
+	done
+}
+addtask do_fixup_wks after do_write_wks_template before do_image_wic
 
 RK_POST_ROOTFS_SCRIPTS ?= ""
 RK_OVERLAY_DIRS ?= ""
@@ -132,6 +138,7 @@ gen_rkparameter() {
 }
 
 IMAGE_POSTPROCESS_COMMAND += "gen_rkupdateimg;"
+do_image[depends] += "rk-binary-native:do_populate_sysroot"
 gen_rkupdateimg() {
 	IMAGE="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.wic"
 	if [ ! -f "${IMAGE}" ];then

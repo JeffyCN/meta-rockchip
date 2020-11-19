@@ -1,11 +1,29 @@
 # Copyright (C) 2019, Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-DEPENDS += "rk-binary-native coreutils-native"
+PATCHPATH = "${CURDIR}/u-boot"
+inherit auto-patch
+
+PV = "2017.09+git${SRCPV}"
+
+LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
+
+inherit freeze-rev
+
+SRCREV = "a741b19cf7cb71198a6985947084ab26cf1ce58b"
+SRCREV_rkbin = "687e02c895fa11ece8848d74c8da4248c87531d9"
+SRC_URI = " \
+	git://github.com/JeffyCN/mirrors.git;branch=u-boot; \
+	git://github.com/JeffyCN/mirrors.git;branch=rkbin;name=rkbin;destsuffix=rkbin; \
+"
+SRCREV_FORMAT = "default_rkbin"
 
 # Force using python2 for BSP u-boot
 DEPENDS += "python-native"
 EXTRA_OEMAKE += "PYTHON=nativepython"
+
+# Needed for packing BSP u-boot
+DEPENDS += "coreutils-native python-pyelftools-native"
 
 # Make sure we use nativepython
 do_configure_prepend() {
@@ -14,9 +32,48 @@ do_configure_prepend() {
 	done
 }
 
-# Generate rockchip style u-boot binary
+# Generate Rockchip style loader binaries
+RK_IDBLOCK_IMG = "idblock.img"
+RK_LOADER_BIN = "loader.bin"
+RK_TRUST_IMG = "trust.img"
 UBOOT_BINARY = "uboot.img"
+
 do_compile_append () {
-	UBOOT_TEXT_BASE=`grep -w "CONFIG_SYS_TEXT_BASE" ${B}/include/autoconf.mk`
-	loaderimage --pack --uboot ${B}/u-boot.bin ${B}/${UBOOT_BINARY} ${UBOOT_TEXT_BASE#*=} --size "${RK_LOADER_SIZE}" "${RK_LOADER_BACKUP_NUM}"
+	cd ${B}
+
+	# Prepare needed files
+	for d in make.sh scripts configs arch/arm/mach-rockchip; do
+		cp -rT ${S}/${d} ${d}
+	done
+
+	# Remove unneeded stages from make.sh
+	sed -i -e "/^select_tool/d" -e "/^clean/d" -e "/^\t*make/d" make.sh
+
+	# Pack rockchip loader images
+	./make.sh ${UBOOT_MACHINE%_defconfig}
+
+	ln -sf *_loader*.bin "${RK_LOADER_BIN}"
+
+	# Generate idblock image
+	bbnote "${PN}: Generating ${RK_IDBLOCK_IMG} from ${RK_LOADER_BIN}"
+	./tools/boot_merger --unpack "${RK_LOADER_BIN}"
+
+	if [ -f FlashHead ];then
+		cat FlashHead FlashData > "${RK_IDBLOCK_IMG}"
+	else
+		./tools/mkimage -n "${SOC_FAMILY}" -T rksd -d FlashData \
+			"${RK_IDBLOCK_IMG}"
+	fi
+
+	cat FlashBoot >> "${RK_IDBLOCK_IMG}"
+}
+
+do_deploy_append () {
+	cd ${B}
+
+	for binary in "${RK_IDBLOCK_IMG}" "${RK_LOADER_BIN}" "${RK_TRUST_IMG}";do
+		[ -f "${binary}" ] || continue
+		install "${binary}" "${DEPLOYDIR}/${binary}-${PV}"
+		ln -sf "${binary}-${PV}" "${DEPLOYDIR}/${binary}"
+	done
 }
