@@ -104,8 +104,10 @@ gen_rkparameter() {
 		return
 	fi
 
-	OUT="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.parameter"
-	ln -sf "${IMAGE_LINK_NAME}.parameter" "${IMGDEPLOYDIR}/parameter"
+	cd "${IMGDEPLOYDIR}"
+
+	OUT="${IMAGE_LINK_NAME}.parameter"
+	ln -sf "${OUT}" parameter
 
 	echo "Generating ${OUT}..."
 
@@ -150,9 +152,8 @@ gen_rkupdateimg() {
 
 	ln -sf "${IMAGE_LINK_NAME}.${RK_ROOTFS_TYPE}" rootfs.img
 
-	PARAMETER=parameter
 	OUT="${IMAGE_LINK_NAME}.package-file"
-	ln -sf "${IMAGE_LINK_NAME}.package-file" package-file
+	ln -sf "${OUT}" package-file
 
 	echo "Generating ${OUT}..."
 
@@ -160,7 +161,7 @@ gen_rkupdateimg() {
 	echo "package-file package-file" >> "${OUT}"
 	echo "bootloader loader.bin" >> "${OUT}"
 	echo "parameter parameter" >> "${OUT}"
-	grep -o "([^)]*)" "${PARAMETER}" | tr -d "()" | while read NAME;do
+	grep -o "([^)^:]*" parameter | tr -d "(" | while read NAME;do
 		echo -n "${NAME} " >> "${OUT}"
 		case "${NAME}" in
 			uboot-env)
