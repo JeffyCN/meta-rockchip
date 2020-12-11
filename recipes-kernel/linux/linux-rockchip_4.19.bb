@@ -4,9 +4,7 @@
 require recipes-kernel/linux/linux-yocto.inc
 require linux-rockchip.inc
 
-inherit freeze-rev
-
-SRCREV = "64b3c2cf3c7ace72a19aea709db77ccc5ca47722"
+SRCREV = "kernel-4.19-2020_12_11"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=kernel-4.19; \
 	file://cgroups.cfg \
