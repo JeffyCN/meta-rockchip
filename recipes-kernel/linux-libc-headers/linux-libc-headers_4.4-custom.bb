@@ -7,7 +7,7 @@ inherit auto-patch
 
 inherit freeze-rev
 
-SRCREV = "bbb718eeb1fb9772dd78ac0bbdbf7e2f6f0ea67c"
+SRCREV = "8c1056c59b4ef777c0d0bc3b77ceefc648917727"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=kernel; \
 "

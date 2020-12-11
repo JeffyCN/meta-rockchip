@@ -8,7 +8,7 @@ LIC_FILES_CHKSUM = "file://inc/rk_mpi.h;beginline=4;endline=14;md5=acbba394ae563
 
 PV_append = "+git${SRCPV}"
 
-SRCREV = "mpp-dev-2020_11_20"
+SRCREV = "mpp-dev-2020_12_11"
 SRC_URI = "git://github.com/JeffyCN/mirrors.git;branch=mpp-dev;"
 
 S = "${WORKDIR}/git"
