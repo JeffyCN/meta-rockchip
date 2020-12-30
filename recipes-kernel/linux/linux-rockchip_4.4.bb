@@ -6,7 +6,7 @@ require linux-rockchip.inc
 
 inherit freeze-rev
 
-SRCREV = "8c1056c59b4ef777c0d0bc3b77ceefc648917727"
+SRCREV = "d74a177292b31c2f043d0dce63634da3b31eb1e9"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=kernel; \
 	file://cgroups.cfg \

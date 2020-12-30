@@ -4,7 +4,7 @@
 require recipes-kernel/linux/linux-yocto.inc
 require linux-rockchip.inc
 
-SRCREV = "kernel-4.19-2020_12_11"
+SRCREV = "kernel-4.19-2020_12_30"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=kernel-4.19; \
 	file://cgroups.cfg \
