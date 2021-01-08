@@ -8,3 +8,5 @@ KBUILD_DEFCONFIG = "px30_linux_defconfig"
 
 MALI_GPU := "bifrost-g31"
 MALI_VERSION := "rxp0"
+
+RK_ISP_VERSION := "1"

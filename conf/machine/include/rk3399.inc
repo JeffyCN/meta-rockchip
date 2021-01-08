@@ -6,3 +6,5 @@ require conf/machine/include/rockchip-arm64-common.inc
 
 MALI_GPU := "midgard-t86x"
 MALI_VERSION := "r18p0"
+
+RK_ISP_VERSION := "1"
