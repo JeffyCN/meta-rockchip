@@ -2,7 +2,7 @@
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 MAJ_VER = "${@oe.utils.trim_version("${PV}", 3)}"
-PATCHPATH = "${CURDIR}/${PN}_${MAJ_VER}"
+PATCHPATH = "${CURDIR}/chromium_${MAJ_VER}"
 inherit auto-patch
 
 PACKAGECONFIG ??= "use-egl use-linux-v4l2 proprietary-codecs"

@@ -1,7 +1,7 @@
-From 93dac6f730629dc7f9456075542f2a9b4faed506 Mon Sep 17 00:00:00 2001
+From 35b73d21295a1b8d2b966f6014a02d9669a73eb3 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 5 Nov 2020 12:22:52 +0800
-Subject: [PATCH 9/9] media: capture: linux: Prefer using the first device
+Subject: [PATCH 09/11] media: capture: linux: Prefer using the first device
 
 Somehow the newest chromium would prefer using the last device in some
 cases, e.g. apprtc.
@@ -14,7 +14,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/media/capture/video/linux/video_capture_device_factory_linux.cc b/media/capture/video/linux/video_capture_device_factory_linux.cc
-index 9008c655..07128d22 100644
+index 9008c65..07128d2 100644
 --- a/media/capture/video/linux/video_capture_device_factory_linux.cc
 +++ b/media/capture/video/linux/video_capture_device_factory_linux.cc
 @@ -223,7 +223,8 @@ void VideoCaptureDeviceFactoryLinux::GetDevicesInfo(

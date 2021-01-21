@@ -1,7 +1,7 @@
-From 322c36169b48f9e85b1a9b088058566b1461498b Mon Sep 17 00:00:00 2001
+From 39f36d7ff86d0e98cb4ec89bd84e6f551fa4061b Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 30 Sep 2019 10:04:55 +0000
-Subject: [PATCH 4/9] ui: ozone: wayland: wayland-ime: Fix keycode conversion
+Subject: [PATCH 04/11] ui: ozone: wayland: wayland-ime: Fix keycode conversion
 
 Use the correct way to convert key code to dom code.
 
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 1 insertion(+), 8 deletions(-)
 
 diff --git a/ui/ozone/platform/wayland/host/wayland_input_method_context.cc b/ui/ozone/platform/wayland/host/wayland_input_method_context.cc
-index d03e64f3..bb4d1787 100644
+index d03e64f..bb4d178 100644
 --- a/ui/ozone/platform/wayland/host/wayland_input_method_context.cc
 +++ b/ui/ozone/platform/wayland/host/wayland_input_method_context.cc
 @@ -27,12 +27,6 @@

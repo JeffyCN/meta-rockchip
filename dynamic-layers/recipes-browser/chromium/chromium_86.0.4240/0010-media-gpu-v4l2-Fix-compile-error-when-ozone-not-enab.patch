@@ -1,7 +1,7 @@
-From 4bda43001c7a4e6c16c9efc3b9ba07fda9e8ed83 Mon Sep 17 00:00:00 2001
+From fbff27ba3a1863a759302619b2a36041597b7f7e Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 28 Sep 2020 20:02:00 +0800
-Subject: [PATCH 7/9] media: gpu: v4l2: Fix compile error when ozone not
+Subject: [PATCH 10/11] media: gpu: v4l2: Fix compile error when ozone not
  enabled
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 17 insertions(+), 2 deletions(-)
 
 diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
-index 68fac954..95629383 100644
+index 68fac95..9562938 100644
 --- a/media/gpu/v4l2/BUILD.gn
 +++ b/media/gpu/v4l2/BUILD.gn
 @@ -8,7 +8,10 @@ import("//media/gpu/args.gni")
@@ -43,7 +43,7 @@ index 68fac954..95629383 100644
      deps += [ ":libv4l2_stubs" ]
    }
 diff --git a/media/gpu/v4l2/generic_v4l2_device.cc b/media/gpu/v4l2/generic_v4l2_device.cc
-index b0e6757f..adddf7e0 100644
+index b0e6757..adddf7e 100644
 --- a/media/gpu/v4l2/generic_v4l2_device.cc
 +++ b/media/gpu/v4l2/generic_v4l2_device.cc
 @@ -34,8 +34,11 @@
