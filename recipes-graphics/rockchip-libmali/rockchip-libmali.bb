@@ -14,7 +14,7 @@ inherit freeze-rev
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=libmali; \
 "
-SRCREV = "64c6c30728fb3d1108791bea166afaeb207ef5a1"
+SRCREV = "6141ad6e6f2d3eb38e7e0962f61b78510b2e2d2c"
 S = "${WORKDIR}/git"
 
 PATCHPATH = "${THISDIR}/files"
