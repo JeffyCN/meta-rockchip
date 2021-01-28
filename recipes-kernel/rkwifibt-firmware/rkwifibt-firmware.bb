@@ -55,7 +55,7 @@ FILES_${PN}-ap6212a1-wifi = " \
 	system/etc/firmware/nvram_ap6212a.txt \
 "
 FILES_${PN}-ap6212a1-bt = " \
-	system/etc/firmware/bcm43438a1.hcd \
+	system/etc/firmware/BCM43430A1.hcd \
 "
 
 FILES_${PN}-ap6236-wifi = " \
@@ -64,7 +64,7 @@ FILES_${PN}-ap6236-wifi = " \
 	system/etc/firmware/nvram_ap6236.txt \
 "
 FILES_${PN}-ap6236-bt = " \
-	system/etc/firmware/BCM4343B0.hcd \
+	system/etc/firmware/BCM43430B0.hcd \
 "
 
 FILES_${PN}-ap6255-wifi = " \
@@ -81,7 +81,7 @@ FILES_${PN}-ap6354-wifi = " \
 	system/etc/firmware/nvram_ap6354.txt \
 "
 FILES_${PN}-ap6354-bt = " \
-	system/etc/firmware/bcm4354a1.hcd \
+	system/etc/firmware/BCM4350C0.hcd \
 "
 
 FILES_${PN}-ap6356-wifi = " \
@@ -90,7 +90,7 @@ FILES_${PN}-ap6356-wifi = " \
 	system/etc/firmware/nvram_ap6356s.txt \
 "
 FILES_${PN}-ap6356-bt = " \
-	system/etc/firmware/BCM4356A2.hcd \
+	system/etc/firmware/BCM4354A2.hcd \
 "
 
 FILES_${PN}-ap6398s-wifi = " \
