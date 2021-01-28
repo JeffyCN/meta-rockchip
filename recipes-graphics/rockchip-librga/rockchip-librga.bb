@@ -4,8 +4,8 @@
 DESCRIPTION = "Rockchip RGA 2D graphics acceleration library"
 SECTION = "libs"
 
-LICENSE = "GPLv2+"
-LIC_FILES_CHKSUM = "file://COPYING;md5=6d1e4aa87f6192354d3de840cf774d93"
+LICENSE = "Apache-2.0"
+LIC_FILES_CHKSUM = "file://COPYING;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
 DEPENDS = "libdrm"
 
