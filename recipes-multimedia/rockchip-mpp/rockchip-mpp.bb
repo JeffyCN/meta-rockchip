@@ -8,8 +8,10 @@ LIC_FILES_CHKSUM = "file://inc/rk_mpi.h;beginline=4;endline=14;md5=acbba394ae563
 
 PV_append = "+git${SRCPV}"
 
-SRCREV = "mpp-dev-2020_12_30"
-SRC_URI = "git://github.com/JeffyCN/mirrors.git;branch=mpp-dev;"
+inherit freeze-rev
+
+SRCREV = "41c9c809b0c1d7164954468daf20710ffac1f87d"
+SRC_URI = "git://github.com/JeffyCN/mirrors.git;nobranch=1;branch=mpp-dev-2020_12_30;"
 
 S = "${WORKDIR}/git"
 

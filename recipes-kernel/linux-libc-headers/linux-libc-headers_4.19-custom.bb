@@ -9,7 +9,7 @@ inherit freeze-rev
 
 SRCREV = "aaadd06f5207790c791180dab99b3ebf7898345c"
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;branch=kernel-4.19; \
+	git://github.com/JeffyCN/mirrors.git;nobranch=1;branch=kernel-4.19-2020_12_30; \
 "
 
 S = "${WORKDIR}/git"
