@@ -1,7 +1,7 @@
 # Copyright (C) 2019, Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-inherit native deploy
+inherit freeze-rev deploy native
 
 DESCRIPTION = "Rockchip binary tools"
 
@@ -14,8 +14,6 @@ SRC_URI = " \
 "
 
 PV_append = "+git${SRCPV}"
-
-inherit freeze-rev
 
 SRCREV_rkbin = "11d296aa4e5c066eee340a568ef9e91dc28cbe4c"
 SRCREV_tools = "03796552d1a381223b20d0d75da3412cece8aacb"
