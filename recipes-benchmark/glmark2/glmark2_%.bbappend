@@ -3,3 +3,5 @@
 
 # Some opengl[es] libraries are multithreaded.
 LDFLAGS += "-pthread"
+
+DEPENDS_append = " ${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'wayland-protocols', '', d)}"
