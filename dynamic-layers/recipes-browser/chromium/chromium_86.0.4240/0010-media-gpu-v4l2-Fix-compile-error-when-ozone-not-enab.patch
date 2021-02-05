@@ -34,7 +34,7 @@ index 68fac95..9562938 100644
    ]
  
 +  if (use_ozone) {
-+    deps = [
++    deps += [
 +      "//ui/ozone",
 +    ]
 +  }
