@@ -104,6 +104,11 @@ do_post_rootfs() {
 
 IMAGE_POSTPROCESS_COMMAND += "gen_rkparameter;"
 gen_rkparameter() {
+	if [ ! -f "${DEPLOY_DIR_IMAGE}/loader.bin" ];then
+		echo "Skip making Rockchip parameter."
+		return
+	fi
+
 	IMAGE="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.wic"
 	if [ ! -f "${IMAGE}" ];then
 		echo "${IMAGE} not found."
@@ -140,6 +145,11 @@ gen_rkparameter() {
 IMAGE_POSTPROCESS_COMMAND += "gen_rkupdateimg;"
 do_image[depends] += "rk-binary-native:do_populate_sysroot"
 gen_rkupdateimg() {
+	if [ ! -f "${DEPLOY_DIR_IMAGE}/loader.bin" ];then
+		echo "Skip packing Rockchip update image."
+		return
+	fi
+
 	IMAGE="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.wic"
 	if [ ! -f "${IMAGE}" ];then
 		echo "${IMAGE} not found."
