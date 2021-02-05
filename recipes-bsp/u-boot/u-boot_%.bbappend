@@ -25,11 +25,25 @@ EXTRA_OEMAKE += "PYTHON=nativepython"
 # Needed for packing BSP u-boot
 DEPENDS += "coreutils-native python-pyelftools-native"
 
-# Make sure we use nativepython
+python do_unpack_append() {
+    if not d.getVar('S').endswith('/git'):
+        # Force fetch to re-run for local source
+        bb.build.write_taint('do_fetch', d)
+}
+
 do_configure_prepend() {
+	# Make sure we use nativepython
 	for s in `grep -rIl python ${S}`; do
 		sed -i -e '1s|^#!.*python[23]*|#!/usr/bin/env nativepython|' $s
 	done
+
+	# Copy prebuilt images
+	if [ -e "${S}/${UBOOT_BINARY}" ]; then
+		bbnote "${PN}: Found prebuilt images."
+		mv ${S}/*.bin ${S}/*.img ${B}/
+	fi
+
+	[ -e "${S}/.config" ] && make -C ${S} mrproper
 }
 
 # Generate Rockchip style loader binaries
@@ -38,19 +52,24 @@ RK_LOADER_BIN = "loader.bin"
 RK_TRUST_IMG = "trust.img"
 UBOOT_BINARY = "uboot.img"
 
-do_compile_append () {
+do_compile_append() {
 	cd ${B}
 
-	# Prepare needed files
-	for d in make.sh scripts configs arch/arm/mach-rockchip; do
-		cp -rT ${S}/${d} ${d}
-	done
+	if [ -e "${B}/${UBOOT_BINARY}" ]; then
+		bbnote "${PN}: Using prebuilt images."
+	else
+		# Prepare needed files
+		for d in make.sh scripts configs arch/arm/mach-rockchip; do
+			cp -rT ${S}/${d} ${d}
+		done
 
-	# Remove unneeded stages from make.sh
-	sed -i -e "/^select_tool/d" -e "/^clean/d" -e "/^\t*make/d" make.sh
+		# Remove unneeded stages from make.sh
+		sed -i -e "/^select_tool/d" -e "/^clean/d" -e "/^\t*make/d" \
+			make.sh
 
-	# Pack rockchip loader images
-	./make.sh ${UBOOT_MACHINE%_defconfig}
+		# Pack rockchip loader images
+		./make.sh ${UBOOT_MACHINE%_defconfig}
+	fi
 
 	ln -sf *_loader*.bin "${RK_LOADER_BIN}"
 
@@ -68,7 +87,7 @@ do_compile_append () {
 	cat FlashBoot >> "${RK_IDBLOCK_IMG}"
 }
 
-do_deploy_append () {
+do_deploy_append() {
 	cd ${B}
 
 	for binary in "${RK_IDBLOCK_IMG}" "${RK_LOADER_BIN}" "${RK_TRUST_IMG}";do
