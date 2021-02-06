@@ -10,8 +10,8 @@ PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
 
-SRCREV = "8dd7e8f37fd2fcb3084e2bf1d2e622c4c5ce6a6e"
-SRC_URI = "git://github.com/JeffyCN/mirrors.git;nobranch=1;branch=mpp-dev-2021_01_27;"
+SRCREV = "230e98de1f6553f67a633c9492dd980117d94545"
+SRC_URI = "git://github.com/JeffyCN/mirrors.git;nobranch=1;branch=mpp-dev-2021_02_06;"
 
 S = "${WORKDIR}/git"
 
