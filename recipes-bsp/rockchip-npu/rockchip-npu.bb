@@ -9,8 +9,6 @@ LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf0
 
 RDEPENDS_${PN} = "bash"
 
-PATCHPATH = "${THISDIR}/files"
-
 PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
