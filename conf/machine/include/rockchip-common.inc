@@ -13,6 +13,8 @@ KERNEL_IMAGETYPE ?= "Image"
 KBUILD_DEFCONFIG ?= "rockchip_linux_defconfig"
 MACHINEOVERRIDES .= ":rockchip"
 
+PREFERRED_PROVIDER_virtual/bootloader ?= "u-boot"
+
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-rockchip"
 
 # Prefer using Rockchip BSP kernel 4.4
