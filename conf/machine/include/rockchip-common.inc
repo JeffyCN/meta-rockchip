@@ -102,6 +102,12 @@ do_post_rootfs() {
 	done
 }
 
+IMAGE_POSTPROCESS_COMMAND += "link_rootfs_image;"
+link_rootfs_image() {
+	ln -sf "${IMAGE_LINK_NAME}.${RK_ROOTFS_TYPE}" \
+		"${IMGDEPLOYDIR}/rootfs.img"
+}
+
 IMAGE_POSTPROCESS_COMMAND += "gen_rkparameter;"
 gen_rkparameter() {
 	if [ ! -f "${DEPLOY_DIR_IMAGE}/loader.bin" ];then
@@ -166,8 +172,6 @@ gen_rkupdateimg() {
 		f="${DEPLOY_DIR_IMAGE}/${img}"
 		[ -f "${f}" ] && ln -sf "${f}" .
 	done
-
-	ln -sf "${IMAGE_LINK_NAME}.${RK_ROOTFS_TYPE}" rootfs.img
 
 	OUT="${IMAGE_LINK_NAME}.package-file"
 	ln -sf "${OUT}" package-file
