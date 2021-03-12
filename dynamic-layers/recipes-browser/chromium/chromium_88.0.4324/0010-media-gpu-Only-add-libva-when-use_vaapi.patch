@@ -1,0 +1,28 @@
+From e3123ccfd1e7bd5b8808817b0a7dd6c5899e4404 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 5 Nov 2020 17:28:21 +0800
+Subject: [PATCH 10/10] media: gpu: Only add libva when use_vaapi
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/BUILD.gn | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/media/gpu/BUILD.gn b/media/gpu/BUILD.gn
+index 2f4ad1ef..6b639e70 100644
+--- a/media/gpu/BUILD.gn
++++ b/media/gpu/BUILD.gn
+@@ -471,7 +471,9 @@ if (use_v4l2_codec || use_vaapi || is_mac || is_win) {
+     sources = [ "video_encode_accelerator_unittest.cc" ]
+     if (use_x11) {
+       deps += [ "//ui/gfx/x" ]
+-      public_configs = [ "//build/config/linux/libva" ]
++      if (use_vaapi) {
++        public_configs = [ "//build/config/linux/libva" ]
++      }
+     }
+     if (use_ozone) {
+       deps += [ "//ui/ozone" ]
+-- 
+2.20.1
+
