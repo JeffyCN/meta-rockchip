@@ -16,6 +16,7 @@ SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=u-boot; \
 	git://github.com/JeffyCN/mirrors.git;branch=rkbin;name=rkbin;destsuffix=rkbin; \
 "
+SRC_URI_remove += " file://0001-riscv32-Use-double-float-ABI-for-rv32.patch"
 SRCREV_FORMAT = "default_rkbin"
 
 # Force using python2 for BSP u-boot
