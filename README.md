@@ -12,14 +12,14 @@ Please see the corresponding sections below for details.
 This layer depends on:
 
 * URI: git://git.yoctoproject.org/poky
-* branch: warrior zeus dunfell gatesgarth
+* branch: zeus dunfell gatesgarth hardknott
 
 * URI: git://git.openembedded.org/meta-openembedded
 * layers: meta-oe
-* branch: warrior zeus dunfell gatesgarth
+* branch: zeus dunfell gatesgarth hardknott
 
 * URI: git://git.openembedded.org/meta-python2
-* branch: warrior zeus dunfell gatesgarth
+* branch: zeus dunfell gatesgarth hardknott
 
 ## Table of Contents
 
