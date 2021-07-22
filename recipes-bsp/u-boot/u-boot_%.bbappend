@@ -38,10 +38,14 @@ do_configure_prepend() {
 		sed -i -e '1s|^#!.*python[23]*|#!/usr/bin/env nativepython|' $s
 	done
 
-	# Copy prebuilt images
-	if [ -e "${S}/${UBOOT_BINARY}" ]; then
-		bbnote "${PN}: Found prebuilt images."
-		mv ${S}/*.bin ${S}/*.img ${B}/
+
+	if [ "x${RK_ALLOW_PREBUILT_UBOOT}" = "x1" ]; then
+		# Copy prebuilt images
+		if [ -e "${S}/${UBOOT_BINARY}" ]; then
+			bbnote "${PN}: Found prebuilt images."
+			mkdir -p ${B}/prebuilt/
+			mv ${S}/*.bin ${S}/*.img ${B}/prebuilt/
+		fi
 	fi
 
 	[ -e "${S}/.config" ] && make -C ${S} mrproper
@@ -56,8 +60,9 @@ UBOOT_BINARY = "uboot.img"
 do_compile_append() {
 	cd ${B}
 
-	if [ -e "${B}/${UBOOT_BINARY}" ]; then
+	if [ -e "${B}/prebuilt/${UBOOT_BINARY}" ]; then
 		bbnote "${PN}: Using prebuilt images."
+		ln -sf ${B}/prebuilt/*.bin ${B}/prebuilt/*.img ${B}/
 	else
 		# Prepare needed files
 		for d in make.sh scripts configs arch/arm/mach-rockchip; do
