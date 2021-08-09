@@ -16,7 +16,7 @@ PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
 
-SRCREV = "66874dce46531ccaa3534fcddc5f89415f6349d3"
+SRCREV = "fafcd69874d20a7737425cc16a70619b220f8a2e"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=camera_engine_rkisp; \
 	file://rkisp_daemons.sh \

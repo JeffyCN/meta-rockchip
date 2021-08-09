@@ -14,7 +14,7 @@ inherit freeze-rev
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=alsa-config; \
 "
-SRCREV = "2f464eefd27973142bda49c952172695a161fbc3"
+SRCREV = "1b88e694695ef2edfc5bc320a2f1b0935ca76a29"
 S = "${WORKDIR}/git"
 
 inherit meson

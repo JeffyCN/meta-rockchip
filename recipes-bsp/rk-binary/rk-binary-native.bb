@@ -8,14 +8,14 @@ DESCRIPTION = "Rockchip binary tools"
 LICENSE = "LICENSE.rockchip"
 LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf038f44e708bbb13e4ed9"
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;nobranch=1;branch=rkbin-2021_05_18;name=rkbin \
+	git://github.com/JeffyCN/mirrors.git;nobranch=1;branch=rkbin-2021_08_09;name=rkbin \
 	git://github.com/JeffyCN/mirrors.git;branch=tools;name=tools;destsuffix=git/extra \
 "
 
 PV_append = "+git${SRCPV}"
 
-SRCREV_rkbin = "efeaf88021e869fd641bf7b4e0b98ca7f8d513f0"
-SRCREV_tools = "edc8dc686de9b8d967e1a95ab2da252592a16008"
+SRCREV_rkbin = "b2dec11618b644d7fc8ac0eb7694a245667f5981"
+SRCREV_tools = "be00925f963bbd6e95a3b228342c7e816183cdd8"
 SRCREV_FORMAT ?= "rkbin_tools"
 
 S = "${WORKDIR}/git"
