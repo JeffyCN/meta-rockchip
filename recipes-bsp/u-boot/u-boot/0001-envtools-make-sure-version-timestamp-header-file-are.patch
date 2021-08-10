@@ -1,4 +1,4 @@
-From 193addb12b5d131673720f16b523fec0cfbd0b67 Mon Sep 17 00:00:00 2001
+From b3ef9bf669ae643f9d6cdcea371e4459eca43d09 Mon Sep 17 00:00:00 2001
 From: Stefan Agner <stefan.agner@toradex.com>
 Date: Tue, 14 Nov 2017 15:47:18 +0100
 Subject: [PATCH 1/6] envtools: make sure version/timestamp header file are
@@ -21,10 +21,10 @@ Reviewed-by: Simon Glass <sjg@chromium.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Makefile b/Makefile
-index de68fa12be..17fde7b4aa 100644
+index ff76e85599..8de054343e 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1481,7 +1481,7 @@ checkarmreloc: u-boot
+@@ -1483,7 +1483,7 @@ checkarmreloc: u-boot
  		false; \
  	fi
  

@@ -1,4 +1,4 @@
-From fcd16637970338ed3618c0ae971e38faf9a28bfe Mon Sep 17 00:00:00 2001
+From a0caa6da0d6e04dd3aa585bcdd065590e1551700 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 2 Apr 2019 13:51:25 +0800
 Subject: [PATCH 3/6] rockchip: vendor: Fix maybe-uninitialized
@@ -14,10 +14,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm/mach-rockchip/vendor.c b/arch/arm/mach-rockchip/vendor.c
-index d6703fb9b4..853585fd3c 100644
+index 51fa0de172..9d6adb2fd4 100644
 --- a/arch/arm/mach-rockchip/vendor.c
 +++ b/arch/arm/mach-rockchip/vendor.c
-@@ -784,7 +784,9 @@ int vendor_storage_test(void)
+@@ -792,7 +792,9 @@ int vendor_storage_test(void)
  		size = total_size / item_num;
  		break;
  	default:

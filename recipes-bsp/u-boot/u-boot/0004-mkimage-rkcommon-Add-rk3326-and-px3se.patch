@@ -1,4 +1,4 @@
-From 31f2ff5cad536783fbbe8fb95864dc0f00b8eb44 Mon Sep 17 00:00:00 2001
+From b2f522e38bf8f0048e201e9e3fafc429b5134b43 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 22 Mar 2019 14:38:11 +0800
 Subject: [PATCH 4/6] mkimage: rkcommon: Add rk3326 and px3se
@@ -10,22 +10,25 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 2 insertions(+)
 
 diff --git a/tools/rkcommon.c b/tools/rkcommon.c
-index 220c699ab4..d910fb1b04 100644
+index 738e365d74..69b0f686b6 100644
 --- a/tools/rkcommon.c
 +++ b/tools/rkcommon.c
-@@ -69,10 +69,12 @@ static struct spl_info spl_infos[] = {
- 	{ "rk3036", "RK30", 0x1000, false },
- 	{ "rk3066", "RK30", 0x8000, true, },
- 	{ "rk3128", "RK31", 0x1800, false },
-+	{ "px3se", "RK31", 0x1800, false },
- 	{ "rk3188", "RK31", 0x8000 - 0x800, true },
- 	{ "rk322x", "RK32", 0x8000 - 0x1000, false },
- 	{ "rk3288", "RK32", 0x8000, false },
- 	{ "rk3308", "RK33", 0x40000 - 0x1000, false},
-+	{ "rk3326", "RK33", 0x2800, false },
- 	{ "rk3328", "RK32", 0x8000 - 0x800, false },
- 	{ "rk3368", "RK33", 0x8000 - 0x1000, false },
- 	{ "rk3399", "RK33", 0x30000 - 0x2000, false },
+@@ -125,6 +125,7 @@ static struct spl_info spl_infos[] = {
+ 	{ "rk3036", "RK30", 0x1000, false, RK_HEADER_V1 },
+ 	{ "rk3066", "RK30", 0x8000, true, RK_HEADER_V1 },
+ 	{ "rk3128", "RK31", 0x1800, false, RK_HEADER_V1 },
++	{ "px3se", "RK31", 0x1800, false, RK_HEADER_V1 },
+ 	{ "rk3188", "RK31", 0x8000 - 0x800, true, RK_HEADER_V1 },
+ 	{ "rk322x", "RK32", 0x8000 - 0x1000, false, RK_HEADER_V1 },
+ 	{ "rk3288", "RK32", 0x8000, false, RK_HEADER_V1 },
+@@ -132,6 +133,7 @@ static struct spl_info spl_infos[] = {
+ 	{ "rk3328", "RK32", 0x8000 - 0x800, false, RK_HEADER_V1 },
+ 	{ "rk3368", "RK33", 0x8000 - 0x1000, false, RK_HEADER_V1 },
+ 	{ "rk3399", "RK33", 0x30000 - 0x2000, false, RK_HEADER_V1 },
++	{ "rk3326", "RK33", 0x2800, false, RK_HEADER_V1 },
+ 	{ "px30", "RK33", 0x2800, false, RK_HEADER_V1 },
+ 	{ "rv1108", "RK11", 0x1800, false, RK_HEADER_V1 },
+ 	{ "rv1126", "110B", 0x10000 - 0x1000, false, RK_HEADER_V1 },
 -- 
 2.20.1
 

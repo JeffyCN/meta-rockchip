@@ -1,4 +1,4 @@
-From 990c1d4c7db317fc19ce3da19525aeac2de0da37 Mon Sep 17 00:00:00 2001
+From 7584fcd41984bef60fecfe0d59645c4ead19b6ff Mon Sep 17 00:00:00 2001
 From: Stefano Babic <sbabic@denx.de>
 Date: Wed, 13 Mar 2019 09:46:45 +0100
 Subject: [PATCH 6/6] Add target to generate initial environment
@@ -27,10 +27,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 7 insertions(+)
 
 diff --git a/Makefile b/Makefile
-index 85bcd0c800..cbadc21da3 100644
+index 8c83799e42..782d62110b 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1698,6 +1698,13 @@ endif
+@@ -1700,6 +1700,13 @@ endif
  	$(build)=$(build-dir) $(@:.ko=.o)
  	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
  

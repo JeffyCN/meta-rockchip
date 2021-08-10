@@ -1,4 +1,4 @@
-From da62a3139226e3889ed6a08a03084d88a36635f7 Mon Sep 17 00:00:00 2001
+From 877c8a4d01d5093b1c1800ce84a3a951ff8a9cf6 Mon Sep 17 00:00:00 2001
 From: Heinrich Schuchardt <xypron.glpk@gmx.de>
 Date: Sun, 3 Sep 2017 08:17:46 +0200
 Subject: [PATCH 5/6] scripts/Makefile.lib: remove overridden target
@@ -29,7 +29,7 @@ Change-Id: I6b9557fab36be314c7fda3988db6c80e8e1e0e92
  1 file changed, 2 deletions(-)
 
 diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
-index 12d1123a07..8d5ca02c14 100644
+index a384b41898..eaf86593a3 100644
 --- a/scripts/Makefile.lib
 +++ b/scripts/Makefile.lib
 @@ -392,8 +392,6 @@ cmd_efi_ld = $(LD) -nostdlib -znocombreloc -T $(EFI_LDS_PATH) -shared \
