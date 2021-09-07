@@ -1,7 +1,7 @@
 # Copyright (C) 2019, Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-inherit freeze-rev deploy native
+inherit freeze-rev local-git deploy native
 
 DESCRIPTION = "Rockchip binary tools"
 

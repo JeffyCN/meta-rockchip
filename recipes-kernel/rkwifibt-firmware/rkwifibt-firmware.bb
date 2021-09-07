@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf0
 
 PV_append = "+git${SRCPV}"
 
-inherit freeze-rev
+inherit freeze-rev local-git
 
 SRCREV = "e1c9092ffe3868eaea266818ab0026dc6143e1c1"
 SRC_URI = "git://github.com/JeffyCN/mirrors.git;branch=rkwifibt;"

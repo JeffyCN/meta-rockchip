@@ -11,7 +11,7 @@ DEPENDS = "libdrm"
 
 PV_append = "+git${SRCPV}"
 
-inherit freeze-rev
+inherit freeze-rev local-git
 
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=linux-rga; \

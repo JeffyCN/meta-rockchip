@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://NOTICE;md5=9645f39e9db895a4aa6e02cb57294595"
 
 PV_append = "+git${SRCPV}"
 
-inherit freeze-rev
+inherit freeze-rev local-git
 
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;branch=alsa-config; \

@@ -5,7 +5,7 @@ require recipes-kernel/linux-libc-headers/linux-libc-headers.inc
 
 inherit auto-patch
 
-inherit freeze-rev
+inherit freeze-rev local-git
 
 SRCREV = "28475410de8797517802f2aa9b72660b3b2c123b"
 SRC_URI = " \
