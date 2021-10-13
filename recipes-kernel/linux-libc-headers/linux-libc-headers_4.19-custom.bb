@@ -7,9 +7,9 @@ inherit auto-patch
 
 inherit freeze-rev local-git
 
-SRCREV = "28475410de8797517802f2aa9b72660b3b2c123b"
+SRCREV = "106d1430c1474c8d6b63b18fdb7e695e00bba191"
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;nobranch=1;branch=kernel-4.19-2021_08_09; \
+	git://github.com/JeffyCN/mirrors.git;nobranch=1;branch=kernel-4.19-2021_10_13; \
 "
 
 S = "${WORKDIR}/git"
