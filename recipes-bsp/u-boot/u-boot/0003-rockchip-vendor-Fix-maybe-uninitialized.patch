@@ -1,4 +1,4 @@
-From a0caa6da0d6e04dd3aa585bcdd065590e1551700 Mon Sep 17 00:00:00 2001
+From dd7f492bea1c8753c3300e947334bba629f6128b Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 2 Apr 2019 13:51:25 +0800
 Subject: [PATCH 3/6] rockchip: vendor: Fix maybe-uninitialized
@@ -10,20 +10,17 @@ arch/arm/mach-rockchip/vendor.c:663:6  error: 'item_num' may be used uninitializ
 Change-Id: Ie80c345f6b8008fd4b46ba54788a6ac10d94e4f1
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- arch/arm/mach-rockchip/vendor.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ arch/arm/mach-rockchip/vendor.c | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/arch/arm/mach-rockchip/vendor.c b/arch/arm/mach-rockchip/vendor.c
-index 51fa0de172..9d6adb2fd4 100644
+index 048cb982e6..56e6ba019b 100644
 --- a/arch/arm/mach-rockchip/vendor.c
 +++ b/arch/arm/mach-rockchip/vendor.c
-@@ -792,7 +792,9 @@ int vendor_storage_test(void)
- 		size = total_size / item_num;
- 		break;
+@@ -794,6 +794,7 @@ int vendor_storage_test(void)
  	default:
--		total_size = 0;
-+		item_num = 0;
-+ 		total_size = 0;
+ 		item_num = 0;
+ 		total_size = 0;
 +		size = 0;
  		break;
  	}
