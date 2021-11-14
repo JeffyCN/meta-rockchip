@@ -8,7 +8,7 @@ inherit freeze-rev local-git
 
 SRCREV = "106d1430c1474c8d6b63b18fdb7e695e00bba191"
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;nobranch=1;branch=kernel-4.19-2021_10_13; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=kernel-4.19-2021_10_13; \
 	file://cgroups.cfg \
 "
 

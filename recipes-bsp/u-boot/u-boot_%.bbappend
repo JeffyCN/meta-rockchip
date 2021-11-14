@@ -13,8 +13,8 @@ inherit freeze-rev local-git
 SRCREV = "6866616e99a99f86f18a87de128c0bfbf7d551b7"
 SRCREV_rkbin = "8bc6faf5dfa92c304ec0712f59eb6c86df573741"
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;branch=u-boot; \
-	git://github.com/JeffyCN/mirrors.git;branch=rkbin;name=rkbin;destsuffix=rkbin; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=u-boot; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkbin;name=rkbin;destsuffix=rkbin; \
 "
 SRC_URI_remove += " file://0001-riscv32-Use-double-float-ABI-for-rv32.patch"
 SRCREV_FORMAT = "default_rkbin"

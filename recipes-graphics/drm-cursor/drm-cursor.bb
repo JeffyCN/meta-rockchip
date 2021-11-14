@@ -12,7 +12,7 @@ DEPENDS = "libdrm virtual/libgles2 virtual/libgbm"
 PV_append = "+git${SRCPV}"
 
 SRC_URI = " \
-	git://github.com/JeffyCN/drm-cursor.git \
+	git://github.com/JeffyCN/drm-cursor.git;protocol=https;branch=master \
 "
 SRCREV = "6ea7c6be466bf697c77be7fa3ab51941e08ea052"
 S = "${WORKDIR}/git"

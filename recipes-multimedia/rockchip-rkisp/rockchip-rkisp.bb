@@ -18,7 +18,7 @@ inherit freeze-rev local-git
 
 SRCREV = "fafcd69874d20a7737425cc16a70619b220f8a2e"
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;branch=camera_engine_rkisp; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=camera_engine_rkisp; \
 	file://rkisp_daemons.sh \
 "
 

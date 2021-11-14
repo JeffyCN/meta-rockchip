@@ -4,7 +4,7 @@
 DEPENDS += "util-macros-native font-util-native xtrans-native rockchip-librga"
 
 SRCREV = "${AUTOREV}"
-SRC_URI += "git://github.com/JeffyCN/xorg-xserver;nobranch=1;branch=${PV}_2021_03_15;"
+SRC_URI += "git://github.com/JeffyCN/xorg-xserver;protocol=https;nobranch=1;branch=${PV}_2021_12_03;"
 SRC_URI_remove = "https://www.x.org/releases//individual/xserver/xorg-server-${PV}.tar.bz2"
 S = "${WORKDIR}/git"
 
