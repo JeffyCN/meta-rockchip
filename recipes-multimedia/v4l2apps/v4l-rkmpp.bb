@@ -8,7 +8,7 @@ SECTION = "libs"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d749e86a105281d7a44c2328acebc4b0"
 
-PV_append = "+git${SRCPV}"
+PV:append = "+git${SRCPV}"
 
 inherit freeze-rev
 
@@ -21,4 +21,4 @@ DEPENDS = "rockchip-mpp rockchip-librga libv4l"
 
 inherit autotools pkgconfig
 
-FILES_${PN} = "${libdir}/libv4l/plugins/*.so"
+FILES:${PN} = "${libdir}/libv4l/plugins/*.so"

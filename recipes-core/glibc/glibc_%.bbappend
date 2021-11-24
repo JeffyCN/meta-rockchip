@@ -2,4 +2,4 @@
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 # Avoid dup files warning in multilib case
-SSTATE_DUPWHITELIST += "${COMPONENTS_DIR}/${PACKAGE_ARCH}/glibc-stash-locale"
+SSTATE_DUPWHITELIST:append = " ${COMPONENTS_DIR}/${PACKAGE_ARCH}/glibc-stash-locale"

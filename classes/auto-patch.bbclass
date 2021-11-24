@@ -15,8 +15,6 @@ python () {
     files.sort()
     for file in files:
         if file.endswith('.patch'):
-            d.appendVar('SRC_URI', ' file://' + file)
+            d.appendVar('SRC_URI', ' file://' + dir + '/' + file)
             bb.debug(2, 'Adding patch: ' + file + ' for ' + dir)
-
-    d.prependVar('FILESEXTRAPATHS', dir + ':')
 }

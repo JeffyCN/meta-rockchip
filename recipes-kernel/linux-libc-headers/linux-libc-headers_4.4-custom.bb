@@ -16,6 +16,6 @@ S = "${WORKDIR}/git"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=d7810fab7487fb0aad327b76f1be7cd7"
 
-do_install_armmultilib_prepend() {
+do_install_armmultilib:prepend() {
 	touch ${D}${includedir}/asm/bpf_perf_event.h
 }

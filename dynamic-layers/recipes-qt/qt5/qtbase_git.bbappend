@@ -4,4 +4,4 @@
 PACKAGECONFIG_GL = "${@bb.utils.contains('DISTRO_FEATURES', 'opengl', 'gles2', '', d)}"
 PACKAGECONFIG_FONTS = "fontconfig"
 
-PACKAGECONFIG_append += "gbm kms eglfs linuxfb"
+PACKAGECONFIG:append = " gbm kms eglfs linuxfb"

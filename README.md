@@ -12,11 +12,11 @@ Please see the corresponding sections below for details.
 This layer depends on:
 
 * URI: git://git.yoctoproject.org/poky
-* branch: zeus dunfell gatesgarth hardknott
+* branch: honister
 
 * URI: git://git.openembedded.org/meta-openembedded
 * layers: meta-oe
-* branch: zeus dunfell gatesgarth hardknott
+* branch: honister
 
 ## Table of Contents
 
@@ -36,8 +36,8 @@ In order to build an image with BSP support for a given release, you need to dow
 
 ```shell
 ~ $ mkdir yocto; cd yocto
-~/yocto $ git clone git://git.yoctoproject.org/poky -b dunfell
-~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b dunfell
+~/yocto $ git clone git://git.yoctoproject.org/poky -b honister
+~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b honister
 ```
 
 And put the meta-rockchip layer here too.

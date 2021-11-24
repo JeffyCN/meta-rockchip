@@ -10,9 +10,9 @@ DESCRIPTION = "GStreamer 1.0 plugins for Rockchip platforms"
 
 LICENSE = "LGPL-2.1"
 LIC_FILES_CHKSUM = "file://COPYING;md5=4fbd65380cdd255951079008b364516c"
-DEPENDS += "gstreamer1.0-plugins-base"
+DEPENDS:append = " gstreamer1.0-plugins-base"
 
-PV_append = "+git${SRCPV}"
+PV:append = "+git${SRCPV}"
 
 inherit freeze-rev local-git
 

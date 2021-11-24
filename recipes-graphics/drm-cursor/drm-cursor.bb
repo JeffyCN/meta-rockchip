@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=d749e86a105281d7a44c2328acebc4b0"
 
 DEPENDS = "libdrm virtual/libgles2 virtual/libgbm"
 
-PV_append = "+git${SRCPV}"
+PV:append = "+git${SRCPV}"
 
 SRC_URI = " \
 	git://github.com/JeffyCN/drm-cursor.git;protocol=https;branch=master \

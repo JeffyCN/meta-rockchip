@@ -14,7 +14,7 @@ SRC_URI = " \
 
 S = "${WORKDIR}"
 
-do_compile_append() {
+do_compile:append() {
 	${CC} ${CFLAGS} ${LDFLAGS} brcm_patchram_plus1.c -o brcm_patchram_plus
 }
 

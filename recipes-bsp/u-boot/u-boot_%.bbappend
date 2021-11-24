@@ -18,15 +18,15 @@ SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=u-boot; \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkbin;name=rkbin;destsuffix=rkbin; \
 "
-SRC_URI_remove += " file://0001-riscv32-Use-double-float-ABI-for-rv32.patch"
+SRC_URI:remove = "file://0001-riscv32-Use-double-float-ABI-for-rv32.patch"
 SRCREV_FORMAT = "default_rkbin"
 
-DEPENDS += "${PYTHON_PN}-native"
+DEPENDS:append = " ${PYTHON_PN}-native"
 
 # Needed for packing BSP u-boot
-DEPENDS += "coreutils-native ${PYTHON_PN}-pyelftools-native"
+DEPENDS:append = " coreutils-native ${PYTHON_PN}-pyelftools-native"
 
-do_configure_prepend() {
+do_configure:prepend() {
 	# Make sure we use /usr/bin/env ${PYTHON_PN} for scripts
 	for s in `grep -rIl python ${S}`; do
 		sed -i -e '1s|^#!.*python[23]*|#!/usr/bin/env ${PYTHON_PN}|' $s
@@ -59,7 +59,7 @@ RK_LOADER_BIN = "loader.bin"
 RK_TRUST_IMG = "trust.img"
 UBOOT_BINARY = "uboot.img"
 
-do_compile_append() {
+do_compile:append() {
 	cd ${B}
 
 	if [ -e "${B}/prebuilt/${UBOOT_BINARY}" ]; then
@@ -91,7 +91,7 @@ do_compile_append() {
 	cat FlashBoot >> "${RK_IDBLOCK_IMG}"
 }
 
-do_deploy_append() {
+do_deploy:append() {
 	cd ${B}
 
 	for binary in "${RK_IDBLOCK_IMG}" "${RK_LOADER_BIN}" "${RK_TRUST_IMG}";do

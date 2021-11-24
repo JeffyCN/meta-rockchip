@@ -4,8 +4,8 @@
 # Enable multilib
 require conf/multilib.conf
 MULTILIBS = "multilib:lib32"
-DEFAULTTUNE_virtclass-multilib-lib32 ?= "armv7vethf-neon"
+DEFAULTTUNE:virtclass-multilib-lib32 ?= "armv7vethf-neon"
 
-IMAGE_CLASSES += "multilib-image"
-IMAGE_FEATURES += "multilib-standalone"
+IMAGE_CLASSES:append = " multilib-image"
+IMAGE_FEATURES:append = " multilib-standalone"
 IMAGE_FEATURES[validitems] += "multilib-standalone"

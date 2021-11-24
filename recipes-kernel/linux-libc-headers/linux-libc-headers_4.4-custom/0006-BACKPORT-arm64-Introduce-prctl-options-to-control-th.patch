@@ -1,0 +1,62 @@
+From f7b3134457e764badb5b24d6fcd1636d1950b1ef Mon Sep 17 00:00:00 2001
+From: Catalin Marinas <catalin.marinas@arm.com>
+Date: Tue, 23 Jul 2019 19:58:39 +0200
+Subject: [PATCH] BACKPORT: arm64: Introduce prctl() options to control the
+ tagged user addresses ABI
+
+(Upstream commit 63f0c60379650d82250f22e4cf4137ef3dc4f43d).
+
+It is not desirable to relax the ABI to allow tagged user addresses into
+the kernel indiscriminately. This patch introduces a prctl() interface
+for enabling or disabling the tagged ABI with a global sysctl control
+for preventing applications from enabling the relaxed ABI (meant for
+testing user-space prctl() return error checking without reconfiguring
+the kernel). The ABI properties are inherited by threads of the same
+application and fork()'ed children but cleared on execve(). A Kconfig
+option allows the overall disabling of the relaxed ABI.
+
+The PR_SET_TAGGED_ADDR_CTRL will be expanded in the future to handle
+MTE-specific settings like imprecise vs precise exceptions.
+
+Reviewed-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: Catalin Marinas <catalin.marinas@arm.com>
+Signed-off-by: Andrey Konovalov <andreyknvl@google.com>
+Signed-off-by: Will Deacon <will@kernel.org>
+Change-Id: I2d52c5589b05415faab315c116245f1058d64750
+Signed-off-by: Andrey Konovalov <andreyknvl@google.com>
+Bug: 135692346
+(cherry picked from commit f077ee260964eb925a593dcf30553432b3243ac8)
+
+Conflicts:
+      arch/arm64/Kconfig
+      arch/arm64/include/asm/processor.h
+      arch/arm64/include/asm/thread_info.h
+      arch/arm64/include/asm/uaccess.h
+      arch/arm64/kernel/process.c
+      include/uapi/linux/prctl.h
+      kernel/sys.c
+
+Only port definations to pass newest glibc compiling.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ include/uapi/linux/prctl.h | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/include/uapi/linux/prctl.h b/include/uapi/linux/prctl.h
+index 4d05aad2e4c5..eabab9f1ee38 100644
+--- a/include/uapi/linux/prctl.h
++++ b/include/uapi/linux/prctl.h
+@@ -219,4 +219,9 @@ struct prctl_mm_map {
+ # define PR_SPEC_DISABLE		(1UL << 2)
+ # define PR_SPEC_FORCE_DISABLE		(1UL << 3)
+ 
++/* Tagged user address controls for arm64 */
++#define PR_SET_TAGGED_ADDR_CTRL		55
++#define PR_GET_TAGGED_ADDR_CTRL		56
++# define PR_TAGGED_ADDR_ENABLE		(1UL << 0)
++
+ #endif /* _LINUX_PRCTL_H */
+-- 
+2.20.1
+

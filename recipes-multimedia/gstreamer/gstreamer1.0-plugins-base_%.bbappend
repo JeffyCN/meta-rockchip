@@ -3,4 +3,4 @@
 
 inherit auto-patch
 
-DEPENDS += "rockchip-librga"
+DEPENDS:append = " rockchip-librga"

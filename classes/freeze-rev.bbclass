@@ -28,7 +28,7 @@ python () {
             if name != 'default':
                 var += '_' + name
 
-            cmd = 'sed -i "/\<%s\>/s/=.*/= \\"%s\\"/" %s' % (var, rev, file)
+            cmd = 'sed -i "/<%s>/s/=.*/= \\"%s\\"/" %s' % (var, rev, file)
             subprocess.call(cmd, shell=True)
 
             bb.debug(2, 'Freezing %s to %s in %s' % (var, rev, file))

@@ -12,7 +12,7 @@ SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=tools;name=tools;destsuffix=git/extra \
 "
 
-PV_append = "+git${SRCPV}"
+PV:append = "+git${SRCPV}"
 
 SRCREV_rkbin = "3712dbc00e806ec1ed240b4a1a04df210dd3b550"
 SRCREV_tools = "1a32bc776af52494144fcef6641a73850cee628a"
@@ -20,7 +20,7 @@ SRCREV_FORMAT ?= "rkbin_tools"
 
 S = "${WORKDIR}/git"
 
-INSANE_SKIP_${PN} = "already-stripped"
+INSANE_SKIP:${PN} = "already-stripped"
 
 # The pre-built tools have different link loader, don't change them.
 UNINATIVE_LOADER := ""

@@ -2,4 +2,4 @@
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 # Avoid installing hwdb
-EXTRA_OEMAKE += " dist_udevhwdb_DATA="
+EXTRA_OEMAKE:append = " dist_udevhwdb_DATA="
