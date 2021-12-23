@@ -21,7 +21,7 @@ do_patch_append() {
 }
 
 # Hack for rockchip style images
-ROCKCHIP_KERNEL_IMAGES = "kernel.img resource.img boot.img zboot.img"
+ROCKCHIP_KERNEL_IMAGES = "boot.img zboot.img"
 KERNEL_IMAGETYPES += "${ROCKCHIP_KERNEL_IMAGES}"
 python () {
     if not d.getVar('KERNEL_DEVICETREE'):

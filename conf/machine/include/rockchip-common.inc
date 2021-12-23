@@ -166,8 +166,7 @@ gen_rkupdateimg() {
 
 	cd "${IMGDEPLOYDIR}"
 
-	RK_IMAGES="loader.bin uboot.env uboot.img trust.img kernel.img \
-			resource.img boot.img"
+	RK_IMAGES="loader.bin uboot.env uboot.img trust.img boot.img"
 
 	# Create temporary symlinks, because the tool would crash with abs pathes
 	for img in ${RK_IMAGES};do
