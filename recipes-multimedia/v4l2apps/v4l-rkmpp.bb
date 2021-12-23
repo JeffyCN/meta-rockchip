@@ -12,7 +12,7 @@ PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
 
-SRCREV = "a88bb176ba1b762dbcd9f66d6e8f8f8c17586326"
+SRCREV = "8562eb7cddeebc4527ffe42139a89736f1c8c08a"
 SRC_URI = "git://github.com/JeffyCN/libv4l-rkmpp.git;protocol=https;branch=master"
 
 S = "${WORKDIR}/git"

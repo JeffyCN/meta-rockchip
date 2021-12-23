@@ -14,7 +14,7 @@ inherit freeze-rev local-git
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=libmali; \
 "
-SRCREV = "807105c07c654108f5dd2582369e5e64e1344728"
+SRCREV = "58413ff26ad9cd4ae69c2485581025d2d8061d4a"
 S = "${WORKDIR}/git"
 
 DEPENDS = "libdrm"
@@ -92,7 +92,11 @@ INHIBIT_PACKAGE_STRIP = "1"
 RPROVIDES_${PN} += "libmali"
 
 # Library symlinks are required by utgard DDK(for internal dlopen)
-FILES_${PN} += "${libdir}/lib*.so"
+FILES_${PN} += " \
+	${libdir}/lib*.so \
+	${nonarch_base_libdir}/firmware \
+"
+
 FILES_${PN}-dev = " \
 	${includedir} \
 	${libdir}/pkgconfig \

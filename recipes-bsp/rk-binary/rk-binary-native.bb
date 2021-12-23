@@ -15,7 +15,7 @@ SRC_URI = " \
 PV_append = "+git${SRCPV}"
 
 SRCREV_rkbin = "3712dbc00e806ec1ed240b4a1a04df210dd3b550"
-SRCREV_tools = "266050571af887cb0242e3184f544125cfbdfc42"
+SRCREV_tools = "1a32bc776af52494144fcef6641a73850cee628a"
 SRCREV_FORMAT ?= "rkbin_tools"
 
 S = "${WORKDIR}/git"
