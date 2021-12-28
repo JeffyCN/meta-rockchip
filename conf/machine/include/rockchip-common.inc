@@ -93,7 +93,7 @@ do_post_rootfs() {
 	for overlay in ${RK_OVERLAY_DIRS};do
 		[ -d "${overlay}" ] || continue
 		echo "Installing overlay: ${overlay}..."
-		rsync -av "${overlay}/" "${IMAGE_ROOTFS}"
+		rsync -av --chmod=u=rwX,go=rX "${overlay}/" "${IMAGE_ROOTFS}"
 	done
 
 	for script in ${RK_POST_ROOTFS_SCRIPTS};do
