@@ -10,8 +10,8 @@ LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
 
 inherit freeze-rev local-git
 
-SRCREV = "9faa1b5cfa12449ba29e70f83b73939c76881e2d"
-SRCREV_rkbin = "0419aef3705ff84e55f6a7cee9b7e49624f9c695"
+SRCREV = "e3ca3c3805cc60cc9e2fe2a4d78694907b49ee46"
+SRCREV_rkbin = "104659686b734ab041ef958c0abece1a250f48a4"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=u-boot; \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkbin;name=rkbin;destsuffix=rkbin; \
