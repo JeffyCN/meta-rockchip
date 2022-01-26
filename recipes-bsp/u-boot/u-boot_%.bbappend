@@ -4,6 +4,8 @@
 PATCHPATH = "${CURDIR}/u-boot"
 inherit auto-patch
 
+inherit python3-dir
+
 PV = "2017.09+git${SRCPV}"
 
 LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
@@ -19,25 +21,25 @@ SRC_URI = " \
 SRC_URI_remove += " file://0001-riscv32-Use-double-float-ABI-for-rv32.patch"
 SRCREV_FORMAT = "default_rkbin"
 
-# Force using python2 for BSP u-boot
-DEPENDS += "python-native"
-EXTRA_OEMAKE += "PYTHON=nativepython"
+DEPENDS += "${PYTHON_PN}-native"
 
 # Needed for packing BSP u-boot
-DEPENDS += "coreutils-native python-pyelftools-native"
-
-python do_unpack_append() {
-    if not d.getVar('S').endswith('/git'):
-        # Force fetch to re-run for local source
-        bb.build.write_taint('do_fetch', d)
-}
+DEPENDS += "coreutils-native ${PYTHON_PN}-pyelftools-native"
 
 do_configure_prepend() {
-	# Make sure we use nativepython
+	# Make sure we use /usr/bin/env ${PYTHON_PN} for scripts
 	for s in `grep -rIl python ${S}`; do
-		sed -i -e '1s|^#!.*python[23]*|#!/usr/bin/env nativepython|' $s
+		sed -i -e '1s|^#!.*python[23]*|#!/usr/bin/env ${PYTHON_PN}|' $s
 	done
 
+	# Support python3
+	sed -i -e 's/\(open(.*[^"]\))/\1, "rb")/' -e 's/,$//' \
+		-e 's/print >> \([^,]*\), *\(.*\)$/print(\2, file=\1)/' \
+		-e 's/print \(.*\)$/print(\1)/' \
+		${S}/arch/arm/mach-rockchip/make_fit_atf.py
+
+	# Remove unneeded stages from make.sh
+	sed -i -e '/^select_tool/d' -e '/^clean/d' -e '/^\t*make/d' ${S}/make.sh
 
 	if [ "x${RK_ALLOW_PREBUILT_UBOOT}" = "x1" ]; then
 		# Copy prebuilt images
@@ -68,10 +70,6 @@ do_compile_append() {
 		for d in make.sh scripts configs arch/arm/mach-rockchip; do
 			cp -rT ${S}/${d} ${d}
 		done
-
-		# Remove unneeded stages from make.sh
-		sed -i -e "/^select_tool/d" -e "/^clean/d" -e "/^\t*make/d" \
-			make.sh
 
 		# Pack rockchip loader images
 		./make.sh

@@ -18,9 +18,6 @@ This layer depends on:
 * layers: meta-oe
 * branch: zeus dunfell gatesgarth hardknott
 
-* URI: git://git.openembedded.org/meta-python2
-* branch: zeus dunfell gatesgarth hardknott
-
 ## Table of Contents
 
 I. Configure yocto/oe Environment
@@ -41,7 +38,6 @@ In order to build an image with BSP support for a given release, you need to dow
 ~ $ mkdir yocto; cd yocto
 ~/yocto $ git clone git://git.yoctoproject.org/poky -b dunfell
 ~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b dunfell
-~/yocto $ git clone git://git.openembedded.org/meta-python2.git -b dunfell
 ```
 
 And put the meta-rockchip layer here too.
@@ -64,7 +60,6 @@ BBLAYERS ?= " \
   ${TOPDIR}/../poky/meta-poky \
   ${TOPDIR}/../poky/meta-yocto-bsp \
   ${TOPDIR}/../meta-openembedded/meta-oe \
-  ${TOPDIR}/../meta-python2 \
 ```
 
 To enable a particular machine, you need to add a MACHINE line naming the BSP to the local.conf file:
