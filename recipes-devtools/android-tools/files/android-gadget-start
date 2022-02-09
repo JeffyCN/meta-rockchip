@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+
+# Wait for usb ffs ready
+for i in `seq 100`;do
+	fuser /dev/usb-ffs/adb/ep* && break
+	sleep .01
+done
+
+ls /sys/class/udc/ | head -n 1 | \
+	xargs echo -n > /sys/kernel/config/usb_gadget/adb/UDC

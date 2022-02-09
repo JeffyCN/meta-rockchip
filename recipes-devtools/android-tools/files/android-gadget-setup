@@ -1,0 +1,33 @@
+#!/bin/sh
+
+set -e
+
+vendor=0x2207
+product=0x0006
+manufacturer=Rockchip
+model="RK3xxx"
+serial=0123456789ABCDEF
+
+[ -d /sys/kernel/config/usb_gadget ] || modprobe libcomposite
+
+cd /sys/kernel/config/usb_gadget
+
+[ -d adb ] && /usr/bin/android-gadget-cleanup || true
+
+mkdir adb
+cd adb
+
+mkdir configs/c.1
+mkdir functions/ffs.usb0
+mkdir strings/0x409
+mkdir configs/c.1/strings/0x409
+echo -n "$vendor" > idVendor
+echo -n "$product" > idProduct
+echo "$serial" > strings/0x409/serialnumber
+echo "$manufacturer" > strings/0x409/manufacturer
+echo "$model" > strings/0x409/product
+echo "adb" > configs/c.1/strings/0x409/configuration
+ln -s functions/ffs.usb0 configs/c.1
+
+mkdir -p /dev/usb-ffs/adb
+mount -t functionfs usb0 /dev/usb-ffs/adb
