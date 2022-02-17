@@ -12,8 +12,6 @@ DEPENDS = "coreutils-native chrpath-replacement-native libdrm"
 RDEPENDS:${PN}-tests = "${PN}"
 RDEPENDS:${PN}-server = "${PN}"
 
-PV:append = "+git${SRCPV}"
-
 inherit freeze-rev local-git
 
 SRCREV = "fafcd69874d20a7737425cc16a70619b220f8a2e"

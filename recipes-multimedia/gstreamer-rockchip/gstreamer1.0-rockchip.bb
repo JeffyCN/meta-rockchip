@@ -12,8 +12,6 @@ LICENSE = "LGPL-2.1"
 LIC_FILES_CHKSUM = "file://COPYING;md5=4fbd65380cdd255951079008b364516c"
 DEPENDS:append = " gstreamer1.0-plugins-base"
 
-PV:append = "+git${SRCPV}"
-
 inherit freeze-rev local-git
 
 SRCREV = "9db260682e11ff6d5ca70f22e3a9e980a5f6ecd1"

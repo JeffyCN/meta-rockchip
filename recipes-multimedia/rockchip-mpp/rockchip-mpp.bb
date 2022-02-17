@@ -6,8 +6,6 @@
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://inc/rk_mpi.h;beginline=4;endline=14;md5=acbba394ae5639b0c786f60c1f48e3d6"
 
-PV:append = "+git${SRCPV}"
-
 inherit freeze-rev local-git
 
 SRCREV = "693720fd192d443ffc6dfab16f1ea359e09dcac6"

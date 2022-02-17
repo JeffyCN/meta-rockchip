@@ -9,8 +9,6 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
 DEPENDS = "libdrm"
 
-PV:append = "+git${SRCPV}"
-
 inherit freeze-rev local-git
 
 SRC_URI = " \
