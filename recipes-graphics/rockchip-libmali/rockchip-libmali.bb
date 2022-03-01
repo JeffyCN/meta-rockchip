@@ -33,6 +33,7 @@ PROVIDES += "${@ 'virtual/opencl-icd' if not d.getVar('MALI_GPU').startswith('ut
 RDEPENDS_${PN} = " \
 	${@ 'wayland' if 'wayland' == d.getVar('MALI_PLATFORM') else ''} \
 	${@ 'libx11 libxcb' if 'x11' == d.getVar('MALI_PLATFORM') else ''} \
+	${@ 'opencl-icd-loader' if not d.getVar('MALI_GPU').startswith('utgard') and d.getVar('MALI_SUBVERSION') != 'without-cl' else ''} \
 "
 
 DEPENDS_append = " \
