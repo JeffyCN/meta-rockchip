@@ -2,7 +2,7 @@
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 SOC_FAMILY ?= "rk3288"
-require conf/machine/include/tune-cortexa17.inc
+require conf/machine/include/arm/armv7a/tune-cortexa17.inc
 require conf/machine/include/rockchip-common.inc
 
 MALI_GPU := "midgard-t76x"
