@@ -2,4 +2,4 @@
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 # Avoid dup files warning in multilib case
-SSTATE_DUPWHITELIST:append = " ${LOCALETREESRC}"
+SSTATE_ALLOW_OVERLAP_FILES:append = " ${LOCALETREESRC}"

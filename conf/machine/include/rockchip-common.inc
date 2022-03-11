@@ -74,7 +74,7 @@ addtask do_fixup_wks after do_write_wks_template before do_image_wic
 
 RK_POST_ROOTFS_SCRIPTS ?= ""
 RK_OVERLAY_DIRS ?= ""
-BB_HASHBASE_WHITELIST:append = " RK_POST_ROOTFS_SCRIPTS RK_OVERLAY_DIRS"
+BB_BASEHASH_IGNORE_VARS:append = " RK_POST_ROOTFS_SCRIPTS RK_OVERLAY_DIRS"
 
 # <fslabel:mountpoint> e.g. "oem:/oem userdata:/userdata"
 RK_EXTRA_VOLUMES ?= ""
