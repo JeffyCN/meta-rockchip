@@ -1,7 +1,7 @@
-From b27e5ce3bfc16f460bad4164fd1915371e569dc1 Mon Sep 17 00:00:00 2001
+From 2d101e5956b2d87d905e82c8ca5409bbd9938f3f Mon Sep 17 00:00:00 2001
 From: Changbin Du <changbin.du@gmail.com>
 Date: Tue, 28 Jan 2020 23:29:38 +0800
-Subject: [PATCH 2/7] perf: Make perf able to build with latest libbfd
+Subject: [PATCH 2/9] perf: Make perf able to build with latest libbfd
 
 libbfd has changed the bfd_section_* macros to inline functions
 bfd_section_<field> since 2019-09-18. See below two commits:
