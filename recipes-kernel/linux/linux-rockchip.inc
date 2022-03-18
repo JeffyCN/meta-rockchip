@@ -19,6 +19,18 @@ do_patch:append() {
 	done
 }
 
+do_compile:prepend() {
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${STAGING_LIBDIR_NATIVE}
+}
+
+do_compile_kernelmodules:prepend() {
+        export PKG_CONFIG_DIR="${STAGING_DIR_NATIVE}${libdir_native}/pkgconfig"
+        export PKG_CONFIG_PATH="$PKG_CONFIG_DIR:${STAGING_DATADIR_NATIVE}/pkgconfig"
+        export PKG_CONFIG_LIBDIR="$PKG_CONFIG_DIR"
+        export PKG_CONFIG_SYSROOT_DIR=""
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${STAGING_LIBDIR_NATIVE}
+}
+
 # Hack for rockchip style images
 ROCKCHIP_KERNEL_IMAGES = "boot.img zboot.img"
 KERNEL_IMAGETYPES:append = " ${ROCKCHIP_KERNEL_IMAGES}"
