@@ -19,6 +19,7 @@ SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkbin;name=rkbin;destsuffix=rkbin; \
 "
 SRC_URI:remove = "file://0001-riscv32-Use-double-float-ABI-for-rv32.patch"
+SRC_URI:remove = "file://0001-riscv-fix-build-with-binutils-2.38.patch"
 SRCREV_FORMAT = "default_rkbin"
 
 DEPENDS:append = " ${PYTHON_PN}-native"
