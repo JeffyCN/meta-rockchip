@@ -26,8 +26,6 @@ MALI_PLATFORM ??= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'wayland',
 
 # The utgard DDK and 'without-cl' subversion are not providing OpenCL.
 # The ICD OpenCL implementation should work with opencl-icd-loader.
-PROVIDES:append = " ${@ 'virtual/opencl-icd' if not d.getVar('MALI_GPU').startswith('utgard') and d.getVar('MALI_SUBVERSION') != 'without-cl' else ''}"
-
 RDEPENDS:${PN} = " \
 	${@ 'wayland' if 'wayland' == d.getVar('MALI_PLATFORM') else ''} \
 	${@ 'libx11 libxcb' if 'x11' == d.getVar('MALI_PLATFORM') else ''} \
