@@ -8,6 +8,8 @@ MACHINE_EXTRA_RRECOMMENDS_append = " \
 	kernel-modules \
 "
 
+RK_ISP_VERSION := ""
+
 SERIAL_CONSOLES ?= "115200;ttyFIQ0"
 KERNEL_IMAGETYPE ?= "Image"
 KBUILD_DEFCONFIG ?= "rockchip_linux_defconfig"
