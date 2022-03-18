@@ -1,7 +1,7 @@
-From ae9db37a115ba95ddd982c7feb96cc36bcf833bf Mon Sep 17 00:00:00 2001
+From 33fe7d37474b091b9257b59c7662ca51833f92c3 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 21 Jun 2019 18:02:17 +0800
-Subject: [PATCH 3/7] HACK: drm/rockchip: vop: support colorkey prop for
+Subject: [PATCH 3/9] HACK: drm/rockchip: vop: support colorkey prop for
  rk3399/rk3288
 
 Change-Id: I3509c4999101340bf698c5226c2dc4d47ba7b1f3
