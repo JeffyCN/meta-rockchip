@@ -8,6 +8,7 @@ python () {
     import shlex
 
     git = git.Git()
+    bb.fetch2.get_srcrev(d)
     fetcher = Fetch(d.getVar('SRC_URI').split(), d)
     urldata = fetcher.ud
     for u in urldata:
