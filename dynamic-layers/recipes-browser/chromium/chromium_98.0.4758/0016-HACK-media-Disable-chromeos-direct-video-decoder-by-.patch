@@ -1,7 +1,7 @@
-From 93026c3e222fd638e18bc30d409bdf182d32651b Mon Sep 17 00:00:00 2001
+From ae5bd666cc2d6219a81241ced5ed36feddd24860 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 16 Mar 2022 12:14:02 +0800
-Subject: [PATCH 16/16] HACK: media: Disable chromeos direct video decoder by
+Subject: [PATCH 16/17] HACK: media: Disable chromeos direct video decoder by
  default
 
 Revisit once V4L2 video decoder is supported on linux.
@@ -25,5 +25,5 @@ index a15162b9..27d5a659 100644
  #if defined(OS_CHROMEOS)
  // ChromeOS has one of two VideoDecoder implementations active based on
 -- 
-2.20.1
+2.17.1
 

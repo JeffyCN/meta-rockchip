@@ -1,7 +1,7 @@
-From ba1dde8b4a95a2d258034c1ffe30ffa172f815e2 Mon Sep 17 00:00:00 2001
+From 1b9e592a77daf1ed0963efca94f65a597e2affe3 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 31 May 2021 01:41:57 +0800
-Subject: [PATCH 12/15] HACK: [ozone/wayland]: Force disable implicit external
+Subject: [PATCH 12/17] HACK: [ozone/wayland]: Force disable implicit external
  sync
 
 The Mali's implicit external sync seems broken.
@@ -26,5 +26,5 @@ index f2c14328..49d69af0 100644
  
      fence_wait_task = base::BindOnce(&WaitForEGLFence, GetDisplay(), fence);
 -- 
-2.20.1
+2.17.1
 
