@@ -1,7 +1,7 @@
-From e690eeee28605c4a09ecf0472f1ec641de543a9f Mon Sep 17 00:00:00 2001
+From 43581c52dd67d67f1366195155989e810dd78cf2 Mon Sep 17 00:00:00 2001
 From: Damian Hobson-Garcia <dhobsong@igel.co.jp>
 Date: Wed, 21 Mar 2018 13:18:17 +0200
-Subject: [PATCH 03/15] Add mmap via libv4l to generic_v4l2_device
+Subject: [PATCH 03/17] Add mmap via libv4l to generic_v4l2_device
 
 Issue #437
 ---
@@ -45,5 +45,5 @@ index 4269fb48..71b5b378 100644
 +LIBV4L_PUBLIC void *v4l2_mmap(void *start, size_t length, int prot, int flags, int fd, int64_t offset);
 +LIBV4L_PUBLIC int v4l2_munmap(void *_start, size_t length);
 -- 
-2.20.1
+2.17.1
 

@@ -1,7 +1,7 @@
-From 76ced1a7d449fe5beba679e84cfdf585c9a7db01 Mon Sep 17 00:00:00 2001
+From 8720cc202c671ba83dea8bed6344d39c69accb2d Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 27 Mar 2020 17:48:20 +0800
-Subject: [PATCH 06/15] cld3: Avoid unaligned accesses
+Subject: [PATCH 06/17] cld3: Avoid unaligned accesses
 
 Although the unaligned memory accesses are enabled, somehow i still hit
 the SIGBUS:
@@ -42,5 +42,5 @@ index 2b3bc515..1d437bab 100644
  // TODO(sesse): NEON supports unaligned 64-bit loads and stores.
  // See if that would be more efficient on platforms supporting it,
 -- 
-2.20.1
+2.17.1
 

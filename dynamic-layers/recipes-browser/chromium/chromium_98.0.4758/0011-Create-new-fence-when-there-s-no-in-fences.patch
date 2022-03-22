@@ -1,7 +1,7 @@
-From 1483314a603d9c1760faf8ec1acad2963048787a Mon Sep 17 00:00:00 2001
+From 3947bece937676c35af779d52e7d6a160b428aef Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 31 May 2021 01:29:11 +0800
-Subject: [PATCH 11/15] Create new fence when there's no in-fences
+Subject: [PATCH 11/17] Create new fence when there's no in-fences
 
 There're cases that in-fences are not provided.
 
@@ -56,5 +56,5 @@ index db7037fc..f2c14328 100644
    base::OnceClosure fence_retired_callback = base::BindOnce(
        &GbmSurfacelessWayland::FenceRetired, weak_factory_.GetWeakPtr(), frame);
 -- 
-2.20.1
+2.17.1
 
