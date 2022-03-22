@@ -1,7 +1,7 @@
-From b52535216409793417c0b0d87c4e3ea35832e436 Mon Sep 17 00:00:00 2001
+From 0ef905100e8e9a30c65c11f1e9da5d88a738ed43 Mon Sep 17 00:00:00 2001
 From: Maksim Sisov <msisov@igalia.com>
 Date: Wed, 31 Jul 2019 09:56:24 +0300
-Subject: [PATCH 02/15] Add support for V4L2VDA on Linux
+Subject: [PATCH 02/17] Add support for V4L2VDA on Linux
 
 This patch enables hardware assisted video decoding via the
 Chromium V4L2VDA. Including changes when Linux is used. In
@@ -471,5 +471,5 @@ index 7534052f..afde6b8e 100644
  
    if (!backend_->Initialize()) {
 -- 
-2.20.1
+2.17.1
 

@@ -1,7 +1,7 @@
-From d3cef94ba899612d089cfdf5d47bd7e7e2a56741 Mon Sep 17 00:00:00 2001
+From d722fecb489f2ab0222e94d6fbce6f9ca27930c4 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 5 Nov 2020 12:22:52 +0800
-Subject: [PATCH 08/15] media: capture: linux: Prefer using the first device
+Subject: [PATCH 08/17] media: capture: linux: Prefer using the first device
 
 Somehow the newest chromium would prefer using the last device in some
 cases, e.g. apprtc.
@@ -28,5 +28,5 @@ index c544563f..4279ae8c 100644
            VideoCaptureApi::LINUX_V4L2_SINGLE_PLANE, GetControlSupport(fd.get()),
            VideoCaptureTransportType::OTHER_TRANSPORT, facing_mode));
 -- 
-2.20.1
+2.17.1
 

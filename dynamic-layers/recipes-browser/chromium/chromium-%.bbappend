@@ -12,8 +12,8 @@ GN_ARGS:append = " is_debug=false is_official_build=false fatal_linker_warnings=
 
 CHROMIUM_EXTRA_ARGS:append = " --no-sandbox --gpu-sandbox-start-early --ignore-gpu-blacklist --ignore-gpu-blocklist --enable-accelerated-video-decode"
 
-# TODO: Revisit once VDA is not dependent on Vaapi on linux
-CHROMIUM_EXTRA_ARGS:append = " --enable-features=VaapiVideoDecoder"
+# TODO: Revisit once VDA and VEA are not dependent on Vaapi on linux
+CHROMIUM_EXTRA_ARGS:append = " --enable-features=VaapiVideoDecoder,VaapiVideoEncoder"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
