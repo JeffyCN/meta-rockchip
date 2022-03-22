@@ -1,7 +1,7 @@
-From b46306d8ed5f39f52dae34b9e55890b39a5436f4 Mon Sep 17 00:00:00 2001
+From 66da7e7324bb0807cc956619e235b9b35f015180 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 31 May 2021 07:25:58 +0800
-Subject: [PATCH 13/15] HACK: media: capture: linux: Allow camera without
+Subject: [PATCH 13/17] HACK: media: capture: linux: Allow camera without
  supported format
 
 The chromium would only accept discrete frame sizes.
@@ -31,5 +31,5 @@ index 4279ae8c..2f4a64d7 100644
        // HACK: Somehow the newest chromium would prefer using the last device in some cases, e.g. apprtc
        devices_info.emplace(devices_info.begin(), VideoCaptureDeviceDescriptor(
 -- 
-2.20.1
+2.17.1
 

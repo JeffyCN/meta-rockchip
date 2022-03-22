@@ -1,7 +1,7 @@
-From 520b6c12bdce50987b5008ecef191f7de452664f Mon Sep 17 00:00:00 2001
+From 41ddd053ea55a15bcb3857fe0a02993c7acb1698 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 20 May 2021 01:05:29 +0800
-Subject: [PATCH 10/15] ui: events: ozone: Define SW_PEN_INSERTED for old
+Subject: [PATCH 10/17] ui: events: ozone: Define SW_PEN_INSERTED for old
  kernel headers
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
@@ -25,5 +25,5 @@ index c2df3597..2660882a 100644
  const int kSwitchStylusInserted = SW_PEN_INSERTED;
  
 -- 
-2.20.1
+2.17.1
 

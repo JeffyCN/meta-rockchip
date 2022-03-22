@@ -1,7 +1,7 @@
-From c8ac56ac379031d83db74ec2d299e74388db0419 Mon Sep 17 00:00:00 2001
+From 8b9a4232e72c16805e3845e472c4e1532647422f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 28 Sep 2020 20:02:00 +0800
-Subject: [PATCH 09/15] media: gpu: v4l2: Fix compile error when ozone not
+Subject: [PATCH 09/17] media: gpu: v4l2: Fix compile error when ozone not
  enabled
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
@@ -63,5 +63,5 @@ index 64aa8c6d..11cf9c96 100644
  
  EGLBoolean GenericV4L2Device::DestroyEGLImage(EGLDisplay egl_display,
 -- 
-2.20.1
+2.17.1
 

@@ -1,7 +1,7 @@
-From 1eb416d547e80f5724d877da5813704d7ee07797 Mon Sep 17 00:00:00 2001
+From fd38be8256c9865cdfc2903328c41de4d4616dac Mon Sep 17 00:00:00 2001
 From: Chen-Yu Tsai <wenst@chromium.org>
 Date: Fri, 14 Jan 2022 04:33:46 +0000
-Subject: [PATCH 01/15] media/gpu/v4l2: VD: Add sequenced_task_runner_handle.h
+Subject: [PATCH 01/17] media/gpu/v4l2: VD: Add sequenced_task_runner_handle.h
  header
 
 In commit e4bb5ae4828be ("media/gpu/chromeos: make sure VideoDecoderMixins
@@ -40,5 +40,5 @@ index c75a9148..7534052f 100644
  #include "media/base/limits.h"
  #include "media/base/media_log.h"
 -- 
-2.20.1
+2.17.1
 
