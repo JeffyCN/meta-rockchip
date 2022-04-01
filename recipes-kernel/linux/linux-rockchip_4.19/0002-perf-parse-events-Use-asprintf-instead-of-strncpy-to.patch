@@ -1,7 +1,7 @@
-From af255faecc329f9b6349817be847783ceef71d4d Mon Sep 17 00:00:00 2001
+From 73081c61b2919185ccff748e074ba3e3bc663aa2 Mon Sep 17 00:00:00 2001
 From: Arnaldo Carvalho de Melo <acme@redhat.com>
 Date: Mon, 2 Mar 2020 11:55:47 -0300
-Subject: [PATCH 3/5] perf parse-events: Use asprintf() instead of strncpy() to
+Subject: [PATCH 2/7] perf parse-events: Use asprintf() instead of strncpy() to
  read tracepoint files
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
