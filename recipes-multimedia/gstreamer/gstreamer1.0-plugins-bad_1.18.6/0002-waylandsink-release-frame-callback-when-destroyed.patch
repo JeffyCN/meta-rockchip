@@ -1,0 +1,76 @@
+From 7c4d198b5e5024f70ef4b566b34bd15905c69406 Mon Sep 17 00:00:00 2001
+From: Randy Li <ayaka@soulik.info>
+Date: Thu, 29 Oct 2020 06:13:05 +0000
+Subject: [PATCH 02/40] waylandsink: release frame callback when destroyed
+
+We would use a frame callback from the surface to indicate
+that last buffer is rendered, but when we destroy the surface
+and that callback is not back yet, it may cause the wayland event
+queue crash.
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/merge_requests/1729>
+(cherry picked from commit 6d8133e41e3e2c2f2bc65e22675a4c68a8539ac8)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 2 ++
+ ext/wayland/wlwindow.c       | 4 ++++
+ ext/wayland/wlwindow.h       | 1 +
+ 3 files changed, 7 insertions(+)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 8c6fdd0..47192df 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -637,6 +637,7 @@ frame_redraw_callback (void *data, struct wl_callback *callback, uint32_t time)
+ 
+   g_mutex_lock (&sink->render_lock);
+   sink->redraw_pending = FALSE;
++  sink->window->callback = NULL;
+   g_mutex_unlock (&sink->render_lock);
+ 
+   wl_callback_destroy (callback);
+@@ -660,6 +661,7 @@ render_last_buffer (GstWaylandSink * sink, gboolean redraw)
+ 
+   sink->redraw_pending = TRUE;
+   callback = wl_surface_frame (surface);
++  sink->window->callback = callback;
+   wl_callback_add_listener (callback, &frame_callback_listener, sink);
+ 
+   if (G_UNLIKELY (sink->video_info_changed && !redraw)) {
+diff --git a/ext/wayland/wlwindow.c b/ext/wayland/wlwindow.c
+index 66a05be..2a09b93 100644
+--- a/ext/wayland/wlwindow.c
++++ b/ext/wayland/wlwindow.c
+@@ -157,6 +157,9 @@ gst_wl_window_finalize (GObject * gobject)
+ {
+   GstWlWindow *self = GST_WL_WINDOW (gobject);
+ 
++  if (self->callback)
++    wl_callback_destroy (self->callback);
++
+   if (self->wl_shell_surface)
+     wl_shell_surface_destroy (self->wl_shell_surface);
+ 
+@@ -197,6 +200,7 @@ gst_wl_window_new_internal (GstWlDisplay * display, GMutex * render_lock)
+   window->render_lock = render_lock;
+   g_cond_init (&window->configure_cond);
+ 
++  window->callback = NULL;
+   window->area_surface = wl_compositor_create_surface (display->compositor);
+   window->video_surface = wl_compositor_create_surface (display->compositor);
+ 
+diff --git a/ext/wayland/wlwindow.h b/ext/wayland/wlwindow.h
+index c3f0172..cecbda6 100644
+--- a/ext/wayland/wlwindow.h
++++ b/ext/wayland/wlwindow.h
+@@ -55,6 +55,7 @@ struct _GstWlWindow
+   struct wl_shell_surface *wl_shell_surface;
+   struct xdg_surface *xdg_surface;
+   struct xdg_toplevel *xdg_toplevel;
++  struct wl_callback *callback;
+   gboolean configured;
+   GCond configure_cond;
+   GMutex configure_mutex;
+-- 
+2.17.1
+

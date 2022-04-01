@@ -1,0 +1,63 @@
+From 41dd78417590f63eabbd8e6a991362415e8241d5 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 9 Dec 2021 14:25:41 +0800
+Subject: [PATCH 33/40] HACK: waylandsink: Allow both of dmabuf formats and shm
+ formats
+
+For the plugins which provide dmabuf without
+GST_CAPS_FEATURE_MEMORY_DMABUF.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 14 ++------------
+ ext/wayland/gstwaylandsink.h |  1 -
+ 2 files changed, 2 insertions(+), 13 deletions(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 3bb786a..e4617b2 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -700,7 +700,6 @@ static gboolean
+ gst_wayland_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+ {
+   GstWaylandSink *sink;
+-  gboolean use_dmabuf;
+   GstVideoFormat format;
+ 
+   sink = GST_WAYLAND_SINK (bsink);
+@@ -719,18 +718,9 @@ gst_wayland_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+     gst_object_unref (sink->pool);
+   sink->pool = gst_wayland_create_pool (sink, caps);
+ 
+-  use_dmabuf = gst_caps_features_contains (gst_caps_get_features (caps, 0),
+-      GST_CAPS_FEATURE_MEMORY_DMABUF);
+-
+-  /* validate the format base on the memory type. */
+-  if (use_dmabuf) {
+-    if (!gst_wl_display_check_format_for_dmabuf (sink->display, format))
+-      goto unsupported_format;
+-  } else if (!gst_wl_display_check_format_for_shm (sink->display, format)) {
++  if (!gst_wl_display_check_format_for_dmabuf (sink->display, format)
++      && !gst_wl_display_check_format_for_shm (sink->display, format))
+     goto unsupported_format;
+-  }
+-
+-  sink->use_dmabuf = use_dmabuf;
+ 
+   return TRUE;
+ 
+diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
+index 376e3a4..8b99ca3 100644
+--- a/ext/wayland/gstwaylandsink.h
++++ b/ext/wayland/gstwaylandsink.h
+@@ -56,7 +56,6 @@ struct _GstWaylandSink
+   GstWlDisplay *display;
+   GstWlWindow *window;
+   GstBufferPool *pool;
+-  gboolean use_dmabuf;
+   guintptr window_handle;
+ 
+   gboolean video_info_changed;
+-- 
+2.17.1
+

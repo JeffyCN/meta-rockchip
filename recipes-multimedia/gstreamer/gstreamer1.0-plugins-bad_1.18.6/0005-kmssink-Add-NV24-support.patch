@@ -1,0 +1,47 @@
+From 2eb27eedc2a2116bf1a839d63755827567b49dc6 Mon Sep 17 00:00:00 2001
+From: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Date: Fri, 17 Sep 2021 15:39:54 -0400
+Subject: [PATCH 05/40] kmssink: Add NV24 support
+
+This was tested on RK3566 platform, using vendor DRM driver.
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/merge_requests/2530>
+(cherry picked from commit 98da85ade042d8495a89f67ea164529f7c591855)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmsutils.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/sys/kms/gstkmsutils.c b/sys/kms/gstkmsutils.c
+index 1dd19ee..cb06d40 100644
+--- a/sys/kms/gstkmsutils.c
++++ b/sys/kms/gstkmsutils.c
+@@ -70,6 +70,7 @@ static const struct
+   DEF_FMT (NV12, NV12),
+   DEF_FMT (NV21, NV21),
+   DEF_FMT (NV16, NV16),
++  DEF_FMT (NV24, NV24),
+ 
+ #undef DEF_FMT
+ };
+@@ -113,6 +114,7 @@ gst_drm_bpp_from_drm (guint32 drmfmt)
+     case DRM_FORMAT_NV12:
+     case DRM_FORMAT_NV21:
+     case DRM_FORMAT_NV16:
++    case DRM_FORMAT_NV24:
+       bpp = 8;
+       break;
+     case DRM_FORMAT_P010:
+@@ -154,6 +156,9 @@ gst_drm_height_from_drm (guint32 drmfmt, guint32 height)
+     case DRM_FORMAT_NV16:
+       ret = height * 2;
+       break;
++    case DRM_FORMAT_NV24:
++      ret = height * 3;
++      break;
+     default:
+       ret = height;
+       break;
+-- 
+2.17.1
+

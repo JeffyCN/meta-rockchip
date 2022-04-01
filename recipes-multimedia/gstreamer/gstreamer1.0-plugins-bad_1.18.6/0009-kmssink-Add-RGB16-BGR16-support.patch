@@ -1,0 +1,39 @@
+From b51f9d55169f4cc774271c34f111f85b76aa5c68 Mon Sep 17 00:00:00 2001
+From: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Date: Fri, 17 Sep 2021 16:21:39 -0400
+Subject: [PATCH 09/40] kmssink: Add RGB16/BGR16 support
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/merge_requests/2530>
+(cherry picked from commit 360620fea4a527cde5e17bc9f21cdebb1b9e5113)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmsutils.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/sys/kms/gstkmsutils.c b/sys/kms/gstkmsutils.c
+index 9c18b7e..cc719fc 100644
+--- a/sys/kms/gstkmsutils.c
++++ b/sys/kms/gstkmsutils.c
+@@ -78,6 +78,10 @@ static const struct
+   DEF_FMT (NV21, NV21),
+   DEF_FMT (NV12, NV12),
+ 
++  /* 16bits/p RGB */
++  DEF_FMT (RGB565, RGB16),
++  DEF_FMT (BGR565, BGR16),
++
+ #undef DEF_FMT
+ };
+ /* *INDENT-ON* */
+@@ -131,6 +135,8 @@ gst_drm_bpp_from_drm (guint32 drmfmt)
+     case DRM_FORMAT_YUYV:
+     case DRM_FORMAT_YVYU:
+     case DRM_FORMAT_P016:
++    case DRM_FORMAT_RGB565:
++    case DRM_FORMAT_BGR565:
+       bpp = 16;
+       break;
+     case DRM_FORMAT_BGR888:
+-- 
+2.17.1
+

@@ -1,0 +1,42 @@
+From b0bfd757514f5426e416a341029758e305605146 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 17 Nov 2020 11:51:40 +0800
+Subject: [PATCH 21/40] gstjpegparse: Allow parsebin to use it for autoplugging
+
+Add "Codec" to Klass and increase rank.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/jpegformat/gstjpegformat.c | 2 +-
+ gst/jpegformat/gstjpegparse.c  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/gst/jpegformat/gstjpegformat.c b/gst/jpegformat/gstjpegformat.c
+index b410466..5a74a80 100644
+--- a/gst/jpegformat/gstjpegformat.c
++++ b/gst/jpegformat/gstjpegformat.c
+@@ -30,7 +30,7 @@
+ static gboolean
+ plugin_init (GstPlugin * plugin)
+ {
+-  if (!gst_element_register (plugin, "jpegparse", GST_RANK_NONE,
++  if (!gst_element_register (plugin, "jpegparse", GST_RANK_SECONDARY,
+           GST_TYPE_JPEG_PARSE))
+     return FALSE;
+   if (!gst_element_register (plugin, "jifmux", GST_RANK_SECONDARY,
+diff --git a/gst/jpegformat/gstjpegparse.c b/gst/jpegformat/gstjpegparse.c
+index 0378129..2e8f37c 100644
+--- a/gst/jpegformat/gstjpegparse.c
++++ b/gst/jpegformat/gstjpegparse.c
+@@ -113,7 +113,7 @@ gst_jpeg_parse_class_init (GstJpegParseClass * klass)
+ 
+   gst_element_class_set_static_metadata (gstelement_class,
+       "JPEG stream parser",
+-      "Video/Parser",
++      "Codec/Parser/Video/Image",
+       "Parse JPEG images into single-frame buffers",
+       "Arnout Vandecappelle (Essensium/Mind) <arnout@mind.be>");
+ 
+-- 
+2.17.1
+

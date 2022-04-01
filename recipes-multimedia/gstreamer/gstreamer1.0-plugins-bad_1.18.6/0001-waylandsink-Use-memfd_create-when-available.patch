@@ -1,0 +1,101 @@
+From 6e1bfb96fb0340c812e2ad582e94de169d6cb6aa Mon Sep 17 00:00:00 2001
+From: Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>
+Date: Tue, 15 Sep 2020 17:51:51 +0200
+Subject: [PATCH 01/40] waylandsink: Use memfd_create() when available
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This (so-far) Linux- and FreeBSD-only API lets users create file
+descriptors purely in memory, without any backing file on the filesystem
+and the race condition which could ensue when unlink()ing it.
+
+It also allows seals to be placed on the file, ensuring to every other
+process that we won’t be allowed to shrink the contents, potentially
+causing a SIGBUS when they try reading it.
+
+This patch is best viewed with the -w option of git log -p.
+
+It is an almost exact copy of Wayland commit
+6908c8c85a2e33e5654f64a55cd4f847bf385cae, see
+https://gitlab.freedesktop.org/wayland/wayland/merge_requests/4
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/merge_requests/1577>
+(cherry picked from commit f97b718b4c7200b815026c03efc1074fd69912d4)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/wlshmallocator.c | 37 +++++++++++++++++++++++++-----------
+ meson.build                  |  1 +
+ 2 files changed, 27 insertions(+), 11 deletions(-)
+
+diff --git a/ext/wayland/wlshmallocator.c b/ext/wayland/wlshmallocator.c
+index 8207113..0a82a35 100644
+--- a/ext/wayland/wlshmallocator.c
++++ b/ext/wayland/wlshmallocator.c
+@@ -49,16 +49,33 @@ gst_wl_shm_allocator_alloc (GstAllocator * allocator, gsize size,
+ 
+   /* TODO: make use of the allocation params, if necessary */
+ 
+-  /* allocate shm pool */
+-  snprintf (filename, 1024, "%s/%s-%d-%s", g_get_user_runtime_dir (),
+-      "wayland-shm", init++, "XXXXXX");
+-
+-  fd = g_mkstemp (filename);
+-  if (fd < 0) {
+-    GST_ERROR_OBJECT (self, "opening temp file %s failed: %s", filename,
+-        strerror (errno));
+-    return NULL;
++#ifdef HAVE_MEMFD_CREATE
++  fd = memfd_create ("gst-wayland-shm", MFD_CLOEXEC | MFD_ALLOW_SEALING);
++  if (fd >= 0) {
++    /* We can add this seal before calling posix_fallocate(), as
++     * the file is currently zero-sized anyway.
++     *
++     * There is also no need to check for the return value, we
++     * couldn't do anything with it anyway.
++     */
++    fcntl (fd, F_ADD_SEALS, F_SEAL_SHRINK);
++  } else
++#endif
++  {
++    /* allocate shm pool */
++    snprintf (filename, 1024, "%s/%s-%d-%s", g_get_user_runtime_dir (),
++        "wayland-shm", init++, "XXXXXX");
++
++    fd = g_mkstemp (filename);
++    if (fd < 0) {
++      GST_ERROR_OBJECT (self, "opening temp file %s failed: %s", filename,
++          strerror (errno));
++      return NULL;
++    }
++
++    unlink (filename);
+   }
++
+   if (ftruncate (fd, size) < 0) {
+     GST_ERROR_OBJECT (self, "ftruncate failed: %s", strerror (errno));
+     close (fd);
+@@ -84,8 +101,6 @@ gst_wl_shm_allocator_alloc (GstAllocator * allocator, gsize size,
+    * need it to release the miniobject lock */
+   gst_memory_unmap (mem, &info);
+ 
+-  unlink (filename);
+-
+   return mem;
+ }
+ 
+diff --git a/meson.build b/meson.build
+index a124867..849aca7 100644
+--- a/meson.build
++++ b/meson.build
+@@ -158,6 +158,7 @@ check_functions = [
+   ['HAVE_DCGETTEXT', 'dcgettext'],
+   ['HAVE_GETPAGESIZE', 'getpagesize'],
+   ['HAVE_GMTIME_R', 'gmtime_r'],
++  ['HAVE_MEMFD_CREATE', 'memfd_create'],
+   ['HAVE_MMAP', 'mmap'],
+   ['HAVE_PIPE2', 'pipe2'],
+   ['HAVE_GETRUSAGE', 'getrusage', '#include<sys/resource.h>'],
+-- 
+2.17.1
+

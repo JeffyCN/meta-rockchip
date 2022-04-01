@@ -1,7 +1,7 @@
-From 1f3dee108799a6dc53d7dd121b8da372391e6195 Mon Sep 17 00:00:00 2001
+From 5ab65fc1a899bad80685fd7707b4637cf3bb1274 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 26 Mar 2019 17:33:37 +0800
-Subject: [PATCH 1/2] HACK: kmssink: Open drm devnode directly
+Subject: [PATCH 30/40] HACK: kmssink: Open drm devnode directly
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -9,18 +9,18 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 5 insertions(+)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index db98343..710b0d5 100644
+index 24eb9f2..19f265f 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
-@@ -55,6 +55,7 @@
- #include <xf86drm.h>
+@@ -56,6 +56,7 @@
  #include <xf86drmMode.h>
  #include <drm_fourcc.h>
-+#include <fcntl.h>
  #include <string.h>
++#include <fcntl.h>
  
  #include "gstkmssink.h"
-@@ -731,6 +732,10 @@ gst_kms_sink_start (GstBaseSink * bsink)
+ #include "gstkmsutils.h"
+@@ -815,6 +816,10 @@ gst_kms_sink_start (GstBaseSink * bsink)
      self->fd = drmOpen (self->devname, self->bus_id);
    else
      self->fd = kms_open (&self->devname);
@@ -32,5 +32,5 @@ index db98343..710b0d5 100644
      goto open_failed;
  
 -- 
-2.20.1
+2.17.1
 

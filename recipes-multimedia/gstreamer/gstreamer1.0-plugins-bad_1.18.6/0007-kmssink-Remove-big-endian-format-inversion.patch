@@ -1,0 +1,50 @@
+From 712bc45d83d8c53d99c5a6deffb8a27a4820860a Mon Sep 17 00:00:00 2001
+From: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Date: Fri, 17 Sep 2021 15:42:25 -0400
+Subject: [PATCH 07/40] kmssink: Remove big endian format inversion
+
+This has been a bad interpretation of the DRM docuemntation. The formats are
+fixed regardless the CPU, but for some formats, they expressed in the opposite
+order as GStreamer. Same change was done in waylandsink 2 years ago.
+
+https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/commit/b393b650ab9bfb9654fc116163ab331907216d74
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/merge_requests/2530>
+(cherry picked from commit 107b8f3ba2bfd0d692e1e3e5f9d22e5ce3a92a66)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmsutils.c | 11 -----------
+ 1 file changed, 11 deletions(-)
+
+diff --git a/sys/kms/gstkmsutils.c b/sys/kms/gstkmsutils.c
+index f2bc2d3..cd3f703 100644
+--- a/sys/kms/gstkmsutils.c
++++ b/sys/kms/gstkmsutils.c
+@@ -42,7 +42,6 @@ static const struct
+ 
+   /* DEF_FMT (XRGB1555, ???), */
+   /* DEF_FMT (XBGR1555, ???), */
+-#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+   DEF_FMT (ARGB8888, BGRA),
+   DEF_FMT (XRGB8888, BGRx),
+   DEF_FMT (ABGR8888, RGBA),
+@@ -51,16 +50,6 @@ static const struct
+   DEF_FMT (RGB888, BGR),
+   DEF_FMT (P010, P010_10LE),
+   DEF_FMT (P016, P016_LE),
+-#else
+-  DEF_FMT (ARGB8888, ARGB),
+-  DEF_FMT (XRGB8888, xRGB),
+-  DEF_FMT (ABGR8888, ABGR),
+-  DEF_FMT (XBGR8888, xBGR),
+-  DEF_FMT (RGB888, RGB),
+-  DEF_FMT (BGR888, BGR),
+-  DEF_FMT (P010, P010_10BE),
+-  DEF_FMT (P016, P016_BE),
+-#endif
+   DEF_FMT (UYVY, UYVY),
+   DEF_FMT (YUYV, YUY2),
+   DEF_FMT (YVYU, YVYU),
+-- 
+2.17.1
+

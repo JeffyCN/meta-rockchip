@@ -1,0 +1,77 @@
+From 0153720bff9351ed37985dff762f7f564365a265 Mon Sep 17 00:00:00 2001
+From: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Date: Thu, 16 Sep 2021 17:12:58 -0400
+Subject: [PATCH 04/40] waylandsink: Fix double render check
+
+Our code does not support rendering twice the same wl_buffer in a row, so it
+tries to skip that case, but for this it relied on the GstBuffer pointer,
+while the cache actually works at the GstMemory level now. To avoid this
+compare the GstWlBuffer instead.
+
+This fixes crash when use in zero-copy with videorate element.
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/merge_requests/2526>
+(cherry picked from commit afa1c19b37882a165fc0327ac103851edb95f7ec)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c |  7 ++++---
+ ext/wayland/wlbuffer.c       | 12 ++++++++++--
+ 2 files changed, 14 insertions(+), 5 deletions(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 1c74147..6b9019c 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -827,7 +827,7 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+         if (G_UNLIKELY (!wbuf))
+           goto no_wl_buffer_shm;
+ 
+-        gst_buffer_add_wl_buffer (to_render, wbuf, sink->display);
++        wlbuffer = gst_buffer_add_wl_buffer (to_render, wbuf, sink->display);
+       }
+ 
+       if (!gst_video_frame_map (&dst, &sink->video_info, to_render,
+@@ -851,12 +851,13 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+   if (!wbuf)
+     goto no_wl_buffer;
+ 
+-  gst_buffer_add_wl_buffer (buffer, wbuf, sink->display);
++  wlbuffer = gst_buffer_add_wl_buffer (buffer, wbuf, sink->display);
+   to_render = buffer;
+ 
+ render:
+   /* drop double rendering */
+-  if (G_UNLIKELY (to_render == sink->last_buffer)) {
++  if (G_UNLIKELY (wlbuffer ==
++          gst_buffer_get_wl_buffer (sink->display, sink->last_buffer))) {
+     GST_LOG_OBJECT (sink, "Buffer already being rendered");
+     goto done;
+   }
+diff --git a/ext/wayland/wlbuffer.c b/ext/wayland/wlbuffer.c
+index 0739bda..caab58d 100644
+--- a/ext/wayland/wlbuffer.c
++++ b/ext/wayland/wlbuffer.c
+@@ -185,10 +185,18 @@ gst_buffer_add_wl_buffer (GstBuffer * gstbuffer, struct wl_buffer *wlbuffer,
+ GstWlBuffer *
+ gst_buffer_get_wl_buffer (GstWlDisplay * display, GstBuffer * gstbuffer)
+ {
+-  GstMemory *mem0 = gst_buffer_peek_memory (gstbuffer, 0);
+-  GstWlBuffer *wlbuf = gst_wl_display_lookup_buffer (display, mem0);
++  GstMemory *mem0;
++  GstWlBuffer *wlbuf;
++
++  if (!gstbuffer)
++    return NULL;
++
++  mem0 = gst_buffer_peek_memory (gstbuffer, 0);
++
++  wlbuf = gst_wl_display_lookup_buffer (display, mem0);
+   if (wlbuf)
+     wlbuf->current_gstbuffer = gstbuffer;
++
+   return wlbuf;
+ }
+ 
+-- 
+2.17.1
+

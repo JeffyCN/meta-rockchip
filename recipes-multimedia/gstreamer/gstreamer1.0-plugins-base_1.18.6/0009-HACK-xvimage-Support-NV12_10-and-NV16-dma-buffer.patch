@@ -1,0 +1,152 @@
+From 9b63e6b61fb5cdaebc7743b8f859d7efa03c5708 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 14 Dec 2021 11:45:02 +0800
+Subject: [PATCH 9/9] HACK: xvimage: Support NV12_10 and NV16 dma buffer
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/xvimage/xvcontext.c   | 28 +++++++++++++++++++++++++++-
+ sys/xvimage/xvcontext.h   | 10 ++++++++++
+ sys/xvimage/xvimagesink.c | 19 +++++++++++++++++++
+ 3 files changed, 56 insertions(+), 1 deletion(-)
+
+diff --git a/sys/xvimage/xvcontext.c b/sys/xvimage/xvcontext.c
+index 1bcf149..f0e1737 100644
+--- a/sys/xvimage/xvcontext.c
++++ b/sys/xvimage/xvcontext.c
+@@ -152,7 +152,7 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+ 
+   /* Set XV_AUTOPAINT_COLORKEY and XV_DOUBLE_BUFFER and XV_COLORKEY */
+   {
+-    int count, todo = 5;
++    int count, todo = 6;
+     XvAttribute *const attr = XvQueryPortAttributes (context->disp,
+         context->xv_port_id, &count);
+     static const char autopaint[] = "XV_AUTOPAINT_COLORKEY";
+@@ -160,6 +160,7 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+     static const char colorkey[] = "XV_COLORKEY";
+     static const char iturbt709[] = "XV_ITURBT_709";
+     static const char dma_client_id[] = XV_DMA_CLIENT_PROP;
++    static const char dma_drm_fourcc[] = XV_DMA_DRM_FOURCC_PROP;
+ 
+     GST_DEBUG ("Checking %d Xv port attributes", count);
+ 
+@@ -243,6 +244,9 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+             config->dma_client_id);
+         todo--;
+         context->have_dma_client = TRUE;
++      } else if (!strcmp (attr[i].name, dma_drm_fourcc)) {
++        todo--;
++        context->have_dma_drm_fourcc = TRUE;
+       }
+     }
+ 
+@@ -357,6 +361,24 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+   if (gst_caps_is_empty (caps))
+     goto no_caps;
+ 
++  if (context->have_dma_drm_fourcc) {
++    GstCaps *format_caps;
++
++    format_caps = gst_caps_new_simple ("video/x-raw",
++        "format", G_TYPE_STRING, "NV16",
++        "width", GST_TYPE_INT_RANGE, 1, max_w,
++        "height", GST_TYPE_INT_RANGE, 1, max_h,
++        "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1, NULL);
++    gst_caps_append (caps, format_caps);
++
++    format_caps = gst_caps_new_simple ("video/x-raw",
++        "format", G_TYPE_STRING, "NV12_10LE40",
++        "width", GST_TYPE_INT_RANGE, 1, max_w,
++        "height", GST_TYPE_INT_RANGE, 1, max_h,
++        "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1, NULL);
++    gst_caps_append (caps, format_caps);
++  }
++
+   return caps;
+ 
+   /* ERRORS */
+@@ -894,6 +916,10 @@ gst_xvcontext_get_format_from_info (GstXvContext * context, GstVideoInfo * info)
+ {
+   GList *list = NULL;
+ 
++  /* HACK: Use NV12 format for fake formats */
++  if (context->drm_fourcc != -1)
++    return DRM_FORMAT_NV12;
++
+   list = context->formats_list;
+ 
+   while (list) {
+diff --git a/sys/xvimage/xvcontext.h b/sys/xvimage/xvcontext.h
+index 166e79f..67cac4f 100644
+--- a/sys/xvimage/xvcontext.h
++++ b/sys/xvimage/xvcontext.h
+@@ -42,11 +42,18 @@
+ 
+ #include <gst/video/video.h>
+ 
++#include <libdrm/drm_fourcc.h>
++
+ #define XV_DMA_CLIENT_PROP      "XV_DMA_CLIENT_ID"
+ #define XV_DMA_VER_STRIDE_PROP  "XV_DMA_VER_STRIDE"
+ #define XV_DMA_HOR_STRIDE_PROP  "XV_DMA_HOR_STRIDE"
++#define XV_DMA_DRM_FOURCC_PROP  "XV_DMA_DRM_FOURCC"
+ #define XV_DMA_CLIENT_PATH      "/tmp/.xv_dma_client"
+ 
++#ifndef DRM_FORMAT_NV12_10
++#define DRM_FORMAT_NV12_10 fourcc_code('N', 'A', '1', '2')
++#endif
++
+ G_BEGIN_DECLS
+ 
+ typedef struct _GstXvContextConfig GstXvContextConfig;
+@@ -168,6 +175,9 @@ struct _GstXvContext
+   gboolean have_double_buffer;
+   gboolean have_iturbt709;
+   gboolean have_dma_client;
++  gboolean have_dma_drm_fourcc;
++
++  guint32 drm_fourcc;
+ 
+   GList *formats_list;
+ 
+diff --git a/sys/xvimage/xvimagesink.c b/sys/xvimage/xvimagesink.c
+index de2b1d6..4e348d2 100644
+--- a/sys/xvimage/xvimagesink.c
++++ b/sys/xvimage/xvimagesink.c
+@@ -314,6 +314,11 @@ gst_xv_image_sink_send_dma_params (GstXvImageSink * xvimagesink,
+   } else {
+     error = TRUE;
+   }
++  prop_atom = XInternAtom (context->disp, XV_DMA_DRM_FOURCC_PROP, True);
++  if (prop_atom != None) {
++    XvSetPortAttribute (context->disp, context->xv_port_id,
++        prop_atom, context->drm_fourcc);
++  }
+   g_mutex_unlock (&context->lock);
+ 
+   if (error == TRUE) {
+@@ -996,6 +1001,20 @@ gst_xv_image_sink_setcaps (GstBaseSink * bsink, GstCaps * caps)
+     gst_object_unref (oldpool);
+   }
+ 
++  context->drm_fourcc = -1;
++
++  if (GST_VIDEO_INFO_FORMAT (&info) == GST_VIDEO_FORMAT_NV12_10LE40) {
++    if (!context->have_dma_drm_fourcc)
++      return FALSE;
++
++    context->drm_fourcc = DRM_FORMAT_NV12_10;
++  } else if (GST_VIDEO_INFO_FORMAT (&info) == GST_VIDEO_FORMAT_NV16) {
++    if (!context->have_dma_drm_fourcc)
++      return FALSE;
++
++    context->drm_fourcc = DRM_FORMAT_NV16;
++  }
++
+   return TRUE;
+ 
+   /* ERRORS */
+-- 
+2.20.1
+

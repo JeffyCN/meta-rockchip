@@ -1,0 +1,138 @@
+From bff26916cef9024b370a1960f5d2d18d3c050a52 Mon Sep 17 00:00:00 2001
+From: "Randy Li (ayaka)" <ayaka@soulik.info>
+Date: Tue, 15 Dec 2020 18:11:08 +0800
+Subject: [PATCH 03/40] waylandsink: prevent frame callback being released
+ twice
+
+For those using context from the application which
+would be the embedded video case, if the frame callback
+is entering at the same time as window is finalizing,
+a wayland proxy object would be destroyed twice, leading
+the refcout less than zero in the second time, it can
+throw an abort() in wayland.
+
+For those top window case, which as a directly connection
+to the compositor, they can stop the message queue then
+the frame callback won't happen at the same time as the
+window is finalizing. It doesn't think it would bother
+them about this.
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/merge_requests/1883>
+(cherry picked from commit 0d746d1022c7f83bc297584cb4d456cae4697cbf)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 25 ++++++++++++++++---------
+ ext/wayland/gstwaylandsink.h |  2 ++
+ ext/wayland/wlwindow.c       |  4 ----
+ ext/wayland/wlwindow.h       |  1 -
+ 4 files changed, 18 insertions(+), 14 deletions(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 47192df..1c74147 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -404,6 +404,14 @@ gst_wayland_sink_change_state (GstElement * element, GstStateChange transition)
+           gst_wl_window_render (sink->window, NULL, NULL);
+         }
+       }
++
++      g_mutex_lock (&sink->render_lock);
++      if (sink->callback) {
++        wl_callback_destroy (sink->callback);
++        sink->callback = NULL;
++      }
++      sink->redraw_pending = FALSE;
++      g_mutex_unlock (&sink->render_lock);
+       break;
+     case GST_STATE_CHANGE_READY_TO_NULL:
+       g_mutex_lock (&sink->display_lock);
+@@ -417,12 +425,9 @@ gst_wayland_sink_change_state (GstElement * element, GstStateChange transition)
+        * to avoid requesting them again from the application if/when we are
+        * restarted (GstVideoOverlay behaves like that in other sinks)
+        */
+-      if (sink->display && !sink->window) {     /* -> the window was toplevel */
++      if (sink->display && !sink->window)       /* -> the window was toplevel */
+         g_clear_object (&sink->display);
+-        g_mutex_lock (&sink->render_lock);
+-        sink->redraw_pending = FALSE;
+-        g_mutex_unlock (&sink->render_lock);
+-      }
++
+       g_mutex_unlock (&sink->display_lock);
+       g_clear_object (&sink->pool);
+       break;
+@@ -637,10 +642,12 @@ frame_redraw_callback (void *data, struct wl_callback *callback, uint32_t time)
+ 
+   g_mutex_lock (&sink->render_lock);
+   sink->redraw_pending = FALSE;
+-  sink->window->callback = NULL;
+-  g_mutex_unlock (&sink->render_lock);
+ 
+-  wl_callback_destroy (callback);
++  if (sink->callback) {
++    wl_callback_destroy (callback);
++    sink->callback = NULL;
++  }
++  g_mutex_unlock (&sink->render_lock);
+ }
+ 
+ static const struct wl_callback_listener frame_callback_listener = {
+@@ -661,7 +668,7 @@ render_last_buffer (GstWaylandSink * sink, gboolean redraw)
+ 
+   sink->redraw_pending = TRUE;
+   callback = wl_surface_frame (surface);
+-  sink->window->callback = callback;
++  sink->callback = callback;
+   wl_callback_add_listener (callback, &frame_callback_listener, sink);
+ 
+   if (G_UNLIKELY (sink->video_info_changed && !redraw)) {
+diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
+index be92fe7..23a4ebd 100644
+--- a/ext/wayland/gstwaylandsink.h
++++ b/ext/wayland/gstwaylandsink.h
+@@ -67,6 +67,8 @@ struct _GstWaylandSink
+   gboolean redraw_pending;
+   GMutex render_lock;
+   GstBuffer *last_buffer;
++
++  struct wl_callback *callback;
+ };
+ 
+ struct _GstWaylandSinkClass
+diff --git a/ext/wayland/wlwindow.c b/ext/wayland/wlwindow.c
+index 2a09b93..66a05be 100644
+--- a/ext/wayland/wlwindow.c
++++ b/ext/wayland/wlwindow.c
+@@ -157,9 +157,6 @@ gst_wl_window_finalize (GObject * gobject)
+ {
+   GstWlWindow *self = GST_WL_WINDOW (gobject);
+ 
+-  if (self->callback)
+-    wl_callback_destroy (self->callback);
+-
+   if (self->wl_shell_surface)
+     wl_shell_surface_destroy (self->wl_shell_surface);
+ 
+@@ -200,7 +197,6 @@ gst_wl_window_new_internal (GstWlDisplay * display, GMutex * render_lock)
+   window->render_lock = render_lock;
+   g_cond_init (&window->configure_cond);
+ 
+-  window->callback = NULL;
+   window->area_surface = wl_compositor_create_surface (display->compositor);
+   window->video_surface = wl_compositor_create_surface (display->compositor);
+ 
+diff --git a/ext/wayland/wlwindow.h b/ext/wayland/wlwindow.h
+index cecbda6..c3f0172 100644
+--- a/ext/wayland/wlwindow.h
++++ b/ext/wayland/wlwindow.h
+@@ -55,7 +55,6 @@ struct _GstWlWindow
+   struct wl_shell_surface *wl_shell_surface;
+   struct xdg_surface *xdg_surface;
+   struct xdg_toplevel *xdg_toplevel;
+-  struct wl_callback *callback;
+   gboolean configured;
+   GCond configure_cond;
+   GMutex configure_mutex;
+-- 
+2.17.1
+
