@@ -1,7 +1,7 @@
-From dd696bac9e255e7fbf9699efcb317ce3772c749d Mon Sep 17 00:00:00 2001
+From a233eee4ee5fb1104f79866edc24712284c5b448 Mon Sep 17 00:00:00 2001
 From: Arnaldo Carvalho de Melo <acme@redhat.com>
 Date: Mon, 2 Mar 2020 11:13:19 -0300
-Subject: [PATCH 4/5] perf tests bp_account: Make global variable static
+Subject: [PATCH 3/7] perf tests bp_account: Make global variable static
 
 To fix the build with newer gccs, that without this patch exit with:
 
