@@ -19,9 +19,6 @@ SRC_URI = "git://github.com/JeffyCN/mirrors.git;protocol=https;branch=gstreamer-
 
 S = "${WORKDIR}/git"
 
-PATCHPATH = "${THISDIR}/files"
-inherit auto-patch
-
 inherit meson pkgconfig
 
 PACKAGECONFIG ??= "mpp ${@bb.utils.filter('DISTRO_FEATURES', 'x11', d)} rga"
