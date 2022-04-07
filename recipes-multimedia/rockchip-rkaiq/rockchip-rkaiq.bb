@@ -38,6 +38,10 @@ do_generate_toolchain_file:append () {
 
 	sed -i "s/\(\${CMAKE_C_COMPILER}\)/\1 -I\${CMAKE_SYSROOT}\/usr\/include/" \
 		${S}/iq_parser_v2/CMakeLists.txt
+
+	sed -i 's/if ( !pattr )/if ( pattr )/' ${S}/iq_parser/xmltags.cpp
+	sed -i '/\<prebuilts\>/d' ${S}/rkaiq_3A_server/CMakeLists.txt
+	sed -i 's/\(add_library(.* STATIC IMPORTED\))/\1 GLOBAL)/' ${S}/algos/CMakeLists.txt
 }
 
 do_install:append () {
