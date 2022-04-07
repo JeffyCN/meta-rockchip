@@ -53,7 +53,7 @@ stop_adbd()
 {
 	echo "none" > $SYS_PATH/UDC || true
 
-	start-stop-daemon -K -n adbd
+	start-stop-daemon -K -o -n adbd
 }
 
 case "$1" in
