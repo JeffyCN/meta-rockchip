@@ -26,7 +26,7 @@ start_adbd()
 
 stop_adbd()
 {
-	start-stop-daemon -K -n adbd
+	start-stop-daemon -K -o -n adbd
 
 	android-gadget-cleanup
 }
