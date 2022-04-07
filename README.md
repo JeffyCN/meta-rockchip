@@ -12,11 +12,11 @@ Please see the corresponding sections below for details.
 This layer depends on:
 
 * URI: git://git.yoctoproject.org/poky
-* branch: zeus dunfell gatesgarth hardknott
+* branch: gatesgarth hardknott
 
 * URI: git://git.openembedded.org/meta-openembedded
 * layers: meta-oe
-* branch: zeus dunfell gatesgarth hardknott
+* branch: gatesgarth hardknott
 
 ## Table of Contents
 
