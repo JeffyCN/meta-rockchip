@@ -1,7 +1,7 @@
-From 40c17dd62e8c0769f62f6b8529d20e03baadceab Mon Sep 17 00:00:00 2001
+From 576c722f71504756d7b68400d686c2f31c49bdee Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Sun, 28 Apr 2019 15:31:53 +0800
-Subject: [PATCH] libv4l2: Support mmap() to libv4l-plugin
+Subject: [PATCH 1/4] libv4l2: Support mmap() to libv4l-plugin
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -23,7 +23,7 @@ index 23b2dfb..acb0a54 100644
         must set these all to NULL, as future versions may check for these */
      void (*reserved1)(void);
 diff --git a/lib/libv4l2/libv4l2.c b/lib/libv4l2/libv4l2.c
-index 2db25d1..21e6f05 100644
+index 9ebf8c1..0c02bec 100644
 --- a/lib/libv4l2/libv4l2.c
 +++ b/lib/libv4l2/libv4l2.c
 @@ -1627,6 +1627,16 @@ void *v4l2_mmap(void *start, size_t length, int prot, int flags, int fd,
@@ -44,5 +44,5 @@ index 2db25d1..21e6f05 100644
  			/* Check if the mmap data matches our answer to QUERY_BUF. If it doesn't,
  			   let the kernel handle it (to allow for mmap-based non capture use) */
 -- 
-2.11.0
+2.20.1
 
