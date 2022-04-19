@@ -1,18 +1,18 @@
-From fa1bd8d2d2570837d632610df20407a64b8a6250 Mon Sep 17 00:00:00 2001
+From 0286f5d22f8072616c749a35fedd702d4fdd0083 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 27 Sep 2019 18:52:24 +0800
-Subject: [PATCH] libv4l: mplane: Filter out multiplane formats
+Subject: [PATCH 2/4] libv4l: mplane: Filter out multiplane formats
 
 The multiplane formats are not supported here, reporting them to the
 userspace might cause unexpected results.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- lib/libv4l-mplane/libv4l-mplane.c | 149 ++++++++++++++++++++++++++++++++++++--
+ lib/libv4l-mplane/libv4l-mplane.c | 149 ++++++++++++++++++++++++++++--
  1 file changed, 141 insertions(+), 8 deletions(-)
 
 diff --git a/lib/libv4l-mplane/libv4l-mplane.c b/lib/libv4l-mplane/libv4l-mplane.c
-index 2f685a73..b30840a3 100644
+index 2f685a7..b30840a 100644
 --- a/lib/libv4l-mplane/libv4l-mplane.c
 +++ b/lib/libv4l-mplane/libv4l-mplane.c
 @@ -49,6 +49,15 @@
@@ -280,5 +280,5 @@ index 2f685a73..b30840a3 100644
  	case VIDIOC_G_PARM:
  		return SIMPLE_CONVERT_IOCTL(fd, cmd, arg, v4l2_streamparm);
 -- 
-2.11.0
+2.20.1
 
