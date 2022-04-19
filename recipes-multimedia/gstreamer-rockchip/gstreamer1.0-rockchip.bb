@@ -8,7 +8,7 @@ include recipes-multimedia/gstreamer/gstreamer1.0-plugins-packaging.inc
 
 DESCRIPTION = "GStreamer 1.0 plugins for Rockchip platforms"
 
-LICENSE = "LGPL-2.1-only"
+LICENSE = "LGPL-2.1-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=4fbd65380cdd255951079008b364516c"
 DEPENDS:append = " gstreamer1.0-plugins-base"
 
