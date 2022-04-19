@@ -1,11 +1,9 @@
 # Copyright (C) 2019, Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-FILESEXTRAPATHS:prepend := "${THISDIR}/${BPN}:"
+PATCHPATH = "${CURDIR}/${BPN}"
 
-SRC_URI:append = " \
-	file://0001-libv4l2-Support-mmap-to-libv4l-plugin.patch \
-"
+inherit auto-patch
 
 INSANE_SKIP:libv4l:append = " dev-so"
 
