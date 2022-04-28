@@ -1,0 +1,75 @@
+From 84061dd271afb7984b4f2d24a49a250819c01598 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 3 Jul 2020 12:37:37 +0800
+Subject: [PATCH 25/61] backend-drm: Support controlling compositor dynamically
+
+Use config file to control compositor's state.
+
+Default config file is "/tmp/.weston_drm.conf", can override with
+"WESTON_DRM_CONFIG" environment.
+
+Supported configs format is "compositor:state:<state>", for
+example:
+echo "compositor:state:sleep" > /tmp/.weston_drm.conf
+echo "compositor:state:off" > /tmp/.weston_drm.conf
+echo "compositor:state:on" > /tmp/.weston_drm.conf
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm.c | 26 +++++++++++++++++++++++++-
+ 1 file changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 89c0b827..8e410904 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -3636,6 +3636,26 @@ config_handle_output(struct drm_backend *b, const char *name,
+ 	}
+ }
+ 
++static void
++config_handle_compositor(struct drm_backend *b, const char *key,
++			 const char *value)
++{
++	if (!strncmp(key, "state", strlen("state"))) {
++		if (!strncmp(value, "sleep", strlen("sleep"))) {
++			weston_compositor_sleep(b->compositor);
++		} else if (!strncmp(value, "off", strlen("off"))) {
++			udev_input_disable(&b->input);
++			weston_compositor_sleep(b->compositor);
++		} else {
++			weston_compositor_wake(b->compositor);
++			weston_compositor_damage_all(b->compositor);
++
++			if (b->input.suspended)
++				udev_input_enable(&b->input);
++		}
++	}
++}
++
+ static int
+ config_timer_handler(void *data)
+ {
+@@ -3669,7 +3689,9 @@ config_timer_handler(void *data)
+ 
+ 	/**
+ 	 * Parse configs, formated with <type>:<key>:<value>
+-	 * For example: "output:all:rotate90"
++	 * For example:
++	 *	output:all:rotate90
++	 *	compositor:state:off
+ 	 */
+ 	while (3 == fscanf(conf_fp,
+ 			   "%" STR(MAX_CONF_LEN) "[^:]:"
+@@ -3677,6 +3699,8 @@ config_timer_handler(void *data)
+ 			   "%" STR(MAX_CONF_LEN) "s ", type, key, value)) {
+ 		if (!strcmp(type, "output"))
+ 			config_handle_output(b, key, value);
++		else if (!strcmp(type, "compositor"))
++			config_handle_compositor(b, key, value);
+ 	}
+ 
+ 	fclose(conf_fp);
+-- 
+2.20.1
+

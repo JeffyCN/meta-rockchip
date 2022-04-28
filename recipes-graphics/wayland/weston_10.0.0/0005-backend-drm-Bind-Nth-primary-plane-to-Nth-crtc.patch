@@ -1,7 +1,7 @@
-From 983741f9a2305b127e88fca15e4658c8291c417d Mon Sep 17 00:00:00 2001
+From a1fce8ca1dede92be693fe4e358c43b107b71362 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 2 Apr 2021 11:23:36 +0800
-Subject: [PATCH 05/58] backend-drm: Bind Nth primary plane to Nth crtc
+Subject: [PATCH 05/57] backend-drm: Bind Nth primary plane to Nth crtc
 
 The vop2 allows primary planes to bind with random crtc, but we need to
 use the same pair as the driver registered when using drm legacy API.

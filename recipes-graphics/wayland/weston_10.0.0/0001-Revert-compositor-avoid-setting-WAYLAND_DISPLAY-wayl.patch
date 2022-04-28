@@ -1,7 +1,7 @@
-From e81ef224e644373cdbcd0b30163b7c291e8ba378 Mon Sep 17 00:00:00 2001
+From 0d35581d0e8738c3e9dd5ed2e0de92216f9a2c68 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 5 Jan 2022 14:56:17 +0800
-Subject: [PATCH 01/58] Revert "compositor: avoid setting
+Subject: [PATCH 01/53] Revert "compositor: avoid setting
  WAYLAND_DISPLAY=wayland-0"
 
 This reverts commit ae69381b6eb43ab63992906d1bf29ffd2b4df10d.
