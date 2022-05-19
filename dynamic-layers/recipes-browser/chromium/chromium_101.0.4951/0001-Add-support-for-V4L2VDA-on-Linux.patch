@@ -1,4 +1,4 @@
-From ae44d20b10973d16f7aa0bf94f30c7a1c7ee8ad0 Mon Sep 17 00:00:00 2001
+From 8c13cc78f1deb0d3b22eb50021e57f73ed43173b Mon Sep 17 00:00:00 2001
 From: Maksim Sisov <msisov@igalia.com>
 Date: Wed, 31 Jul 2019 09:56:24 +0300
 Subject: [PATCH 01/15] Add support for V4L2VDA on Linux
@@ -31,11 +31,11 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  media/gpu/args.gni                            |  4 ++
  .../gpu_video_decode_accelerator_factory.cc   |  8 +++
  .../gpu_video_decode_accelerator_factory.h    |  2 +
- media/gpu/v4l2/BUILD.gn                       | 43 ++++++------
+ media/gpu/v4l2/BUILD.gn                       | 42 ++++++------
  media/gpu/v4l2/generic_v4l2_device.cc         |  4 ++
  media/gpu/v4l2/v4l2_device.cc                 | 66 +++++++++++++++++++
  media/gpu/v4l2/v4l2_video_decoder.cc          |  7 ++
- 9 files changed, 118 insertions(+), 20 deletions(-)
+ 9 files changed, 115 insertions(+), 22 deletions(-)
 
 diff --git a/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc b/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc
 index 3772b8ef0..dece6b77f 100644
@@ -52,7 +52,7 @@ index 3772b8ef0..dece6b77f 100644
  #endif
  
 diff --git a/media/gpu/BUILD.gn b/media/gpu/BUILD.gn
-index cd9e94809..a3cfa38e0 100644
+index 78d151fa6..101e2e4f9 100644
 --- a/media/gpu/BUILD.gn
 +++ b/media/gpu/BUILD.gn
 @@ -20,6 +20,7 @@ buildflag_header("buildflags") {
@@ -151,7 +151,7 @@ index b2e1390c5..5a714eb80 100644
    std::unique_ptr<VideoDecodeAccelerator> CreateVTVDA(
        const gpu::GpuDriverBugWorkarounds& workarounds,
 diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
-index 0322bbf7f..e7a8743d4 100644
+index 65e5f58d1..bde4c169d 100644
 --- a/media/gpu/v4l2/BUILD.gn
 +++ b/media/gpu/v4l2/BUILD.gn
 @@ -28,9 +28,6 @@ source_set("v4l2") {
@@ -173,7 +173,7 @@ index 0322bbf7f..e7a8743d4 100644
      "v4l2_stateful_workaround.cc",
      "v4l2_stateful_workaround.h",
      "v4l2_status.h",
-@@ -56,24 +51,34 @@ source_set("v4l2") {
+@@ -56,26 +51,31 @@ source_set("v4l2") {
      "v4l2_video_decoder_backend.h",
      "v4l2_video_decoder_backend_stateful.cc",
      "v4l2_video_decoder_backend_stateful.h",
@@ -187,6 +187,8 @@ index 0322bbf7f..e7a8743d4 100644
 -    "v4l2_video_decoder_delegate_vp8.h",
 -    "v4l2_video_decoder_delegate_vp8_legacy.cc",
 -    "v4l2_video_decoder_delegate_vp8_legacy.h",
+-    "v4l2_video_decoder_delegate_vp9.cc",
+-    "v4l2_video_decoder_delegate_vp9.h",
 -    "v4l2_video_decoder_delegate_vp9_chromium.cc",
 -    "v4l2_video_decoder_delegate_vp9_chromium.h",
 -    "v4l2_video_decoder_delegate_vp9_legacy.cc",
@@ -197,11 +199,6 @@ index 0322bbf7f..e7a8743d4 100644
  
 +  if (!use_linux_v4l2_only) {
 +    sources += [
-+      "v4l2_decode_surface.cc",
-+      "v4l2_decode_surface.h",
-+      "v4l2_decode_surface_handler.h",
-+      "v4l2_slice_video_decode_accelerator.cc",
-+      "v4l2_slice_video_decode_accelerator.h",
 +      "v4l2_video_decoder_backend_stateless.cc",
 +      "v4l2_video_decoder_backend_stateless.h",
 +      "v4l2_video_decoder_delegate_h264.cc",
@@ -212,6 +209,8 @@ index 0322bbf7f..e7a8743d4 100644
 +      "v4l2_video_decoder_delegate_vp8.h",
 +      "v4l2_video_decoder_delegate_vp8_legacy.cc",
 +      "v4l2_video_decoder_delegate_vp8_legacy.h",
++      "v4l2_video_decoder_delegate_vp9.cc",
++      "v4l2_video_decoder_delegate_vp9.h",
 +      "v4l2_video_decoder_delegate_vp9_chromium.cc",
 +      "v4l2_video_decoder_delegate_vp9_chromium.h",
 +      "v4l2_video_decoder_delegate_vp9_legacy.cc",
@@ -223,10 +222,10 @@ index 0322bbf7f..e7a8743d4 100644
      "EGL",
      "GLESv2",
 diff --git a/media/gpu/v4l2/generic_v4l2_device.cc b/media/gpu/v4l2/generic_v4l2_device.cc
-index b64c9bd0f..92ec1b607 100644
+index a6fe9d914..becf30c9c 100644
 --- a/media/gpu/v4l2/generic_v4l2_device.cc
 +++ b/media/gpu/v4l2/generic_v4l2_device.cc
-@@ -441,7 +441,11 @@ bool GenericV4L2Device::OpenDevicePath(const std::string& path, Type type) {
+@@ -440,7 +440,11 @@ bool GenericV4L2Device::OpenDevicePath(const std::string& path, Type type) {
      return false;
  
  #if BUILDFLAG(USE_LIBV4L2)
@@ -239,7 +238,7 @@ index b64c9bd0f..92ec1b607 100644
            -1) {
      DVLOGF(3) << "Using libv4l2 for " << path;
 diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
-index eecefc676..1ef6e659e 100644
+index de2800fda..866c79e4d 100644
 --- a/media/gpu/v4l2/v4l2_device.cc
 +++ b/media/gpu/v4l2/v4l2_device.cc
 @@ -853,7 +853,9 @@ void V4L2WritableBufferRef::SetConfigStore(uint32_t config_store) {
@@ -419,7 +418,7 @@ index eecefc676..1ef6e659e 100644
  
  absl::optional<V4L2RequestRef> V4L2RequestsQueue::GetFreeRequest() {
 diff --git a/media/gpu/v4l2/v4l2_video_decoder.cc b/media/gpu/v4l2/v4l2_video_decoder.cc
-index db6495221..f5807b619 100644
+index 057b28663..1df3f1a5c 100644
 --- a/media/gpu/v4l2/v4l2_video_decoder.cc
 +++ b/media/gpu/v4l2/v4l2_video_decoder.cc
 @@ -28,7 +28,10 @@
@@ -443,7 +442,7 @@ index db6495221..f5807b619 100644
      V4L2_PIX_FMT_H264,       V4L2_PIX_FMT_VP8,       V4L2_PIX_FMT_VP9,
  };
  
-@@ -318,6 +323,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
+@@ -320,6 +325,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
               << " and fourcc: " << FourccToString(input_format_fourcc);
      backend_ = std::make_unique<V4L2StatefulVideoDecoderBackend>(
          this, device_, profile_, color_space_, decoder_task_runner_);
@@ -451,7 +450,7 @@ index db6495221..f5807b619 100644
    } else {
      DCHECK_EQ(preferred_api_and_format.first, kStateless);
      VLOGF(1) << "Using a stateless API for profile: "
-@@ -325,6 +331,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
+@@ -327,6 +333,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
               << " and fourcc: " << FourccToString(input_format_fourcc);
      backend_ = std::make_unique<V4L2StatelessVideoDecoderBackend>(
          this, device_, profile_, color_space_, decoder_task_runner_);
