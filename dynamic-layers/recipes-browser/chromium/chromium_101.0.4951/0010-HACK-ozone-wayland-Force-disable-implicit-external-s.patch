@@ -1,0 +1,30 @@
+From 7dd0dfaa33f5efdb9fb0f527ae2a4452b20dd358 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 31 May 2021 01:41:57 +0800
+Subject: [PATCH 10/15] HACK: [ozone/wayland]: Force disable implicit external
+ sync
+
+The Mali's implicit external sync seems broken.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc
+index 2a9a88cf7..bb9e1d28b 100644
+--- a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc
++++ b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc
+@@ -231,7 +231,8 @@ void GbmSurfacelessWayland::SwapBuffersAsync(
+   } else {
+     // TODO(fangzhoug): the following should be replaced by a per surface flush
+     // as it gets implemented in GL drivers.
+-    EGLSyncKHR fence = InsertFence(has_implicit_external_sync_);
++    // HACK: The Mali's implicit external sync seems broken.
++    EGLSyncKHR fence = InsertFence(/* has_implicit_external_sync_ */ false);
+     CHECK_NE(fence, EGL_NO_SYNC_KHR) << "eglCreateSyncKHR failed";
+ 
+     fence_wait_task = base::BindOnce(&WaitForEGLFence, GetDisplay(), fence);
+-- 
+2.20.1
+
