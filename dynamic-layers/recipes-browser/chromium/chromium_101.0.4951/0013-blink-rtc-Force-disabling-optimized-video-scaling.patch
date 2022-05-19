@@ -1,0 +1,31 @@
+From efbbf561fa4de9af3d4cf98edee38fe4b325e346 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 1 Dec 2021 18:27:06 +0800
+Subject: [PATCH 13/15] blink: rtc: Force disabling optimized video scaling
+
+This would break VEA when encoder requires special coded size:
+https://bugs.chromium.org/p/chromium/issues/detail?id=1193457#c6
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../renderer/platform/peerconnection/rtc_video_encoder.cc     | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/third_party/blink/renderer/platform/peerconnection/rtc_video_encoder.cc b/third_party/blink/renderer/platform/peerconnection/rtc_video_encoder.cc
+index 5f488e48b..844ee6928 100644
+--- a/third_party/blink/renderer/platform/peerconnection/rtc_video_encoder.cc
++++ b/third_party/blink/renderer/platform/peerconnection/rtc_video_encoder.cc
+@@ -1222,6 +1222,10 @@ void RTCVideoEncoder::Impl::EncodeOneFrame() {
+ #else
+         false;
+ #endif
++
++    // https://bugs.chromium.org/p/chromium/issues/detail?id=1193457#c6
++    optimized_scaling = false;
++
+     if (optimized_scaling) {
+       DCHECK_EQ(buffer->type(), webrtc::VideoFrameBuffer::Type::kNative);
+       auto scaled_buffer = buffer->Scale(input_visible_size_.width(),
+-- 
+2.20.1
+

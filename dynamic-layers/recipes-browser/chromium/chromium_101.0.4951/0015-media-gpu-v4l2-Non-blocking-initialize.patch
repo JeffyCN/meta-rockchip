@@ -1,0 +1,126 @@
+From ede4260fcee7a7b022604ef303285c128c078609 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 21 Mar 2022 18:30:22 +0800
+Subject: [PATCH 15/15] media/gpu/v4l2: Non-blocking initialize
+
+See:
+https://bugs.chromium.org/p/chromium/issues/detail?id=1308345
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../gpu/v4l2/v4l2_video_encode_accelerator.cc | 35 +++++++++----------
+ .../gpu/v4l2/v4l2_video_encode_accelerator.h  |  4 +--
+ 2 files changed, 17 insertions(+), 22 deletions(-)
+
+diff --git a/media/gpu/v4l2/v4l2_video_encode_accelerator.cc b/media/gpu/v4l2/v4l2_video_encode_accelerator.cc
+index 0edf56412..488e05828 100644
+--- a/media/gpu/v4l2/v4l2_video_encode_accelerator.cc
++++ b/media/gpu/v4l2/v4l2_video_encode_accelerator.cc
+@@ -272,25 +272,15 @@ bool V4L2VideoEncodeAccelerator::Initialize(
+     return false;
+   }
+ 
+-  bool result = false;
+-  base::WaitableEvent done;
+   encoder_task_runner_->PostTask(
+       FROM_HERE, base::BindOnce(&V4L2VideoEncodeAccelerator::InitializeTask,
+-                                weak_this_, config, &result, &done));
+-  done.Wait();
+-  return result;
++                                weak_this_, config));
++  return true;
+ }
+ 
+-void V4L2VideoEncodeAccelerator::InitializeTask(const Config& config,
+-                                                bool* result,
+-                                                base::WaitableEvent* done) {
++void V4L2VideoEncodeAccelerator::InitializeTask(const Config& config) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(encoder_sequence_checker_);
+ 
+-  // Signal the event when leaving the method.
+-  base::ScopedClosureRunner signal_event(
+-      base::BindOnce(&base::WaitableEvent::Signal, base::Unretained(done)));
+-  *result = false;
+-
+   native_input_mode_ =
+       config.storage_type.value_or(Config::StorageType::kShmem) ==
+       Config::StorageType::kGpuMemoryBuffer;
+@@ -305,6 +295,7 @@ void V4L2VideoEncodeAccelerator::InitializeTask(const Config& config,
+ 
+   if (!SetFormats(config.input_format, config.output_profile)) {
+     VLOGF(1) << "Failed setting up formats";
++    NOTIFY_ERROR(kPlatformFailureError);
+     return;
+   }
+ 
+@@ -318,6 +309,7 @@ void V4L2VideoEncodeAccelerator::InitializeTask(const Config& config,
+             VideoFrame::NumPlanes(config.input_format)));
+     if (!input_layout) {
+       VLOGF(1) << "Invalid image processor input layout";
++      NOTIFY_ERROR(kPlatformFailureError);
+       return;
+     }
+ 
+@@ -327,6 +319,7 @@ void V4L2VideoEncodeAccelerator::InitializeTask(const Config& config,
+                               encoder_input_visible_rect_,
+                               encoder_input_visible_rect_)) {
+       VLOGF(1) << "Failed to create image processor";
++      NOTIFY_ERROR(kPlatformFailureError);
+       return;
+     }
+ 
+@@ -338,16 +331,23 @@ void V4L2VideoEncodeAccelerator::InitializeTask(const Config& config,
+       VLOGF(1) << "Failed to reconfigure v4l2 encoder driver with the "
+                << "ImageProcessor output buffer: "
+                << ip_output_buffer_size.ToString();
++      NOTIFY_ERROR(kPlatformFailureError);
+       return;
+     }
+   }
+ 
+-  if (!InitInputMemoryType(config))
++  if (!InitInputMemoryType(config)) {
++    NOTIFY_ERROR(kPlatformFailureError);
+     return;
+-  if (!InitControls(config))
++  }
++  if (!InitControls(config)) {
++    NOTIFY_ERROR(kPlatformFailureError);
+     return;
+-  if (!CreateOutputBuffers())
++  }
++  if (!CreateOutputBuffers()) {
++    NOTIFY_ERROR(kPlatformFailureError);
+     return;
++  }
+ 
+   encoder_state_ = kInitialized;
+   RequestEncodingParametersChangeTask(
+@@ -380,9 +380,6 @@ void V4L2VideoEncodeAccelerator::InitializeTask(const Config& config,
+   child_task_runner_->PostTask(
+       FROM_HERE,
+       base::BindOnce(&Client::NotifyEncoderInfoChange, client_, encoder_info));
+-
+-  // Finish initialization.
+-  *result = true;
+ }
+ 
+ bool V4L2VideoEncodeAccelerator::CreateImageProcessor(
+diff --git a/media/gpu/v4l2/v4l2_video_encode_accelerator.h b/media/gpu/v4l2/v4l2_video_encode_accelerator.h
+index d414a327d..ce6cad5ab 100644
+--- a/media/gpu/v4l2/v4l2_video_encode_accelerator.h
++++ b/media/gpu/v4l2/v4l2_video_encode_accelerator.h
+@@ -200,9 +200,7 @@ class MEDIA_GPU_EXPORT V4L2VideoEncodeAccelerator
+                                            uint32_t framerate);
+ 
+   // Do several initializations (e.g. set up format) on |encoder_task_runner_|.
+-  void InitializeTask(const Config& config,
+-                      bool* result,
+-                      base::WaitableEvent* done);
++  void InitializeTask(const Config& config);
+ 
+   // Set up formats and initialize the device for them.
+   bool SetFormats(VideoPixelFormat input_format,
+-- 
+2.20.1
+
