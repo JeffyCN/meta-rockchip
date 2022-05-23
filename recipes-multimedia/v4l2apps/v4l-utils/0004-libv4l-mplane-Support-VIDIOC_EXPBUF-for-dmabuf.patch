@@ -1,7 +1,7 @@
-From 25313bff6de14b8d633708acf98c0a29f4bd5d89 Mon Sep 17 00:00:00 2001
+From bd05429590bddfdea0f079c2990e0df30cbc5e46 Mon Sep 17 00:00:00 2001
 From: "vicent.chi" <vicent.chi@rock-chips.com>
 Date: Sat, 28 Mar 2020 18:03:57 +0800
-Subject: [PATCH 4/4] libv4l: mplane: Support VIDIOC_EXPBUF for dmabuf
+Subject: [PATCH 4/6] libv4l: mplane: Support VIDIOC_EXPBUF for dmabuf
 
 Signed-off-by: vicent.chi <vicent.chi@rock-chips.com>
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>

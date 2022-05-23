@@ -1,7 +1,7 @@
-From a13b3364de6741a29e2e344c8afcdbf6b36464d7 Mon Sep 17 00:00:00 2001
+From 57fb6af4ea3ed3b21511dca0c443721ee7a67ba3 Mon Sep 17 00:00:00 2001
 From: "vicent.chi" <vicent.chi@rock-chips.com>
 Date: Thu, 31 Oct 2019 11:46:12 +0800
-Subject: [PATCH 3/4] libv4l: Support V4L2_MEMORY_DMABUF
+Subject: [PATCH 3/6] libv4l: Support V4L2_MEMORY_DMABUF
 
 Signed-off-by: vicent.chi <vicent.chi@rock-chips.com>
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
