@@ -1,7 +1,7 @@
-From 576c722f71504756d7b68400d686c2f31c49bdee Mon Sep 17 00:00:00 2001
+From 713aa60e33b8ec3ae241b07a76a0db435c6ffe54 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Sun, 28 Apr 2019 15:31:53 +0800
-Subject: [PATCH 1/4] libv4l2: Support mmap() to libv4l-plugin
+Subject: [PATCH 1/6] libv4l2: Support mmap() to libv4l-plugin
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

@@ -8,8 +8,8 @@ LIC_FILES_CHKSUM = "file://inc/rk_mpi.h;beginline=4;endline=14;md5=acbba394ae563
 
 inherit freeze-rev local-git
 
-SRCREV = "693720fd192d443ffc6dfab16f1ea359e09dcac6"
-SRC_URI = "git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=mpp-dev-2022_01_10;"
+SRCREV = "728d9422f938c667e9f7a036adbd95772b781ee2"
+SRC_URI = "git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=mpp-dev-2022_05_23;"
 
 S = "${WORKDIR}/git"
 
