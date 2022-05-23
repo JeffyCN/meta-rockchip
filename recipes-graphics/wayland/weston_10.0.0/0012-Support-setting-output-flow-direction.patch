@@ -1,7 +1,7 @@
-From 98fa0c7475c348d19aac211a97bfae64d4e3b86b Mon Sep 17 00:00:00 2001
+From 0b40223e6e780050c00bba8bea7484009a3df5ac Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 27 Apr 2022 18:05:28 +0800
-Subject: [PATCH 12/60] Support setting output flow direction
+Subject: [PATCH 12/63] Support setting output flow direction
 
 Set env "WESTON_OUTPUT_FLOW" to change output flow direction:
 horizontal:

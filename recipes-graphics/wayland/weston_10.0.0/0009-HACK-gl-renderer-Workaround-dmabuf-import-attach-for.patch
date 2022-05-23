@@ -1,7 +1,7 @@
-From 723b392c454adb041cf28b8d989b913667da6d7f Mon Sep 17 00:00:00 2001
+From b5015cd3d1b1641adacfc79b9bb9d1c9a7304867 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 6 Dec 2018 18:53:05 +0800
-Subject: [PATCH 09/55] HACK: gl-renderer: Workaround dmabuf import/attach for
+Subject: [PATCH 09/63] HACK: gl-renderer: Workaround dmabuf import/attach for
  old mali
 
 Tested on px3se with libmali-utgard-400-r7p0-r3p0-wayland.so, the

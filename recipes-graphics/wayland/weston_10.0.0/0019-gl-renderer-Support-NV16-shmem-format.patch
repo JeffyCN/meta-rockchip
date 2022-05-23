@@ -1,7 +1,7 @@
-From 26cd20e0021b1923cc4be96cc9134ff996a32192 Mon Sep 17 00:00:00 2001
+From 185b5c20ecae379fb1e99c753582b27384bd2f5c Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 22 Nov 2019 12:06:35 +0800
-Subject: [PATCH 19/60] gl-renderer: Support NV16 shmem format
+Subject: [PATCH 19/63] gl-renderer: Support NV16 shmem format
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

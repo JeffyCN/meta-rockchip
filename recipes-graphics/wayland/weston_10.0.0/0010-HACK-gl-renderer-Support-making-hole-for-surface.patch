@@ -1,7 +1,7 @@
-From 1d332ffe90e3696ce2268d9177fa85d33b922c92 Mon Sep 17 00:00:00 2001
+From 328724e8c748fb464c81cd7bdb0b734a73695e9a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 7 Jul 2020 17:00:40 +0800
-Subject: [PATCH 10/53] HACK: gl-renderer: Support making hole for surface
+Subject: [PATCH 10/63] HACK: gl-renderer: Support making hole for surface
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -79,7 +79,7 @@ index 2649535..b586f0f 100644
  				     &region->region);
  	} else {
 diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
-index c7111b2..f0b62d4 100644
+index 053fd52..dbeb85c 100644
 --- a/libweston/renderer-gl/gl-renderer.c
 +++ b/libweston/renderer-gl/gl-renderer.c
 @@ -1034,6 +1034,46 @@ gl_shader_config_init_for_paint_node(struct gl_shader_config *sconf,

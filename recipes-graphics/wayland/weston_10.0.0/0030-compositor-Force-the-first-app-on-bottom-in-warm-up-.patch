@@ -1,0 +1,31 @@
+From 4f5225e5d03ea3f53fc25be028fecfa1f15e6ae7 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 15 Oct 2020 12:43:00 +0800
+Subject: [PATCH 30/63] compositor: Force the first app on bottom in warm-up
+ mode
+
+When warm-up enabled, assume the first app is a launcher and put it on
+the bottom layer.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/compositor.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index cdcb7b1..c5a8fdd 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -2893,6 +2893,9 @@ weston_compositor_build_view_list(struct weston_compositor *compositor,
+ 			} else if (compositor->warm_up) {
+ 				weston_log("seeing the first app\n");
+ 				compositor->warm_up = false;
++
++				/* Assuming it's a launcher */
++				view->surface->flags |= SURFACE_STAY_ON_BOTTOM;
+ 			}
+ 
+ 			view_list_add(compositor, view, output);
+-- 
+2.20.1
+

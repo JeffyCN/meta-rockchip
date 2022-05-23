@@ -1,7 +1,7 @@
-From 5b4255c385959704b7e93b6b4dfa6bbb74cf3061 Mon Sep 17 00:00:00 2001
+From 468fb77c4560e89133d3fea60b2ecfb056e1cbd8 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 3 Jul 2020 14:53:52 +0800
-Subject: [PATCH 22/60] HACK: pixman-renderer: Support mali egl client and egl
+Subject: [PATCH 22/63] HACK: pixman-renderer: Support mali egl client and egl
  buffer attaching
 
 The mali clients requires mali_buffer_sharing extension, and it needs

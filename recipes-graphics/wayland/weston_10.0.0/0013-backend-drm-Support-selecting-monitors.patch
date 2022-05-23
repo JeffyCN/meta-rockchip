@@ -1,7 +1,7 @@
-From 27f78e04b178351e43b08d01595fa6251dc499e7 Mon Sep 17 00:00:00 2001
+From 5d81a97dbf7d792ea273828c57a1e29cd40b7a10 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 23 Jun 2020 10:05:48 +0800
-Subject: [PATCH 13/60] backend-drm: Support selecting monitors
+Subject: [PATCH 13/63] backend-drm: Support selecting monitors
 
 Using these environments:
 

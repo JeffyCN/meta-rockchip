@@ -1,7 +1,7 @@
-From a65299d1cd4838514ecc5ab9724432b37c7643c5 Mon Sep 17 00:00:00 2001
+From f721080246654908ae59f0daf237c014359ebec2 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 3 Jul 2020 14:23:45 +0800
-Subject: [PATCH 17/60] pixman-renderer: Support yuv formats
+Subject: [PATCH 17/63] pixman-renderer: Support yuv formats
 
 Support yuy2/yv12/i420/nv12/nv16.
 
