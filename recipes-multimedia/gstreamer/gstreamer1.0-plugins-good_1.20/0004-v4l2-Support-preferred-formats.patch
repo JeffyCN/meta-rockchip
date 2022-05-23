@@ -1,4 +1,4 @@
-From 823f1767351eaa0d1d965e137d25ca1973a55265 Mon Sep 17 00:00:00 2001
+From 0a7409d308fc182c3a164b84a6a91adeb7454f4e Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 6 Nov 2019 15:07:44 +0800
 Subject: [PATCH 4/5] v4l2: Support preferred formats
@@ -48,5 +48,5 @@ index 9eb3b8e..a7b7ea7 100644
     * will a) make all non-emulated formats larger
     * than emulated and b) will not overflow
 -- 
-2.17.1
+2.20.1
 

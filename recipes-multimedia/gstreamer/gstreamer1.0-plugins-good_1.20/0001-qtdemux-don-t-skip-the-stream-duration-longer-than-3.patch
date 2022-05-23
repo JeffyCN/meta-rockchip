@@ -1,4 +1,4 @@
-From 55b91eabda1549c577746d212ffed051a888cefc Mon Sep 17 00:00:00 2001
+From 0e0212b5b42a55c0a4426bae4dea26fc890d959a Mon Sep 17 00:00:00 2001
 From: Randy Li <randy.li@rock-chips.com>
 Date: Fri, 21 Jul 2017 10:24:01 +0800
 Subject: [PATCH 1/5] qtdemux: don't skip the stream duration longer than 30s
@@ -26,5 +26,5 @@ index b74f4ef..e320af8 100644
            "Track shorter than 20%% (%" G_GUINT64_FORMAT "/%" G_GUINT32_FORMAT
            " vs. %" G_GUINT64_FORMAT "/%" G_GUINT32_FORMAT ") of the stream "
 -- 
-2.17.1
+2.20.1
 

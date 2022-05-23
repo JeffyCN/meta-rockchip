@@ -1,4 +1,4 @@
-From e8a86798bada86e16da448c7ec18e389aa176c95 Mon Sep 17 00:00:00 2001
+From 221ca620d9e017e1a32b53560d701c8d3809b74c Mon Sep 17 00:00:00 2001
 From: "james.lin" <james.lin@rock-chips.com>
 Date: Tue, 23 Jan 2018 19:19:36 +0800
 Subject: [PATCH 2/5] HACK: flacparse: Handle metadata 127
@@ -29,5 +29,5 @@ index 8fca410..aa680f6 100644
      GST_DEBUG_OBJECT (flacparse, "Handling metadata block of type %u", type);
  
 -- 
-2.17.1
+2.20.1
 

@@ -1,7 +1,7 @@
-From 42ffa87f3ce9df946003958836907633ea9741a0 Mon Sep 17 00:00:00 2001
+From 7b0b6cf8730cb8345df62fea67a235c1e03ca913 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 25 Nov 2020 10:51:12 +0800
-Subject: [PATCH 13/31] waylandsink: Drop frame when window not ready
+Subject: [PATCH 13/33] waylandsink: Drop frame when window not ready
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -29,5 +29,5 @@ index 6647123..25694cf 100644
    }
  no_buffer:
 -- 
-2.17.1
+2.20.1
 

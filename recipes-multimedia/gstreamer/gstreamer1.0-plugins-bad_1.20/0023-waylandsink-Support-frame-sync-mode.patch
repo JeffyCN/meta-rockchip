@@ -1,7 +1,7 @@
-From 9b070c7c07dc1ef157bca077fe8b7de2ffca6c47 Mon Sep 17 00:00:00 2001
+From 4e8110b82110e56818337b000bcebe10f88f6eb6 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 8 Nov 2021 18:45:00 +0800
-Subject: [PATCH 23/31] waylandsink: Support frame-sync mode
+Subject: [PATCH 23/33] waylandsink: Support frame-sync mode
 
 Set env "WAYLANDSINK_SYNC_FRAME" to enable frame syncing.
 
@@ -72,5 +72,5 @@ index 6fd77e8..1f70f76 100644
    GstVideoRectangle render_rectangle;
  
 -- 
-2.17.1
+2.20.1
 

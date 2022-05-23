@@ -1,7 +1,7 @@
-From 4c1f97a93e62d319e3485ef679ca94ade9f149bc Mon Sep 17 00:00:00 2001
+From 0372b83dc2679de0e1a6ad5ede372ca85e6e1793 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 14 Jun 2019 12:02:05 +0800
-Subject: [PATCH 2/9] playbin2: Add preferred audio/video sink
+Subject: [PATCH 06/11] playbin2: Add preferred audio/video sink
 
 Using env "PLAYBIN2_PREFERRED_VIDEOSINK" and
 "PLAYBIN2_PREFERRED_AUDIOSINK".
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 31 insertions(+)
 
 diff --git a/gst/playback/gstplaybin2.c b/gst/playback/gstplaybin2.c
-index bcbfc20..1b5c183 100644
+index f71b977..b0879db 100644
 --- a/gst/playback/gstplaybin2.c
 +++ b/gst/playback/gstplaybin2.c
 @@ -204,6 +204,7 @@
@@ -23,7 +23,7 @@ index bcbfc20..1b5c183 100644
  #include <string.h>
  #include <gst/gst.h>
  
-@@ -468,6 +469,9 @@ struct _GstPlayBin
+@@ -480,6 +481,9 @@ struct _GstPlayBin
    GList *contexts;
  
    gboolean is_live;
@@ -33,7 +33,7 @@ index bcbfc20..1b5c183 100644
  };
  
  struct _GstPlayBinClass
-@@ -1572,6 +1576,9 @@ gst_play_bin_init (GstPlayBin * playbin)
+@@ -1585,6 +1589,9 @@ gst_play_bin_init (GstPlayBin * playbin)
  
    playbin->multiview_mode = GST_VIDEO_MULTIVIEW_FRAME_PACKING_NONE;
    playbin->multiview_flags = GST_VIDEO_MULTIVIEW_FLAGS_NONE;
@@ -43,7 +43,7 @@ index bcbfc20..1b5c183 100644
  }
  
  static void
-@@ -4666,6 +4673,7 @@ autoplug_select_cb (GstElement * decodebin, GstPad * pad,
+@@ -4722,6 +4729,7 @@ autoplug_select_cb (GstElement * decodebin, GstPad * pad,
    GSequence *ave_seq = NULL;
    GSequenceIter *seq_iter;
    gboolean created_sink = FALSE;
@@ -51,7 +51,7 @@ index bcbfc20..1b5c183 100644
  
    playbin = group->playbin;
  
-@@ -4728,6 +4736,29 @@ autoplug_select_cb (GstElement * decodebin, GstPad * pad,
+@@ -4784,6 +4792,29 @@ autoplug_select_cb (GstElement * decodebin, GstPad * pad,
        ave_list = g_list_prepend (ave_list, NULL);
      }
  
@@ -82,5 +82,5 @@ index bcbfc20..1b5c183 100644
       * the matching audio/video sink from GstAVElements list */
      for (l = ave_list; l; l = l->next) {
 -- 
-2.17.1
+2.20.1
 

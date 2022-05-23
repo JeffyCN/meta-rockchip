@@ -1,7 +1,7 @@
-From 4a14ac2b3332fefc17382ef414fb5729ff26b617 Mon Sep 17 00:00:00 2001
+From 58f23842245b5ee05ff70e703fbef388c49b00ae Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 19 Jan 2022 16:37:40 +0800
-Subject: [PATCH 30/31] kmssink: Support ignoring aspect ratio
+Subject: [PATCH 30/33] kmssink: Support ignoring aspect ratio
 
 Set "force-aspect-ratio" property to false to ignore aspect ratio.
 
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 7a7064f..0530f6d 100644
+index b472f3b..af80c8e 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -98,6 +98,7 @@ enum
@@ -23,7 +23,7 @@ index 7a7064f..0530f6d 100644
    PROP_N,
  };
  
-@@ -1264,7 +1265,7 @@ gst_kms_sink_calculate_display_ratio (GstKMSSink * self, GstVideoInfo * vinfo,
+@@ -1272,7 +1273,7 @@ gst_kms_sink_calculate_display_ratio (GstKMSSink * self, GstVideoInfo * vinfo,
    video_par_n = GST_VIDEO_INFO_PAR_N (vinfo);
    video_par_d = GST_VIDEO_INFO_PAR_D (vinfo);
  
@@ -32,7 +32,7 @@ index 7a7064f..0530f6d 100644
      gst_video_calculate_device_ratio (self->hdisplay, self->vdisplay,
          self->mm_width, self->mm_height, &dpy_par_n, &dpy_par_d);
    } else {
-@@ -1857,6 +1858,9 @@ retry_set_plane:
+@@ -1865,6 +1866,9 @@ retry_set_plane:
    result.x += self->render_rect.x;
    result.y += self->render_rect.y;
  
@@ -42,7 +42,7 @@ index 7a7064f..0530f6d 100644
    if (crop) {
      src.w = crop->width;
      src.h = crop->height;
-@@ -2059,6 +2063,9 @@ gst_kms_sink_set_property (GObject * object, guint prop_id,
+@@ -2067,6 +2071,9 @@ gst_kms_sink_set_property (GObject * object, guint prop_id,
  
        break;
      }
@@ -52,7 +52,7 @@ index 7a7064f..0530f6d 100644
      default:
        if (!gst_video_overlay_set_property (object, PROP_N, prop_id, value))
          G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-@@ -2112,6 +2119,9 @@ gst_kms_sink_get_property (GObject * object, guint prop_id,
+@@ -2120,6 +2127,9 @@ gst_kms_sink_get_property (GObject * object, guint prop_id,
      case PROP_PLANE_PROPS:
        gst_value_set_structure (value, sink->plane_props);
        break;
@@ -62,7 +62,7 @@ index 7a7064f..0530f6d 100644
      default:
        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
        break;
-@@ -2142,6 +2152,7 @@ gst_kms_sink_init (GstKMSSink * sink)
+@@ -2150,6 +2160,7 @@ gst_kms_sink_init (GstKMSSink * sink)
    sink->plane_id = -1;
    sink->saved_zpos = -1;
    sink->can_scale = TRUE;
@@ -70,7 +70,7 @@ index 7a7064f..0530f6d 100644
    gst_poll_fd_init (&sink->pollfd);
    sink->poll = gst_poll_new (TRUE);
    gst_video_info_init (&sink->vinfo);
-@@ -2311,6 +2322,11 @@ gst_kms_sink_class_init (GstKMSSinkClass * klass)
+@@ -2319,6 +2330,11 @@ gst_kms_sink_class_init (GstKMSSinkClass * klass)
        "Additional properties for the plane",
        GST_TYPE_STRUCTURE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
  
@@ -96,5 +96,5 @@ index 45a9c08..ab70ec4 100644
  
  struct _GstKMSSinkClass {
 -- 
-2.17.1
+2.20.1
 

@@ -1,7 +1,7 @@
-From f2cc05b4ec8d2b1b2eaf598d0b26d99f926ea4b2 Mon Sep 17 00:00:00 2001
+From dfe0caadfa76bf089bbaf62937d1a46d47a5c311 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 26 Nov 2020 11:31:58 +0800
-Subject: [PATCH 03/31] waylandsink: release frame callback when finalizing
+Subject: [PATCH 03/33] waylandsink: release frame callback when finalizing
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -22,5 +22,5 @@ index 0761304..ff8a7f5 100644
      gst_buffer_unref (sink->last_buffer);
    if (sink->display)
 -- 
-2.17.1
+2.20.1
 

@@ -1,7 +1,7 @@
-From 27ab4fa3aa4c76c51f34a51dd90e04b0d58816c4 Mon Sep 17 00:00:00 2001
+From 0cb50b00037663ff4ac7d8aa060b8c46554cbeea Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 18 Mar 2020 10:09:49 +0800
-Subject: [PATCH 5/9] HACK: gl/egl: allow direct dmabuf import when unable to
+Subject: [PATCH 09/11] HACK: gl/egl: allow direct dmabuf import when unable to
  query formats
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
@@ -35,5 +35,5 @@ index 906f56e..90cc32d 100644
        &num_modifiers);
    if (!ret || num_modifiers == 0) {
 -- 
-2.17.1
+2.20.1
 

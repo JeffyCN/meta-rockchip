@@ -1,7 +1,7 @@
-From 47554239afc79d5adc411e338cfd5bd44ce74b21 Mon Sep 17 00:00:00 2001
+From b516e756f08685ed1f11df13b0fae61d72d4e662 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 3 Jul 2019 19:54:36 +0800
-Subject: [PATCH 3/9] HACK: xvimagesink: Support dma buffer rendering
+Subject: [PATCH 07/11] HACK: xvimagesink: Support dma buffer rendering
 
 Send dma buffer to xv port when it supports dma port attributes.
 
@@ -9,10 +9,11 @@ Change-Id: I69d94ffb700eb95af83799cdd5cde476d2930f92
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  sys/xvimage/meson.build   |   2 +-
- sys/xvimage/xvcontext.c   |  11 +-
- sys/xvimage/xvcontext.h   |   8 ++
- sys/xvimage/xvimagesink.c | 205 ++++++++++++++++++++++++++++++++++++++
- 4 files changed, 224 insertions(+), 2 deletions(-)
+ sys/xvimage/xvcontext.c   |  71 +++++++++-
+ sys/xvimage/xvcontext.h   |  20 +++
+ sys/xvimage/xvimagesink.c | 270 ++++++++++++++++++++++++++++++++++++--
+ sys/xvimage/xvimagesink.h |  10 ++
+ 5 files changed, 359 insertions(+), 14 deletions(-)
 
 diff --git a/sys/xvimage/meson.build b/sys/xvimage/meson.build
 index f1aaecf..f798a37 100644
@@ -28,27 +29,42 @@ index f1aaecf..f798a37 100644
      install_dir : plugins_install_dir,
    )
 diff --git a/sys/xvimage/xvcontext.c b/sys/xvimage/xvcontext.c
-index 56dee97..7376c34 100644
+index 56dee97..839fb71 100644
 --- a/sys/xvimage/xvcontext.c
 +++ b/sys/xvimage/xvcontext.c
-@@ -152,7 +152,7 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+@@ -97,7 +97,7 @@ gst_lookup_xv_port_from_adaptor (GstXvContext * context,
+    the port via XvGrabPort */
+ static GstCaps *
+ gst_xvcontext_get_xv_support (GstXvContext * context,
+-    const GstXvContextConfig * config, GError ** error)
++    GstXvContextConfig * config, GError ** error)
+ {
+   gint i;
+   XvAdaptorInfo *adaptors;
+@@ -150,9 +150,11 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+   if (!context->xv_port_id)
+     goto no_ports;
  
++  config->dma_client_id = context->xv_port_id;
++
    /* Set XV_AUTOPAINT_COLORKEY and XV_DOUBLE_BUFFER and XV_COLORKEY */
    {
 -    int count, todo = 4;
-+    int count, todo = 5;
++    int count, todo = 7;
      XvAttribute *const attr = XvQueryPortAttributes (context->disp,
          context->xv_port_id, &count);
      static const char autopaint[] = "XV_AUTOPAINT_COLORKEY";
-@@ -160,6 +160,7 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+@@ -160,6 +162,9 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
      static const char colorkey[] = "XV_COLORKEY";
      static const char iturbt709[] = "XV_ITURBT_709";
      static const char *xv_colorspace = "XV_COLORSPACE";
 +    static const char dma_client_id[] = XV_DMA_CLIENT_PROP;
++    static const char dma_drm_fourcc[] = XV_DMA_DRM_FOURCC_PROP;
++    static const char dma_drm_afbc[] = XV_DMA_DRM_AFBC_PROP;
  
      GST_DEBUG ("Checking %d Xv port attributes", count);
  
-@@ -168,6 +169,7 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+@@ -168,6 +173,7 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
      context->have_colorkey = FALSE;
      context->have_iturbt709 = FALSE;
      context->have_xvcolorspace = FALSE;
@@ -56,7 +72,7 @@ index 56dee97..7376c34 100644
  
      for (i = 0; ((i < count) && todo); i++) {
        GST_DEBUG ("Got attribute %s", attr[i].name);
-@@ -239,6 +241,13 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+@@ -239,6 +245,19 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
        } else if (!strcmp (attr[i].name, xv_colorspace)) {
          context->have_xvcolorspace = TRUE;
          todo--;
@@ -67,26 +83,102 @@ index 56dee97..7376c34 100644
 +            config->dma_client_id);
 +        todo--;
 +        context->have_dma_client = TRUE;
++      } else if (!strcmp (attr[i].name, dma_drm_fourcc)) {
++        todo--;
++        context->have_dma_drm_fourcc = TRUE;
++      } else if (!strcmp (attr[i].name, dma_drm_afbc)) {
++        todo--;
++        context->have_dma_drm_afbc = TRUE;
        }
      }
  
+@@ -353,6 +372,50 @@ gst_xvcontext_get_xv_support (GstXvContext * context,
+   if (gst_caps_is_empty (caps))
+     goto no_caps;
+ 
++  if (context->have_dma_drm_afbc) {
++    GstCaps *format_caps;
++
++    format_caps = gst_caps_new_simple ("video/x-raw",
++        "format", G_TYPE_STRING, "NV12",
++        "width", GST_TYPE_INT_RANGE, 1, max_w,
++        "height", GST_TYPE_INT_RANGE, 1, max_h,
++        "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1, NULL);
++    gst_caps_set_simple (format_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
++    gst_caps_append (caps, format_caps);
++  }
++
++  if (context->have_dma_drm_fourcc) {
++    GstCaps *format_caps;
++
++    format_caps = gst_caps_new_simple ("video/x-raw",
++        "format", G_TYPE_STRING, "NV16",
++        "width", GST_TYPE_INT_RANGE, 1, max_w,
++        "height", GST_TYPE_INT_RANGE, 1, max_h,
++        "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1, NULL);
++    if (context->have_dma_drm_afbc) {
++      gst_caps_ref (format_caps);
++      gst_caps_append (caps, format_caps);
++
++      gst_caps_set_simple (format_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
++    }
++    gst_caps_append (caps, format_caps);
++
++    format_caps = gst_caps_new_simple ("video/x-raw",
++        "format", G_TYPE_STRING, "NV12_10LE40",
++        "width", GST_TYPE_INT_RANGE, 1, max_w,
++        "height", GST_TYPE_INT_RANGE, 1, max_h,
++        "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1, NULL);
++    if (context->have_dma_drm_afbc) {
++      gst_caps_ref (format_caps);
++      gst_caps_append (caps, format_caps);
++
++      gst_caps_set_simple (format_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
++    }
++    gst_caps_append (caps, format_caps);
++  }
++
++  GST_DEBUG ("Final caps caps: %" GST_PTR_FORMAT, caps);
++
+   return caps;
+ 
+   /* ERRORS */
+@@ -891,6 +954,10 @@ gst_xvcontext_get_format_from_info (GstXvContext * context,
+ {
+   GList *list = NULL;
+ 
++  /* HACK: Use NV12 format for fake formats */
++  if (context->drm_fourcc != -1)
++    return DRM_FORMAT_NV12;
++
+   list = context->formats_list;
+ 
+   while (list) {
 diff --git a/sys/xvimage/xvcontext.h b/sys/xvimage/xvcontext.h
-index 701b527..920f914 100644
+index 701b527..607f6f9 100644
 --- a/sys/xvimage/xvcontext.h
 +++ b/sys/xvimage/xvcontext.h
-@@ -42,6 +42,11 @@
+@@ -42,6 +42,19 @@
  
  #include <gst/video/video.h>
  
++#include <libdrm/drm_fourcc.h>
++
 +#define XV_DMA_CLIENT_PROP      "XV_DMA_CLIENT_ID"
 +#define XV_DMA_VER_STRIDE_PROP  "XV_DMA_VER_STRIDE"
 +#define XV_DMA_HOR_STRIDE_PROP  "XV_DMA_HOR_STRIDE"
++#define XV_DMA_DRM_FOURCC_PROP  "XV_DMA_DRM_FOURCC"
++#define XV_DMA_DRM_AFBC_PROP  "XV_DMA_DRM_AFBC"
 +#define XV_DMA_CLIENT_PATH      "/tmp/.xv_dma_client"
++
++#ifndef DRM_FORMAT_NV12_10
++#define DRM_FORMAT_NV12_10 fourcc_code('N', 'A', '1', '2')
++#endif
 +
  G_BEGIN_DECLS
  
  typedef struct _GstXvContextConfig GstXvContextConfig;
-@@ -69,6 +74,8 @@ struct _GstXvContextConfig
+@@ -69,6 +82,8 @@ struct _GstXvContextConfig
    gint hue;
    gint saturation;
    gboolean cb_changed;
@@ -95,16 +187,20 @@ index 701b527..920f914 100644
  };
  
  /**
-@@ -161,6 +168,7 @@ struct _GstXvContext
+@@ -161,6 +176,11 @@ struct _GstXvContext
    gboolean have_double_buffer;
    gboolean have_iturbt709;
    gboolean have_xvcolorspace;
 +  gboolean have_dma_client;
++  gboolean have_dma_drm_fourcc;
++  gboolean have_dma_drm_afbc;
++
++  guint32 drm_fourcc;
  
    GList *formats_list;
  
 diff --git a/sys/xvimage/xvimagesink.c b/sys/xvimage/xvimagesink.c
-index 993d3f7..e11a4ba 100644
+index 993d3f7..00f995a 100644
 --- a/sys/xvimage/xvimagesink.c
 +++ b/sys/xvimage/xvimagesink.c
 @@ -121,6 +121,7 @@
@@ -127,7 +223,7 @@ index 993d3f7..e11a4ba 100644
  GST_DEBUG_CATEGORY_EXTERN (gst_debug_xv_context);
  GST_DEBUG_CATEGORY_EXTERN (gst_debug_xv_image_pool);
  GST_DEBUG_CATEGORY (gst_debug_xv_image_sink);
-@@ -230,6 +236,164 @@ GST_ELEMENT_REGISTER_DEFINE_WITH_CODE (xvimagesink, "xvimagesink",
+@@ -230,6 +236,173 @@ GST_ELEMENT_REGISTER_DEFINE_WITH_CODE (xvimagesink, "xvimagesink",
  /*                                                               */
  /* ============================================================= */
  
@@ -194,7 +290,7 @@ index 993d3f7..e11a4ba 100644
 +
 +static gboolean
 +gst_xv_image_sink_send_dma_params (GstXvImageSink * xvimagesink,
-+    gint hor_stride, gint ver_stride)
++    gint hor_stride, gint ver_stride, gboolean afbc)
 +{
 +  GstXvContext *context = xvimagesink->context;
 +  Atom prop_atom;
@@ -217,6 +313,15 @@ index 993d3f7..e11a4ba 100644
 +        prop_atom, ver_stride);
 +  } else {
 +    error = TRUE;
++  }
++  prop_atom = XInternAtom (context->disp, XV_DMA_DRM_FOURCC_PROP, True);
++  if (prop_atom != None) {
++    XvSetPortAttribute (context->disp, context->xv_port_id,
++        prop_atom, context->drm_fourcc);
++  }
++  prop_atom = XInternAtom (context->disp, XV_DMA_DRM_AFBC_PROP, True);
++  if (prop_atom != None) {
++    XvSetPortAttribute (context->disp, context->xv_port_id, prop_atom, afbc);
 +  }
 +  g_mutex_unlock (&context->lock);
 +
@@ -292,7 +397,7 @@ index 993d3f7..e11a4ba 100644
  
  /* This function puts a GstXvImage on a GstXvImageSink's window. Returns FALSE
   * if no window was available  */
-@@ -317,6 +481,13 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
+@@ -317,6 +490,13 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
      memcpy (&result, &xwindow->render_rect, sizeof (GstVideoRectangle));
    }
  
@@ -306,10 +411,77 @@ index 993d3f7..e11a4ba 100644
    gst_xvimage_memory_render (mem, &src, xwindow, &result, draw_border);
  
    g_mutex_unlock (&xvimagesink->flow_lock);
-@@ -983,6 +1154,37 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+@@ -699,6 +879,27 @@ config_failed:
+   }
+ }
+ 
++static gboolean
++gst_xv_video_info_from_caps (GstVideoInfo * info, const GstCaps * caps)
++{
++  GstStructure *s;
++  gint value;
++
++  if (!gst_video_info_from_caps (info, caps))
++    return FALSE;
++
++  /* parse AFBC from caps */
++  s = gst_caps_get_structure (caps, 0);
++  if (gst_structure_get_int (s, "arm-afbc", &value)) {
++    if (value)
++      GST_VIDEO_INFO_SET_AFBC (info);
++    else
++      GST_VIDEO_INFO_UNSET_AFBC (info);
++  }
++
++  return TRUE;
++}
++
+ static gboolean
+ gst_xv_image_sink_setcaps (GstBaseSink * bsink, GstCaps * caps)
+ {
+@@ -721,7 +922,7 @@ gst_xv_image_sink_setcaps (GstBaseSink * bsink, GstCaps * caps)
+   if (!gst_caps_can_intersect (context->caps, caps))
+     goto incompatible_caps;
+ 
+-  if (!gst_video_info_from_caps (&info, caps))
++  if (!gst_xv_video_info_from_caps (&info, caps))
+     goto invalid_format;
+ 
+   xvimagesink->fps_n = info.fps_n;
+@@ -831,6 +1032,20 @@ gst_xv_image_sink_setcaps (GstBaseSink * bsink, GstCaps * caps)
+     gst_object_unref (oldpool);
+   }
+ 
++  context->drm_fourcc = -1;
++
++  if (GST_VIDEO_INFO_FORMAT (&info) == GST_VIDEO_FORMAT_NV12_10LE40) {
++    if (!context->have_dma_drm_fourcc)
++      return FALSE;
++
++    context->drm_fourcc = DRM_FORMAT_NV12_10;
++  } else if (GST_VIDEO_INFO_FORMAT (&info) == GST_VIDEO_FORMAT_NV16) {
++    if (!context->have_dma_drm_fourcc)
++      return FALSE;
++
++    context->drm_fourcc = DRM_FORMAT_NV16;
++  }
++
+   return TRUE;
+ 
+   /* ERRORS */
+@@ -983,6 +1198,47 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
      if (res != GST_FLOW_OK)
        goto no_buffer;
  
++    if ((crop_meta = gst_buffer_get_video_crop_meta (buf))) {
++      GstVideoCropMeta *dmeta = gst_buffer_add_video_crop_meta (to_put);
++
++      dmeta->x = crop_meta->x;
++      dmeta->y = crop_meta->y;
++      dmeta->width = crop_meta->width;
++      dmeta->height = crop_meta->height;
++    }
++
 +    mem = gst_buffer_peek_memory (buf, 0);
 +    gst_xv_image_sink_check_dma_client (xvimagesink);
 +    if (gst_is_dmabuf_memory (mem) && xvimagesink->context->have_dma_client) {
@@ -337,30 +509,63 @@ index 993d3f7..e11a4ba 100644
 +      }
 +
 +      if (gst_xv_image_sink_send_dma_params (xvimagesink,
-+              hor_stride, ver_stride))
++              hor_stride, ver_stride,
++              GST_VIDEO_INFO_IS_AFBC (&xvimagesink->info)))
 +        goto put_image;
 +    }
 +
      GST_CAT_LOG_OBJECT (GST_CAT_PERFORMANCE, xvimagesink,
          "slow copy buffer %p into bufferpool buffer %p", buf, to_put);
  
-@@ -1009,6 +1211,7 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
-     }
+@@ -998,17 +1254,9 @@ gst_xv_image_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+ 
+     gst_video_frame_unmap (&dest);
+     gst_video_frame_unmap (&src);
+-
+-    if ((crop_meta = gst_buffer_get_video_crop_meta (buf))) {
+-      GstVideoCropMeta *dmeta = gst_buffer_add_video_crop_meta (to_put);
+-
+-      dmeta->x = crop_meta->x;
+-      dmeta->y = crop_meta->y;
+-      dmeta->width = crop_meta->width;
+-      dmeta->height = crop_meta->height;
+-    }
    }
  
 +put_image:
    if (!gst_xv_image_sink_xvimage_put (xvimagesink, to_put))
      goto no_window;
  
-@@ -1899,6 +2102,8 @@ gst_xv_image_sink_init (GstXvImageSink * xvimagesink)
-   xvimagesink->config.contrast = xvimagesink->config.brightness = 0;
-   xvimagesink->config.cb_changed = FALSE;
+@@ -1097,7 +1345,7 @@ gst_xv_image_sink_propose_allocation (GstBaseSink * bsink, GstQuery * query)
+   if (caps == NULL)
+     goto no_caps;
  
-+  xvimagesink->config.dma_client_id = (guint) getpid ();
+-  if (!gst_video_info_from_caps (&info, caps))
++  if (!gst_xv_video_info_from_caps (&info, caps))
+     goto invalid_caps;
+ 
+   /* the normal size of a frame */
+diff --git a/sys/xvimage/xvimagesink.h b/sys/xvimage/xvimagesink.h
+index 6f5ffa1..35a3081 100644
+--- a/sys/xvimage/xvimagesink.h
++++ b/sys/xvimage/xvimagesink.h
+@@ -25,6 +25,16 @@
+ /* Helper functions */
+ #include <gst/video/video.h>
+ 
++#ifndef GST_VIDEO_FLAG_ARM_AFBC
++#define GST_VIDEO_FLAG_ARM_AFBC (1UL << 31)
++#define GST_VIDEO_INFO_SET_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_SET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#define GST_VIDEO_INFO_UNSET_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_UNSET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#define GST_VIDEO_INFO_IS_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_IS_SET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#endif
 +
-   xvimagesink->context = NULL;
-   xvimagesink->xwindow = NULL;
-   xvimagesink->cur_image = NULL;
+ G_BEGIN_DECLS
+ #define GST_TYPE_XV_IMAGE_SINK \
+   (gst_xv_image_sink_get_type())
 -- 
-2.17.1
+2.20.1
 

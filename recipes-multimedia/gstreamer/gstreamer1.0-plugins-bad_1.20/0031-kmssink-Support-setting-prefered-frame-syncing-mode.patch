@@ -1,7 +1,7 @@
-From 9c82589207f49ce84d5365fa9ffb1bbfc6fb9f4e Mon Sep 17 00:00:00 2001
+From 0124444318c4154e24f3c9b7a68fe1fbcb5e7361 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 25 Feb 2022 17:48:58 +0800
-Subject: [PATCH 31/31] kmssink: Support setting prefered frame syncing mode
+Subject: [PATCH 31/33] kmssink: Support setting prefered frame syncing mode
 
 Tested with:
 gst-launch-1.0 videotestsrc ! kmssink sync-mode=vblank
@@ -14,7 +14,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 66 insertions(+), 6 deletions(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 0530f6d..db8d7ef 100644
+index af80c8e..bfca332 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -99,11 +99,14 @@ enum
@@ -32,7 +32,7 @@ index 0530f6d..db8d7ef 100644
  static void
  gst_kms_sink_set_render_rectangle (GstVideoOverlay * overlay,
      gint x, gint y, gint width, gint height)
-@@ -1483,7 +1486,7 @@ static gboolean
+@@ -1491,7 +1494,7 @@ static gboolean
  gst_kms_sink_sync (GstKMSSink * self)
  {
    gint ret;
@@ -41,7 +41,7 @@ index 0530f6d..db8d7ef 100644
    drmEventContext evctxt = {
      .version = DRM_EVENT_CONTEXT_VERSION,
      .page_flip_handler = sync_handler,
-@@ -1502,8 +1505,18 @@ gst_kms_sink_sync (GstKMSSink * self)
+@@ -1510,8 +1513,18 @@ gst_kms_sink_sync (GstKMSSink * self)
    else if (self->pipe > 1)
      vbl.request.type |= self->pipe << DRM_VBLANK_HIGH_CRTC_SHIFT;
  
@@ -61,7 +61,7 @@ index 0530f6d..db8d7ef 100644
      ret = drmWaitVBlank (self->fd, &vbl);
      if (ret)
        goto vblank_failed;
-@@ -1908,10 +1921,12 @@ retry_set_plane:
+@@ -1916,10 +1929,12 @@ retry_set_plane:
    }
  
  sync_frame:
@@ -78,7 +78,7 @@ index 0530f6d..db8d7ef 100644
    }
  
    /* Save the rendered buffer and its metadata in case a redraw is needed */
-@@ -2066,6 +2081,9 @@ gst_kms_sink_set_property (GObject * object, guint prop_id,
+@@ -2074,6 +2089,9 @@ gst_kms_sink_set_property (GObject * object, guint prop_id,
      case PROP_FORCE_ASPECT_RATIO:
        sink->keep_aspect = g_value_get_boolean (value);
        break;
@@ -88,7 +88,7 @@ index 0530f6d..db8d7ef 100644
      default:
        if (!gst_video_overlay_set_property (object, PROP_N, prop_id, value))
          G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-@@ -2122,6 +2140,9 @@ gst_kms_sink_get_property (GObject * object, guint prop_id,
+@@ -2130,6 +2148,9 @@ gst_kms_sink_get_property (GObject * object, guint prop_id,
      case PROP_FORCE_ASPECT_RATIO:
        g_value_set_boolean (value, sink->keep_aspect);
        break;
@@ -98,7 +98,7 @@ index 0530f6d..db8d7ef 100644
      default:
        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
        break;
-@@ -2153,11 +2174,31 @@ gst_kms_sink_init (GstKMSSink * sink)
+@@ -2161,11 +2182,31 @@ gst_kms_sink_init (GstKMSSink * sink)
    sink->saved_zpos = -1;
    sink->can_scale = TRUE;
    sink->keep_aspect = TRUE;
@@ -130,7 +130,7 @@ index 0530f6d..db8d7ef 100644
  static void
  gst_kms_sink_class_init (GstKMSSinkClass * klass)
  {
-@@ -2327,6 +2368,15 @@ gst_kms_sink_class_init (GstKMSSinkClass * klass)
+@@ -2335,6 +2376,15 @@ gst_kms_sink_class_init (GstKMSSinkClass * klass)
        "When enabled, scaling will respect original aspect ratio", TRUE,
        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
  
@@ -175,5 +175,5 @@ index ab70ec4..274351e 100644
  
  struct _GstKMSSinkClass {
 -- 
-2.17.1
+2.20.1
 

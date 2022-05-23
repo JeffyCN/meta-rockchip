@@ -1,7 +1,7 @@
-From 6e5c8a7cf539fc11d445018a37b9804fbb505812 Mon Sep 17 00:00:00 2001
+From c91768dd2ab61594ea316a519b9bf9fe67f8cdb0 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 31 Oct 2019 18:45:19 +0800
-Subject: [PATCH 4/9] video-converter: Support rockchip RGA 2D accel
+Subject: [PATCH 08/11] video-converter: Support rockchip RGA 2D accel
 
 Disabled by default, set env GST_VIDEO_CONVERT_USE_RGA=1 to enable.
 
@@ -252,5 +252,5 @@ index d279db8..3aae21a 100644
  x11_dep = dependency('x11', required : get_option('x11'))
  # GLib checks are for the entire project
 -- 
-2.17.1
+2.20.1
 

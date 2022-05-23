@@ -1,7 +1,7 @@
-From be7a628b6b7bffa0820059f64c8bf9de51191d37 Mon Sep 17 00:00:00 2001
+From bf3bd95ab0e9ce0c5df8aaa42783c8844c1ef4ef Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 26 Nov 2021 17:41:47 +0800
-Subject: [PATCH 8/9] playbin2: Fix deadlock when hooking about-to-finish
+Subject: [PATCH 04/11] playbin2: Fix deadlock when hooking about-to-finish
  signal
 
 The playbin2 will deactivate old group in drain_cb() for that, which
@@ -10,14 +10,14 @@ the same time.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- gst/playback/gstplaybin2.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ gst/playback/gstplaybin2.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
 diff --git a/gst/playback/gstplaybin2.c b/gst/playback/gstplaybin2.c
-index 1b5c183..eaeb792 100644
+index a6679a2..f71b977 100644
 --- a/gst/playback/gstplaybin2.c
 +++ b/gst/playback/gstplaybin2.c
-@@ -386,6 +386,11 @@ G_STMT_START {                                          \
+@@ -389,6 +389,11 @@ G_STMT_START {                                          \
  #define GST_PLAY_BIN_SHUTDOWN_UNLOCK(bin)         \
    GST_PLAY_BIN_DYN_UNLOCK (bin);                  \
  
@@ -29,7 +29,7 @@ index 1b5c183..eaeb792 100644
  /**
   * GstPlayBin:
   *
-@@ -428,6 +433,9 @@ struct _GstPlayBin
+@@ -431,6 +436,9 @@ struct _GstPlayBin
    gint shutdown;
    gboolean async_pending;       /* async-start has been emitted */
  
@@ -47,7 +47,7 @@ index 1b5c183..eaeb792 100644
  
    /* assume we can create an input-selector */
    playbin->have_selector = TRUE;
-@@ -1636,6 +1645,7 @@ gst_play_bin_finalize (GObject * object)
+@@ -1633,6 +1642,7 @@ gst_play_bin_finalize (GObject * object)
    g_list_free_full (playbin->contexts, (GDestroyNotify) gst_context_unref);
  
    g_rec_mutex_clear (&playbin->lock);
@@ -55,7 +55,7 @@ index 1b5c183..eaeb792 100644
    g_mutex_clear (&playbin->dyn_lock);
    g_mutex_clear (&playbin->elements_lock);
  
-@@ -3135,7 +3145,14 @@ combiner_active_pad_changed (GObject * combiner, GParamSpec * pspec,
+@@ -3132,7 +3142,14 @@ combiner_active_pad_changed (GObject * combiner, GParamSpec * pspec,
    GstSourceCombine *combine = NULL;
    int i;
  
@@ -70,7 +70,7 @@ index 1b5c183..eaeb792 100644
    group = get_group (playbin);
  
    for (i = 0; i < PLAYBIN_STREAM_LAST; i++) {
-@@ -3946,7 +3963,10 @@ drained_cb (GstElement * decodebin, GstSourceGroup * group)
+@@ -3949,7 +3966,11 @@ drained_cb (GstElement * decodebin, GstSourceGroup * group)
  
    /* now activate the next group. If the app did not set a uri, this will
     * fail and we can do EOS */
@@ -78,9 +78,10 @@ index 1b5c183..eaeb792 100644
 +  GST_PLAY_BIN_DRAIN_LOCK (playbin);
    setup_next_source (playbin, GST_STATE_PAUSED);
 +  GST_PLAY_BIN_DRAIN_UNLOCK (playbin);
++
+   group->pending_about_to_finish = TRUE;
  }
  
- /* Like gst_element_factory_can_sink_any_caps() but doesn't
 -- 
-2.17.1
+2.20.1
 

@@ -1,4 +1,4 @@
-From ce6cc8428171010c4e348beb296ec48987987054 Mon Sep 17 00:00:00 2001
+From 0ccc3d3bd930877c8e7bfd4133afa4b56bae46d9 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 11 Jun 2019 10:19:22 +0800
 Subject: [PATCH 3/5] autodetect: Add preferred for autovideosink/autoaudiosink
@@ -91,5 +91,5 @@ index b3eaf1f..545e21c 100644
    sink->ts_offset = DEFAULT_TS_OFFSET;
  }
 -- 
-2.17.1
+2.20.1
 

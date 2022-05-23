@@ -1,7 +1,7 @@
-From 234cee0807779088ef0ce1595070f19175290d3b Mon Sep 17 00:00:00 2001
+From 8a6691696ff6d98cfe31f47122b1da9addb9f73c Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 25 Dec 2018 16:20:35 +0800
-Subject: [PATCH 07/31] waylandsink: Enable changing window handle
+Subject: [PATCH 07/33] waylandsink: Enable changing window handle
 
 Changing window handle is dangerous, but we need this feature for:
 https://redmine.rockchip.com.cn/issues/184629
@@ -89,5 +89,5 @@ index 7aabb6f..1c5fb07 100644
    GMutex render_lock;
    GstBuffer *last_buffer;
 -- 
-2.17.1
+2.20.1
 

@@ -1,7 +1,7 @@
-From 37f394185e3c50f91905895b57865a5e34be9c36 Mon Sep 17 00:00:00 2001
+From 0df11e8a9c16aaf38bcf8a330c89cf32822befb5 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 24 Dec 2020 10:16:44 +0800
-Subject: [PATCH 15/31] camerabin2: Support setting default filters
+Subject: [PATCH 15/33] camerabin2: Support setting default filters
 
 Use env "CAMERABIN2_PREVIEW_FILTER", "CAMERABIN2_IMAGE_FILTER",
 "CAMERABIN2_VIDEO_FILTER", "CAMERABIN2_VIEWFINDER_FILTER" to set default
@@ -49,5 +49,5 @@ index 6ac5ce4..1d3784f 100644
      case GST_STATE_CHANGE_NULL_TO_READY:
        if (!gst_camera_bin_create_elements (camera)) {
 -- 
-2.17.1
+2.20.1
 

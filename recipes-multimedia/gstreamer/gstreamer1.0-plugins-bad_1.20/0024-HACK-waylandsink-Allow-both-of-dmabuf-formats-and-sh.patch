@@ -1,7 +1,7 @@
-From e167888fb1768f465f384e0eaeb40bbf896d5f3a Mon Sep 17 00:00:00 2001
+From 00e8175dd948caa695d665d1506e6724b90449b0 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 9 Dec 2021 14:25:41 +0800
-Subject: [PATCH 24/31] HACK: waylandsink: Allow both of dmabuf formats and shm
+Subject: [PATCH 24/33] HACK: waylandsink: Allow both of dmabuf formats and shm
  formats
 
 For the plugins which provide dmabuf without
@@ -59,5 +59,5 @@ index 1f70f76..91c8a0b 100644
  
    gboolean video_info_changed;
 -- 
-2.17.1
+2.20.1
 

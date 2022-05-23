@@ -1,4 +1,4 @@
-From 9730f5e6d50b348e387c666f834fdd21f2e0d7ad Mon Sep 17 00:00:00 2001
+From 717538c26f18372e91a8aacc7fde6ec8a35ed9f7 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 8 Nov 2019 17:36:20 +0800
 Subject: [PATCH 5/5] video-flip: Support rockchip RGA 2D accel
@@ -302,5 +302,5 @@ index 517bde4..9949d1c 100644
  orcc_args = []
  orc_targets = []
 -- 
-2.17.1
+2.20.1
 

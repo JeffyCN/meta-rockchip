@@ -1,7 +1,7 @@
-From 20ce395f6f41cb1754152fc8e5ca619e5dc23005 Mon Sep 17 00:00:00 2001
+From 294c252b5e46d4ecb4d10f8854aaac47fd55cd24 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 27 Dec 2021 21:37:06 +0800
-Subject: [PATCH 28/31] waylandsink: Prefer to use waylandsink
+Subject: [PATCH 28/33] waylandsink: Prefer to use waylandsink
 
 Increase rank to primary.
 
@@ -24,5 +24,5 @@ index d75f5a5..9256b02 100644
  
  /* A tiny GstVideoBufferPool subclass that modify the options to remove
 -- 
-2.17.1
+2.20.1
 

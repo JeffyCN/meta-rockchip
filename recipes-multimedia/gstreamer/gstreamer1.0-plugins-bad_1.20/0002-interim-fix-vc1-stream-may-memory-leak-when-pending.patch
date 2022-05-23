@@ -1,7 +1,7 @@
-From 8e9b6ed68a24eefdfbf2df555bef01ce61a15bca Mon Sep 17 00:00:00 2001
+From 4482a87d25acc8eb0362492b6604a3f7163ef245 Mon Sep 17 00:00:00 2001
 From: "james.lin" <james.lin@rock-chips.com>
 Date: Tue, 17 Apr 2018 11:14:01 +0800
-Subject: [PATCH 02/31] interim fix vc1 stream may memory leak when pending
+Subject: [PATCH 02/33] interim fix vc1 stream may memory leak when pending
 
 Signed-off-by: james.lin <james.lin@rock-chips.com>
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
@@ -29,5 +29,5 @@ index 73e1c06..9aaa968 100644
          pend = g_slice_new0 (PendingBuffer);
          pend->buffer = buffer;
 -- 
-2.17.1
+2.20.1
 

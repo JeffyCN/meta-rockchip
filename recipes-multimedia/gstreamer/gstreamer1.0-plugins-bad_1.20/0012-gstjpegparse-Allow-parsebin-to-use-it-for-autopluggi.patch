@@ -1,7 +1,7 @@
-From 736ea6f24b57ac7d9b9ff023fa73e5fddd376f4c Mon Sep 17 00:00:00 2001
+From f6311d10340cab177b268db3070f139f26d26da5 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 17 Nov 2020 11:51:40 +0800
-Subject: [PATCH 12/31] gstjpegparse: Allow parsebin to use it for autoplugging
+Subject: [PATCH 12/33] gstjpegparse: Allow parsebin to use it for autoplugging
 
 Add "Codec" to Klass and increase rank.
 
@@ -33,5 +33,5 @@ index 5231879..7587c2b 100644
        "Arnout Vandecappelle (Essensium/Mind) <arnout@mind.be>");
  
 -- 
-2.17.1
+2.20.1
 

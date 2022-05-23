@@ -1,7 +1,7 @@
-From 7b1a72b28954d8f49d803ec9f35a4c108f3a8c95 Mon Sep 17 00:00:00 2001
+From c31eb56a5a9ee52efacf0589c3fcfcde92375422 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 5 Mar 2021 10:15:51 +0800
-Subject: [PATCH 18/31] waylandsink: Support window layer property
+Subject: [PATCH 18/33] waylandsink: Support window layer property
 
 Support setting top|normal|bottom window layer.
 
@@ -232,5 +232,5 @@ index ba61d7a..97ea79e 100644
          struct wl_surface * parent, GMutex * render_lock);
  
 -- 
-2.17.1
+2.20.1
 

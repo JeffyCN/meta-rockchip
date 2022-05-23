@@ -1,7 +1,7 @@
-From f5d00c761ffcc9458678ec4127ddc3b09de912cd Mon Sep 17 00:00:00 2001
+From 2319581d4848e5763abe25059ad43148baa95aaf Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 28 Dec 2021 14:06:19 +0800
-Subject: [PATCH 19/31] waylandsink: Support window alpha property
+Subject: [PATCH 19/33] waylandsink: Support window alpha property
 
 Tested with:
 gst-launch-1.0 videotestsrc ! waylandsink alpha=0.5
@@ -185,5 +185,5 @@ index 97ea79e..6fb8285 100644
          GstWlWindowLayer layer);
  void gst_wl_window_ensure_fullscreen (GstWlWindow * window,
 -- 
-2.17.1
+2.20.1
 

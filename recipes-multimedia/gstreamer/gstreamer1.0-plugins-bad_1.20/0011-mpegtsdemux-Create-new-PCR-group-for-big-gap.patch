@@ -1,7 +1,7 @@
-From 905d46ebe638d20bca762f2c8eb100c0e8c4a7e4 Mon Sep 17 00:00:00 2001
+From bc5d9e1d9e1b352b2a9c4b56ce055229010be8c1 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 23 Oct 2020 11:11:11 +0800
-Subject: [PATCH 11/31] mpegtsdemux: Create new PCR group for big gap
+Subject: [PATCH 11/33] mpegtsdemux: Create new PCR group for big gap
 
 Currently it would try to reuse the current group and handle the gap by
 just adding 500ms to pcroffset.
@@ -48,5 +48,5 @@ index de8b571..6747fc6 100644
  
    if (G_UNLIKELY (corpcr == current->last_value.pcr)) {
 -- 
-2.17.1
+2.20.1
 
