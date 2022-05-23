@@ -1,7 +1,7 @@
-From 0286f5d22f8072616c749a35fedd702d4fdd0083 Mon Sep 17 00:00:00 2001
+From f024f5bcee3531942c1d0cc306736dff865f4baf Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 27 Sep 2019 18:52:24 +0800
-Subject: [PATCH 2/4] libv4l: mplane: Filter out multiplane formats
+Subject: [PATCH 2/6] libv4l: mplane: Filter out multiplane formats
 
 The multiplane formats are not supported here, reporting them to the
 userspace might cause unexpected results.

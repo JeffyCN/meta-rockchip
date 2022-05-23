@@ -1,0 +1,31 @@
+From bf1b82deb438e386808e1cde3ee6f3da0a304402 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 12 May 2022 15:54:25 +0800
+Subject: [PATCH 6/6] libv4l: Disallow conversion by default
+
+The conversion is slow, let's disable it by default.
+
+Set env "V4L2_DISABLE_CONVERSION" to enable it.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ lib/libv4l2/libv4l2.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/lib/libv4l2/libv4l2.c b/lib/libv4l2/libv4l2.c
+index 11d2ae1..d9edec1 100644
+--- a/lib/libv4l2/libv4l2.c
++++ b/lib/libv4l2/libv4l2.c
+@@ -789,6 +789,9 @@ int v4l2_fd_open(int fd, int v4l2_flags)
+ 	if (dev_ops->ioctl(dev_ops_priv, fd, VIDIOC_G_PARM, &parm))
+ 		parm.type = 0;
+ 
++	if (!getenv("LIBV4L2_ALLOW_CONVERSION"))
++		v4l2_flags |= V4L2_DISABLE_CONVERSION;
++
+ 	/* init libv4lconvert */
+ 	if (!(v4l2_flags & V4L2_DISABLE_CONVERSION)) {
+ 		convert = v4lconvert_create_with_dev_ops(fd, dev_ops_priv, dev_ops);
+-- 
+2.20.1
+
