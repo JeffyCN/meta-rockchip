@@ -82,19 +82,19 @@ do_install:append () {
 }
 
 INSANE_SKIP:${PN} = "already-stripped ldflags dev-so textrel"
+INSANE_SKIP:${PN}-dev = "staticdev"
 
 INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 INHIBIT_PACKAGE_STRIP = "1"
 
 RPROVIDES:${PN}:append = " libmali"
 
-# Library symlinks are required by utgard DDK(for internal dlopen)
-FILES:${PN}:append = " \
-	${libdir}/lib*.so \
-	${nonarch_base_libdir}/firmware \
-"
-
+FILES:${PN}-staticdev = ""
 FILES:${PN}-dev = " \
 	${includedir} \
+	${libdir}/lib*.a \
 	${libdir}/pkgconfig \
 "
+
+# Any remaining files, including .so links for utgard DDK's internal dlopen
+FILES:${PN} = "*"
