@@ -1,8 +1,8 @@
-From 2f7de62a02d4f5978e5cc1cb1b168b1820928cb2 Mon Sep 17 00:00:00 2001
+From 171200ff1a3140e15901066e23252e7fc6906369 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 12 Nov 2021 11:14:37 +0800
-Subject: [PATCH 26/33] waylandsink: Support NV12_10LE40 NV12(AFBC) and
- NV12_10(AFBC)
+Subject: [PATCH 26/33] waylandsink: Support NV12_10LE40 and
+ NV12|NV12_10LE40|NV16 (AFBC)
 
 Tested on RK356x with:
 export GST_MPP_VIDEODEC_DEFAULT_ARM_AFBC=1
