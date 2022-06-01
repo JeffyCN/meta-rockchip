@@ -1,16 +1,16 @@
-From c2c4bc14d46e426c4504b1579198916ff2dbf0e2 Mon Sep 17 00:00:00 2001
+From 47d24cee0ce021c800f2994158fea06f16a4bb4f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 3 Jul 2020 10:20:40 +0800
-Subject: [PATCH 24/63] Support holding display for the first app
+Subject: [PATCH 24/67] Support holding display for the first app
 
 Use '-w' or '--warm-up' to enable it.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- compositor/main.c             | 5 +++++
- include/libweston/libweston.h | 2 ++
- libweston/compositor.c        | 8 ++++++++
- 3 files changed, 15 insertions(+)
+ compositor/main.c             |  5 +++++
+ include/libweston/libweston.h |  2 ++
+ libweston/compositor.c        | 10 ++++++++++
+ 3 files changed, 17 insertions(+)
 
 diff --git a/compositor/main.c b/compositor/main.c
 index a4f679a..128016b 100644
@@ -63,20 +63,22 @@ index 6bd7a05..39e58c6 100644
  
  struct weston_buffer {
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index bfaf418..a13469c 100644
+index 71234c0..0136b84 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
-@@ -2890,6 +2890,9 @@ weston_compositor_build_view_list(struct weston_compositor *compositor,
- 			if (weston_compositor_is_system_layer(layer)) {
- 				if (view->output != output)
- 					continue;
-+			} else if (compositor->warm_up) {
+@@ -2892,6 +2892,11 @@ weston_compositor_build_view_list(struct weston_compositor *compositor,
+ 		bool system_layer = weston_compositor_is_system_layer(layer);
+ 
+ 		wl_list_for_each(view, &layer->view_list.link, layer_link.link) {
++			if (compositor->warm_up && !system_layer) {
 +				weston_log("seeing the first app\n");
 +				compositor->warm_up = false;
- 			}
- 
- 			view_list_add(compositor, view, output);
-@@ -2947,6 +2950,11 @@ weston_output_repaint(struct weston_output *output, void *repaint_data)
++			}
++
+ 			view_list_add(compositor, view,
+ 				      system_layer ? view->output : output);
+ 		}
+@@ -2948,6 +2953,11 @@ weston_output_repaint(struct weston_output *output, void *repaint_data)
  	/* Rebuild the surface list and update surface transforms up front. */
  	weston_compositor_build_view_list(ec, output);
  

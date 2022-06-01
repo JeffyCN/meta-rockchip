@@ -1,7 +1,7 @@
-From 16f9440575342f0157ae995add0faabff3b3ad9f Mon Sep 17 00:00:00 2001
+From 9dd0af129bd45bb8d710a3013e20d2bedd7b9018 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 27 May 2022 15:39:10 +0800
-Subject: [PATCH 64/64] compositor: Use current timestamp for animation
+Subject: [PATCH 64/67] compositor: Use current timestamp for animation
 
 Avoid "unexpectedly large timestamp jump" warning for the first frame of
 animation.
@@ -12,10 +12,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index 721458b..1ceb860 100644
+index c70d8b3..adbf4e3 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
-@@ -2944,6 +2944,7 @@ weston_output_repaint(struct weston_output *output, void *repaint_data)
+@@ -2947,6 +2947,7 @@ weston_output_repaint(struct weston_output *output, void *repaint_data)
  	int r;
  	uint32_t frame_time_msec;
  	enum weston_hdcp_protection highest_requested = WESTON_HDCP_DISABLE;
@@ -23,7 +23,7 @@ index 721458b..1ceb860 100644
  
  	if (output->destroying)
  		return 0;
-@@ -3032,9 +3033,10 @@ weston_output_repaint(struct weston_output *output, void *repaint_data)
+@@ -3035,9 +3036,10 @@ weston_output_repaint(struct weston_output *output, void *repaint_data)
  		wl_resource_destroy(cb);
  	}
  

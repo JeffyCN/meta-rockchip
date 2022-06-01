@@ -1,17 +1,17 @@
-From b64c74eb93cf8893d4ad80a4d2757cd6b965dd7c Mon Sep 17 00:00:00 2001
+From 3681f01eb6f7dbc543feffdf1b5892be3f9941cb Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Sat, 7 May 2022 16:41:20 +0800
-Subject: [PATCH 23/63] Avoid adding system views to other outputs
+Subject: [PATCH 23/67] Avoid adding system views to other outputs
 
 The outputs can be overlapped now.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- libweston/compositor.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ libweston/compositor.c | 26 +++++++++++++++++++++++++-
+ 1 file changed, 25 insertions(+), 1 deletion(-)
 
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index 13f4584..bfaf418 100644
+index 13f4584..71234c0 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
 @@ -176,6 +176,24 @@ weston_compositor_is_static_layer(struct weston_layer *layer)
@@ -39,18 +39,29 @@ index 13f4584..bfaf418 100644
  /** Send wl_output events for mode and scale changes
   *
   * \param head Send on all resources bound to this head.
-@@ -2869,6 +2887,11 @@ weston_compositor_build_view_list(struct weston_compositor *compositor,
+@@ -2828,6 +2846,9 @@ view_list_add(struct weston_compositor *compositor,
+ 	struct weston_paint_node *pnode;
+ 	struct weston_subsurface *sub;
+ 
++	if (output && !weston_output_valid(output))
++		return;
++
+ 	weston_view_update_transform(view);
+ 	pnode = view_ensure_paint_node(view, output);
+ 
+@@ -2868,8 +2889,11 @@ weston_compositor_build_view_list(struct weston_compositor *compositor,
+ 	wl_list_init(&compositor->view_list);
  
  	wl_list_for_each(layer, &compositor->layer_list, link) {
- 		wl_list_for_each(view, &layer->view_list.link, layer_link.link) {
-+			if (weston_compositor_is_system_layer(layer)) {
-+				if (view->output != output)
-+					continue;
-+			}
++		bool system_layer = weston_compositor_is_system_layer(layer);
 +
- 			view_list_add(compositor, view, output);
+ 		wl_list_for_each(view, &layer->view_list.link, layer_link.link) {
+-			view_list_add(compositor, view, output);
++			view_list_add(compositor, view,
++				      system_layer ? view->output : output);
  		}
  	}
+ 
 -- 
 2.20.1
 
