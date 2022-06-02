@@ -84,6 +84,13 @@ RK_EXTRA_VOLUMES ?= ""
 ROOTFS_POSTPROCESS_COMMAND:append = " do_post_rootfs;"
 do_rootfs[depends] += "rsync-native:do_populate_sysroot"
 do_post_rootfs() {
+	# Rockchip BSP rkwifibt drivers would use custom firmware directories
+	for dir in vendor system;do
+		firmware_dir=${IMAGE_ROOTFS}/${dir}/etc/
+		mkdir -p ${firmware_dir}
+		ln -sf /lib/firmware ${firmware_dir}
+	done
+
 	for volume in ${RK_EXTRA_VOLUMES};do
 		echo "Creating ${volume##*:} for ${volume%:*}(fslabel)..."
 		mkdir -p "${IMAGE_ROOTFS}${volume##*:}"
