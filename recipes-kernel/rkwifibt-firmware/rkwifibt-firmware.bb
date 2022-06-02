@@ -17,9 +17,9 @@ S = "${WORKDIR}/git"
 inherit allarch deploy
 
 do_install() {
-	install -d ${D}/system/etc/firmware/
-	install -m 0644 ${S}/firmware/broadcom/all/*/* \
-		-t ${D}/system/etc/firmware/
+	install -d ${D}/lib/firmware/
+	install -m 0644 ${S}/firmware/broadcom/all/*/* -t ${D}/lib/firmware/
+
 	install -d ${D}/lib/firmware/rtlbt/
 	install -m 0644 ${S}/realtek/RTL*/* -t ${D}/lib/firmware/rtlbt/
 }
@@ -44,73 +44,73 @@ PACKAGES =+ " \
 "
 
 FILES:${PN}-ap6181-wifi = " \
-	system/etc/firmware/fw_bcm40181a2_apsta.bin \
-	system/etc/firmware/fw_bcm40181a2.bin \
-	system/etc/firmware/nvram_ap6181.txt \
+	lib/firmware/fw_bcm40181a2_apsta.bin \
+	lib/firmware/fw_bcm40181a2.bin \
+	lib/firmware/nvram_ap6181.txt \
 "
 
 FILES:${PN}-ap6212a1-wifi = " \
-	system/etc/firmware/fw_bcm43438a1_apsta.bin \
-	system/etc/firmware/fw_bcm43438a1.bin \
-	system/etc/firmware/nvram_ap6212a.txt \
+	lib/firmware/fw_bcm43438a1_apsta.bin \
+	lib/firmware/fw_bcm43438a1.bin \
+	lib/firmware/nvram_ap6212a.txt \
 "
 FILES:${PN}-ap6212a1-bt = " \
-	system/etc/firmware/BCM43430A1.hcd \
+	lib/firmware/BCM43430A1.hcd \
 "
 
 FILES:${PN}-ap6236-wifi = " \
-	system/etc/firmware/fw_bcm43436b0_apsta.bin \
-	system/etc/firmware/fw_bcm43436b0.bin \
-	system/etc/firmware/nvram_ap6236.txt \
+	lib/firmware/fw_bcm43436b0_apsta.bin \
+	lib/firmware/fw_bcm43436b0.bin \
+	lib/firmware/nvram_ap6236.txt \
 "
 FILES:${PN}-ap6236-bt = " \
-	system/etc/firmware/BCM43430B0.hcd \
+	lib/firmware/BCM43430B0.hcd \
 "
 
 FILES:${PN}-ap6255-wifi = " \
-	system/etc/firmware/fw_bcm43455c0_ag.bin \
-	system/etc/firmware/nvram_ap6255.txt \
+	lib/firmware/fw_bcm43455c0_ag.bin \
+	lib/firmware/nvram_ap6255.txt \
 "
 FILES:${PN}-ap6255-bt = " \
-	system/etc/firmware/BCM4345C0_ap.hcd \
-	system/etc/firmware/BCM4345C0.hcd \
+	lib/firmware/BCM4345C0_ap.hcd \
+	lib/firmware/BCM4345C0.hcd \
 "
 
 FILES:${PN}-ap6275p-wifi = " \
-	system/etc/firmware/fw_bcm43752a2_pcie_ag_apsta.bin \
-	system/etc/firmware/fw_bcm43752a2_pcie_ag_mfg.bin \
-	system/etc/firmware/clm_bcm43752a2_pcie_ag.blob \
-	system/etc/firmware/fw_bcm43752a2_pcie_ag.bin \
-	system/etc/firmware/nvram_AP6275P.txt \
+	lib/firmware/fw_bcm43752a2_pcie_ag_apsta.bin \
+	lib/firmware/fw_bcm43752a2_pcie_ag_mfg.bin \
+	lib/firmware/clm_bcm43752a2_pcie_ag.blob \
+	lib/firmware/fw_bcm43752a2_pcie_ag.bin \
+	lib/firmware/nvram_AP6275P.txt \
 "
 FILES:${PN}-ap6275p-bt = " \
-	system/etc/firmware/BCM4362A2.hcd \
+	lib/firmware/BCM4362A2.hcd \
 "
 
 FILES:${PN}-ap6354-wifi = " \
-	system/etc/firmware/fw_bcm4354a1_ag.bin \
-	system/etc/firmware/nvram_ap6354.txt \
+	lib/firmware/fw_bcm4354a1_ag.bin \
+	lib/firmware/nvram_ap6354.txt \
 "
 FILES:${PN}-ap6354-bt = " \
-	system/etc/firmware/BCM4350C0.hcd \
+	lib/firmware/BCM4350C0.hcd \
 "
 
 FILES:${PN}-ap6356-wifi = " \
-	system/etc/firmware/fw_bcm4356a2_ag.bin \
-	system/etc/firmware/nvram_ap6356.txt \
-	system/etc/firmware/nvram_ap6356s.txt \
+	lib/firmware/fw_bcm4356a2_ag.bin \
+	lib/firmware/nvram_ap6356.txt \
+	lib/firmware/nvram_ap6356s.txt \
 "
 FILES:${PN}-ap6356-bt = " \
-	system/etc/firmware/BCM4354A2.hcd \
+	lib/firmware/BCM4354A2.hcd \
 "
 
 FILES:${PN}-ap6398s-wifi = " \
-	system/etc/firmware/fw_bcm4359c0_ag.bin \
-	system/etc/firmware/fw_bcm4359c0_ag_mfg.bin \
-	system/etc/firmware/nvram_ap6398s.txt \
+	lib/firmware/fw_bcm4359c0_ag.bin \
+	lib/firmware/fw_bcm4359c0_ag_mfg.bin \
+	lib/firmware/nvram_ap6398s.txt \
 "
 FILES:${PN}-ap6398s-bt = " \
-	system/etc/firmware/BCM4359C0.hcd \
+	lib/firmware/BCM4359C0.hcd \
 "
 
 FILES:${PN}-rtl8723ds-bt = " \
