@@ -1,7 +1,7 @@
-From 1cf4cdfd80697c8857cfb792f967e0cf927be5ac Mon Sep 17 00:00:00 2001
+From f3dd2a8e3adbfcac0ed55484f111028a0834cd9c Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 1 Sep 2020 08:51:17 +0800
-Subject: [PATCH 27/63] HACK: backend-drm: Consider linear and invalid modifier
+Subject: [PATCH 27/69] HACK: backend-drm: Consider linear and invalid modifier
  are the same
 
 That is true with Rockchip BSP drivers and packages.
@@ -19,7 +19,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  8 files changed, 26 insertions(+), 21 deletions(-)
 
 diff --git a/clients/simple-dmabuf-egl.c b/clients/simple-dmabuf-egl.c
-index 33df4cf..535daf0 100644
+index 33df4cf9b..535daf026 100644
 --- a/clients/simple-dmabuf-egl.c
 +++ b/clients/simple-dmabuf-egl.c
 @@ -68,6 +68,9 @@
@@ -52,7 +52,7 @@ index 33df4cf..535daf0 100644
  		d->modifiers = realloc(d->modifiers,
  				       d->modifiers_count * sizeof(*d->modifiers));
 diff --git a/libweston/backend-drm/drm-gbm.c b/libweston/backend-drm/drm-gbm.c
-index d7bd05f..ecc7a5f 100644
+index d7bd05f13..ecc7a5f48 100644
 --- a/libweston/backend-drm/drm-gbm.c
 +++ b/libweston/backend-drm/drm-gbm.c
 @@ -196,7 +196,8 @@ create_gbm_surface(struct gbm_device *gbm, struct drm_output *output)
@@ -66,7 +66,7 @@ index d7bd05f..ecc7a5f 100644
  		output->gbm_surface =
  			gbm_surface_create_with_modifiers(gbm,
 diff --git a/libweston/backend-drm/drm-virtual.c b/libweston/backend-drm/drm-virtual.c
-index 597e71c..20f6809 100644
+index 597e71c17..20f680966 100644
 --- a/libweston/backend-drm/drm-virtual.c
 +++ b/libweston/backend-drm/drm-virtual.c
 @@ -112,13 +112,7 @@ drm_virtual_plane_create(struct drm_backend *b, struct drm_output *output)
@@ -85,7 +85,7 @@ index 597e71c..20f6809 100644
  	if (weston_drm_format_add_modifier(fmt, mod) < 0)
  		goto err;
 diff --git a/libweston/backend-drm/fb.c b/libweston/backend-drm/fb.c
-index ffe2cc5..4474e0c 100644
+index ffe2cc52c..4474e0cc9 100644
 --- a/libweston/backend-drm/fb.c
 +++ b/libweston/backend-drm/fb.c
 @@ -77,7 +77,7 @@ drm_fb_addfb(struct drm_backend *b, struct drm_fb *fb)
@@ -141,7 +141,7 @@ index ffe2cc5..4474e0c 100644
  
  		if (weston_drm_format_has_modifier(fmt, fb->modifier))
 diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
-index 1fcbdeb..4b5ba42 100644
+index 1fcbdeb61..4b5ba42b8 100644
 --- a/libweston/backend-drm/kms.c
 +++ b/libweston/backend-drm/kms.c
 @@ -542,7 +542,7 @@ fallback:
@@ -154,7 +154,7 @@ index 1fcbdeb..4b5ba42 100644
  			return -1;
  	}
 diff --git a/libweston/linux-dmabuf.h b/libweston/linux-dmabuf.h
-index 7cae93c..cfbdc28 100644
+index 7cae93c58..cfbdc2829 100644
 --- a/libweston/linux-dmabuf.h
 +++ b/libweston/linux-dmabuf.h
 @@ -31,6 +31,10 @@
@@ -169,10 +169,10 @@ index 7cae93c..cfbdc28 100644
  typedef void (*dmabuf_user_data_destroy_func)(
  			struct linux_dmabuf_buffer *buffer);
 diff --git a/libweston/pixman-renderer.c b/libweston/pixman-renderer.c
-index 7bf4322..acd164e 100644
+index 593d7c8c3..e7d73354d 100644
 --- a/libweston/pixman-renderer.c
 +++ b/libweston/pixman-renderer.c
-@@ -1083,7 +1083,7 @@ pixman_renderer_import_dmabuf(struct weston_compositor *ec,
+@@ -1086,7 +1086,7 @@ pixman_renderer_import_dmabuf(struct weston_compositor *ec,
  	int i;
  
  	for (i = 0; i < attributes->n_planes; i++) {
@@ -181,7 +181,7 @@ index 7bf4322..acd164e 100644
  			return false;
  	}
  
-@@ -1178,7 +1178,7 @@ populate_supported_formats(struct weston_compositor *ec,
+@@ -1181,7 +1181,7 @@ populate_supported_formats(struct weston_compositor *ec,
  
  		/* Always add DRM_FORMAT_MOD_INVALID, as EGL implementations
  		 * support implicit modifiers. */
@@ -191,10 +191,10 @@ index 7bf4322..acd164e 100644
  			goto out;
  	}
 diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
-index 90983a7..b62f481 100644
+index 592174389..c0ad2f2bf 100644
 --- a/libweston/renderer-gl/gl-renderer.c
 +++ b/libweston/renderer-gl/gl-renderer.c
-@@ -2353,7 +2353,7 @@ import_simple_dmabuf(struct gl_renderer *gr,
+@@ -2357,7 +2357,7 @@ import_simple_dmabuf(struct gl_renderer *gr,
  		attribs[atti++] = EGL_YUV_NARROW_RANGE_EXT;
  	}
  
@@ -203,7 +203,7 @@ index 90983a7..b62f481 100644
  		if (!gr->has_dmabuf_import_modifiers)
  			return NULL;
  		has_modifier = true;
-@@ -2865,7 +2865,7 @@ gl_renderer_import_dmabuf(struct weston_compositor *ec,
+@@ -2869,7 +2869,7 @@ gl_renderer_import_dmabuf(struct weston_compositor *ec,
  
  	for (i = 0; i < dmabuf->attributes.n_planes; i++) {
  		/* return if EGL doesn't support import modifiers */
@@ -212,7 +212,7 @@ index 90983a7..b62f481 100644
  			if (!gr->has_dmabuf_import_modifiers)
  				return false;
  
-@@ -3010,7 +3010,7 @@ populate_supported_formats(struct weston_compositor *ec,
+@@ -3014,7 +3014,7 @@ populate_supported_formats(struct weston_compositor *ec,
  
  		/* Always add DRM_FORMAT_MOD_INVALID, as EGL implementations
  		 * support implicit modifiers. */
@@ -221,7 +221,7 @@ index 90983a7..b62f481 100644
  		if (ret < 0)
  			goto out;
  
-@@ -3021,7 +3021,7 @@ populate_supported_formats(struct weston_compositor *ec,
+@@ -3025,7 +3025,7 @@ populate_supported_formats(struct weston_compositor *ec,
  
  		for (j = 0; j < num_modifiers; j++) {
  			/* Skip MOD_INVALID, as it has already been added. */

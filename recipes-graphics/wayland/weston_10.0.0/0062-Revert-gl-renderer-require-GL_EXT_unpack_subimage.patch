@@ -1,7 +1,7 @@
-From 23ce9bf3c58683876ac68fe2780a012fa44a51ff Mon Sep 17 00:00:00 2001
+From 07b1fcfe7537f2bb2a37ef4d55def1aa630eaa1a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 27 Apr 2022 22:59:32 +0800
-Subject: [PATCH 62/63] Revert "gl-renderer: require GL_EXT_unpack_subimage"
+Subject: [PATCH 62/69] Revert "gl-renderer: require GL_EXT_unpack_subimage"
 
 This reverts commit 593d5af43a8e2c2a3371088fa7ae430d0517c82d.
 
@@ -14,7 +14,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 26 insertions(+), 6 deletions(-)
 
 diff --git a/libweston/renderer-gl/gl-renderer-internal.h b/libweston/renderer-gl/gl-renderer-internal.h
-index e7e1693..ebeaadb 100644
+index e7e169371..ebeaadbe8 100644
 --- a/libweston/renderer-gl/gl-renderer-internal.h
 +++ b/libweston/renderer-gl/gl-renderer-internal.h
 @@ -133,6 +133,8 @@ struct gl_renderer {
@@ -27,10 +27,10 @@ index e7e1693..ebeaadb 100644
  	PFNEGLUNBINDWAYLANDDISPLAYWL unbind_display;
  	PFNEGLQUERYWAYLANDBUFFERWL query_buffer;
 diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
-index 1b27b3e..aac9161 100644
+index b1fa8e08a..0e15c2cf3 100644
 --- a/libweston/renderer-gl/gl-renderer.c
 +++ b/libweston/renderer-gl/gl-renderer.c
-@@ -1914,8 +1914,8 @@ gl_renderer_flush_damage(struct weston_surface *surface)
+@@ -1918,8 +1918,8 @@ gl_renderer_flush_damage(struct weston_surface *surface)
  {
  	const struct weston_testsuite_quirks *quirks =
  		&surface->compositor->test_data.test_quirks;
@@ -40,7 +40,7 @@ index 1b27b3e..aac9161 100644
  	struct weston_buffer *buffer = gs->buffer_ref.buffer;
  	struct weston_view *view;
  	bool texture_used;
-@@ -1956,6 +1956,24 @@ gl_renderer_flush_damage(struct weston_surface *surface)
+@@ -1960,6 +1960,24 @@ gl_renderer_flush_damage(struct weston_surface *surface)
  
  	glActiveTexture(GL_TEXTURE0);
  
@@ -65,7 +65,7 @@ index 1b27b3e..aac9161 100644
  	if (gs->needs_full_upload || quirks->gl_force_full_upload) {
  		glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, 0);
  		glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, 0);
-@@ -4081,11 +4099,9 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
+@@ -4085,11 +4103,9 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
  	else
  		ec->read_format = PIXMAN_a8b8g8r8;
  
@@ -80,7 +80,7 @@ index 1b27b3e..aac9161 100644
  
  	if (gr->gl_version >= gr_gl_version(3, 0) ||
  	    weston_check_egl_extension(extensions, "GL_EXT_texture_type_2_10_10_10_REV"))
-@@ -4126,6 +4142,8 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
+@@ -4130,6 +4146,8 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
  		   gr_gl_version_minor(gr->gl_version));
  	weston_log_continue(STAMP_SPACE "read-back format: %s\n",
  		ec->read_format == PIXMAN_a8r8g8b8 ? "BGRA" : "RGBA");

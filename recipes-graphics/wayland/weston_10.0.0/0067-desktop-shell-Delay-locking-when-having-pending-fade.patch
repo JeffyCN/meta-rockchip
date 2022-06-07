@@ -1,7 +1,7 @@
-From 22c418653594bd339cd010d7618defe19829637d Mon Sep 17 00:00:00 2001
+From be924de4e8b248c0d2c70c9fcebd033608c33a84 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 1 Jun 2022 11:28:24 +0800
-Subject: [PATCH 67/67] desktop-shell: Delay locking when having pending
+Subject: [PATCH 67/69] desktop-shell: Delay locking when having pending
  fade-out animations
 
 Avoid "unexpectedly large timestamp jump" warning when resuming with
@@ -14,7 +14,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 14 insertions(+), 1 deletion(-)
 
 diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
-index 3e3949c..77b5d57 100644
+index 3e3949cba..77b5d575a 100644
 --- a/desktop-shell/shell.c
 +++ b/desktop-shell/shell.c
 @@ -3990,18 +3990,24 @@ shell_fade_done_for_output(struct weston_view_animation *animation, void *data)
@@ -64,10 +64,10 @@ index 3e3949c..77b5d57 100644
  
  	if (shell_output->fade.view) {
 diff --git a/include/libweston/libweston.h b/include/libweston/libweston.h
-index 39e58c6..6b2ea43 100644
+index 4e8bfecf3..74dec9d46 100644
 --- a/include/libweston/libweston.h
 +++ b/include/libweston/libweston.h
-@@ -1205,6 +1205,7 @@ struct weston_compositor {
+@@ -1207,6 +1207,7 @@ struct weston_compositor {
  	struct weston_output *prefer_output;
  
  	bool warm_up;

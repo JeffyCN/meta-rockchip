@@ -1,7 +1,7 @@
-From 47d24cee0ce021c800f2994158fea06f16a4bb4f Mon Sep 17 00:00:00 2001
+From d4fd0fb70db6ca786ee547c4c32ed5487ceb094b Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 3 Jul 2020 10:20:40 +0800
-Subject: [PATCH 24/67] Support holding display for the first app
+Subject: [PATCH 24/69] Support holding display for the first app
 
 Use '-w' or '--warm-up' to enable it.
 
@@ -9,11 +9,11 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  compositor/main.c             |  5 +++++
  include/libweston/libweston.h |  2 ++
- libweston/compositor.c        | 10 ++++++++++
- 3 files changed, 17 insertions(+)
+ libweston/compositor.c        | 30 ++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+)
 
 diff --git a/compositor/main.c b/compositor/main.c
-index a4f679a..128016b 100644
+index a4f679a04..128016b33 100644
 --- a/compositor/main.c
 +++ b/compositor/main.c
 @@ -679,6 +679,7 @@ usage(int error_code)
@@ -50,10 +50,10 @@ index a4f679a..128016b 100644
  	weston_compositor_log_capabilities(wet.compositor);
  
 diff --git a/include/libweston/libweston.h b/include/libweston/libweston.h
-index 6bd7a05..39e58c6 100644
+index 7bc01e391..4e8bfecf3 100644
 --- a/include/libweston/libweston.h
 +++ b/include/libweston/libweston.h
-@@ -1203,6 +1203,8 @@ struct weston_compositor {
+@@ -1205,6 +1205,8 @@ struct weston_compositor {
  
  	enum weston_output_flow output_flow;
  	struct weston_output *prefer_output;
@@ -63,24 +63,52 @@ index 6bd7a05..39e58c6 100644
  
  struct weston_buffer {
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index 71234c0..0136b84 100644
+index daeedfe13..ff5b391c4 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
-@@ -2892,6 +2892,11 @@ weston_compositor_build_view_list(struct weston_compositor *compositor,
- 		bool system_layer = weston_compositor_is_system_layer(layer);
+@@ -175,6 +175,24 @@ weston_compositor_is_static_layer(struct weston_layer *layer)
+ 	}
+ }
  
++static bool
++weston_compositor_is_system_layer(struct weston_layer *layer)
++{
++	if (!layer)
++		return false;
++
++	switch (layer->position) {
++	case WESTON_LAYER_POSITION_BACKGROUND:
++	case WESTON_LAYER_POSITION_UI:
++	case WESTON_LAYER_POSITION_LOCK:
++	case WESTON_LAYER_POSITION_CURSOR:
++	case WESTON_LAYER_POSITION_FADE:
++		return true;
++	default:
++		return false;
++	}
++}
++
+ /** Send wl_output events for mode and scale changes
+  *
+  * \param head Send on all resources bound to this head.
+@@ -2871,7 +2889,14 @@ weston_compositor_build_view_list(struct weston_compositor *compositor)
+ 	wl_list_init(&compositor->view_list);
+ 
+ 	wl_list_for_each(layer, &compositor->layer_list, link) {
++		bool system_layer = weston_compositor_is_system_layer(layer);
++
  		wl_list_for_each(view, &layer->view_list.link, layer_link.link) {
 +			if (compositor->warm_up && !system_layer) {
 +				weston_log("seeing the first app\n");
 +				compositor->warm_up = false;
 +			}
 +
- 			view_list_add(compositor, view,
- 				      system_layer ? view->output : output);
+ 			view_list_add(compositor, view, view->output);
  		}
-@@ -2948,6 +2953,11 @@ weston_output_repaint(struct weston_output *output, void *repaint_data)
+ 	}
+@@ -2927,6 +2952,11 @@ weston_output_repaint(struct weston_output *output, void *repaint_data)
  	/* Rebuild the surface list and update surface transforms up front. */
- 	weston_compositor_build_view_list(ec, output);
+ 	weston_compositor_build_view_list(ec);
  
 +	if (ec->warm_up) {
 +		weston_log("holding display for the first app...\n");

@@ -1,7 +1,7 @@
-From f3e5976fa8fc44c9aec7854e53ebeafa460d0c12 Mon Sep 17 00:00:00 2001
+From 512a0518d2b3d109a206050e22b79ad8ba74ef64 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 12 Nov 2020 16:59:50 +0800
-Subject: [PATCH 28/67] backend-drm: Add dummy output when no screens connected
+Subject: [PATCH 28/69] backend-drm: Add dummy output when no screens connected
 
 Some clients are not expecting no screens, add a dummy output for them.
 
@@ -9,14 +9,14 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  compositor/main.c                    |   3 +
  desktop-shell/shell.c                |   7 +-
- libweston/backend-drm/drm-internal.h |   5 +
- libweston/backend-drm/drm.c          | 218 ++++++++++++++++++++++++++-
+ libweston/backend-drm/drm-internal.h |   3 +
+ libweston/backend-drm/drm.c          | 203 ++++++++++++++++++++++++++-
  libweston/backend-drm/kms.c          |   3 +
  libweston/compositor.c               |   3 +
- 6 files changed, 232 insertions(+), 7 deletions(-)
+ 6 files changed, 216 insertions(+), 6 deletions(-)
 
 diff --git a/compositor/main.c b/compositor/main.c
-index 128016b..3824404 100644
+index 128016b33..38244041c 100644
 --- a/compositor/main.c
 +++ b/compositor/main.c
 @@ -2337,6 +2337,9 @@ drm_heads_changed(struct wl_listener *listener, void *arg)
@@ -30,7 +30,7 @@ index 128016b..3824404 100644
  
  		connected = weston_head_is_connected(head);
 diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
-index 0e27435..bbd1c1c 100644
+index 0e2743595..bbd1c1c5c 100644
 --- a/desktop-shell/shell.c
 +++ b/desktop-shell/shell.c
 @@ -4765,10 +4765,6 @@ shell_reposition_view_on_output_change(struct weston_view *view)
@@ -55,19 +55,10 @@ index 0e27435..bbd1c1c 100644
  		shell->lock_surface->committed(shell->lock_surface, 0, 0);
  
 diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
-index ed1e0aa..42da77f 100644
+index b34dcde0a..651ef6670 100644
 --- a/libweston/backend-drm/drm-internal.h
 +++ b/libweston/backend-drm/drm-internal.h
-@@ -337,6 +337,8 @@ struct drm_backend {
- 	bool pending_update;
- 	int64_t last_update_ms;
- 
-+	int64_t last_resize_ms;
-+
- 	bool single_head;
- 	bool head_fallback;
- 	drm_head_match_t *head_matches;
-@@ -350,6 +352,9 @@ struct drm_backend {
+@@ -352,6 +352,9 @@ struct drm_backend {
  
  	struct wl_event_source *config_timer;
  	struct stat config_stat;
@@ -78,10 +69,10 @@ index ed1e0aa..42da77f 100644
  
  struct drm_mode {
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index 7ccce1f..db5860a 100644
+index c604ebce2..7cbc0fd38 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
-@@ -209,8 +209,14 @@ drm_backend_update_outputs(struct drm_backend *b)
+@@ -210,8 +210,14 @@ drm_backend_update_outputs(struct drm_backend *b)
  {
  	struct weston_output *base, *primary;
  
@@ -97,21 +88,7 @@ index 7ccce1f..db5860a 100644
  
  	primary = b->primary_head->base.output;
  
-@@ -835,7 +841,13 @@ drm_output_repaint(struct weston_output *output_base,
- 	now_ms = timespec_to_msec(&now);
- 
- 	if (now_ms < b->last_update_ms + DRM_UPDATE_FREEZE_MS ||
-+	    now_ms < b->last_resize_ms + DRM_RESIZE_FREEZE_MS ||
- 	    now_ms < output->last_resize_ms + DRM_RESIZE_FREEZE_MS) {
-+		/* Resize fullscreen/maxmium views(not always success) */
-+		if (now_ms < b->last_resize_ms + DRM_RESIZE_FREEZE_MS)
-+			wl_signal_emit(&b->compositor->output_resized_signal,
-+				       output);
-+
- 		weston_output_damage(&output->base);
- 		weston_output_finish_frame(output_base, NULL,
- 					   WP_PRESENTATION_FEEDBACK_INVALID);
-@@ -1242,7 +1254,7 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
+@@ -1245,7 +1251,7 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
  		    num_primary - 1 != output->crtc->pipe)
  			continue;
  
@@ -120,7 +97,7 @@ index 7ccce1f..db5860a 100644
  			continue;
  		if (!drm_plane_is_available(plane, output))
  			continue;
-@@ -2588,11 +2600,15 @@ drm_head_destroy(struct drm_head *head)
+@@ -2591,11 +2597,15 @@ drm_head_destroy(struct drm_head *head)
  {
  	weston_head_release(&head->base);
  
@@ -136,16 +113,7 @@ index 7ccce1f..db5860a 100644
  	free(head);
  }
  
-@@ -2766,7 +2782,7 @@ drm_backend_update_connectors(struct drm_backend *b, struct udev_device *drm_dev
- 	drmModeRes *resources;
- 	drmModeConnector *conn;
- 	struct weston_head *base, *base_next;
--	struct drm_head *head;
-+	struct drm_head *head, *old_primary_head;
- 	struct drm_writeback *writeback, *writeback_next;
- 	drm_head_match_t *match = b->head_matches;
- 	struct timespec now;
-@@ -2815,6 +2831,9 @@ drm_backend_update_connectors(struct drm_backend *b, struct udev_device *drm_dev
+@@ -2818,6 +2828,9 @@ drm_backend_update_connectors(struct drm_backend *b, struct udev_device *drm_dev
  	wl_list_for_each_safe(base, base_next,
  			      &b->compositor->head_list, compositor_link) {
  		head = to_drm_head(base);
@@ -155,15 +123,7 @@ index 7ccce1f..db5860a 100644
  		connector_id = head->connector.connector_id;
  
  		if (resources_has_connector(resources, connector_id))
-@@ -2841,6 +2860,7 @@ drm_backend_update_connectors(struct drm_backend *b, struct udev_device *drm_dev
- 
- 	drmModeFreeResources(resources);
- 
-+	old_primary_head = b->primary_head;
- 	b->primary_head = NULL;
- 
- 	wl_list_for_each_safe(base, base_next,
-@@ -2858,6 +2878,9 @@ drm_backend_update_connectors(struct drm_backend *b, struct udev_device *drm_dev
+@@ -2862,6 +2875,9 @@ drm_backend_update_connectors(struct drm_backend *b, struct udev_device *drm_dev
  				continue;
  
  			head = to_drm_head(base);
@@ -173,7 +133,7 @@ index 7ccce1f..db5860a 100644
  			conn = head->connector.conn;
  
  			if (conn->connection != DRM_MODE_CONNECTED ||
-@@ -2876,11 +2899,17 @@ drm_backend_update_connectors(struct drm_backend *b, struct udev_device *drm_dev
+@@ -2880,6 +2896,8 @@ drm_backend_update_connectors(struct drm_backend *b, struct udev_device *drm_dev
  			break;
  	}
  
@@ -182,16 +142,7 @@ index 7ccce1f..db5860a 100644
  	drm_backend_update_outputs(b);
  
  	weston_compositor_read_presentation_clock(b->compositor, &now);
- 	b->last_update_ms = timespec_to_msec(&now);
- 
-+	/* Assume primary output's size changed */
-+	if (b->primary_head != old_primary_head)
-+		b->last_resize_ms = b->last_update_ms;
-+
- 	return 0;
- }
- 
-@@ -3043,6 +3072,8 @@ drm_destroy(struct weston_compositor *ec)
+@@ -3052,6 +3070,8 @@ drm_destroy(struct weston_compositor *ec)
  	struct drm_crtc *crtc, *crtc_tmp;
  	struct drm_writeback *writeback, *writeback_tmp;
  
@@ -200,7 +151,7 @@ index 7ccce1f..db5860a 100644
  	udev_input_destroy(&b->input);
  
  	wl_event_source_remove(b->config_timer);
-@@ -3722,6 +3753,180 @@ config_timer_handler(void *data)
+@@ -3750,6 +3770,180 @@ config_timer_handler(void *data)
  	return 0;
  }
  
@@ -381,7 +332,7 @@ index 7ccce1f..db5860a 100644
  enum drm_head_mode {
  	DRM_HEAD_MODE_DEFAULT,
  	DRM_HEAD_MODE_PRIMARY,
-@@ -3953,12 +4158,19 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -3987,6 +4181,11 @@ drm_backend_create(struct weston_compositor *compositor,
  		goto err_sprite;
  	}
  
@@ -393,16 +344,8 @@ index 7ccce1f..db5860a 100644
  	wl_list_init(&b->writeback_connector_list);
  	if (drm_backend_update_connectors(b, drm_device) < 0) {
  		weston_log("Failed to create heads for %s\n", b->drm.filename);
- 		goto err_udev_input;
- 	}
- 
-+	b->last_resize_ms = -1;
-+
- 	drmModeFreeResources(res);
- 
- 	/* 'compute' faked zpos values in case HW doesn't expose any */
 diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
-index 4b5ba42..a3c55bd 100644
+index 4b5ba42b8..a3c55bd34 100644
 --- a/libweston/backend-drm/kms.c
 +++ b/libweston/backend-drm/kms.c
 @@ -1170,6 +1170,9 @@ drm_pending_state_apply_atomic(struct drm_pending_state *pending_state,
@@ -416,10 +359,10 @@ index 4b5ba42..a3c55bd 100644
  
  			drm_debug(b, "\t\t[atomic] disabling inactive head %s\n",
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index 0136b84..913b079 100644
+index ff5b391c4..3c7398b8a 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
-@@ -6458,6 +6458,9 @@ weston_output_set_color_transforms(struct weston_output *output)
+@@ -6457,6 +6457,9 @@ weston_output_set_color_transforms(struct weston_output *output)
  	struct weston_color_transform *sRGB_to_blend = NULL;
  	bool ok;
  

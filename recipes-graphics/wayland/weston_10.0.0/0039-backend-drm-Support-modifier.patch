@@ -1,7 +1,7 @@
-From 9c3a23f7096a7026668240b830b5f41e7ecafe50 Mon Sep 17 00:00:00 2001
+From a3f066a4f18515c2be47828316d72ee1f1b7013f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 6 Jan 2021 04:11:48 +0800
-Subject: [PATCH 39/63] backend-drm: Support modifier
+Subject: [PATCH 39/69] backend-drm: Support modifier
 
 Tested on rk356x with ARM AFBC modifier.
 
@@ -14,7 +14,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  4 files changed, 80 insertions(+), 13 deletions(-)
 
 diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
-index 42da77f..0d803a1 100644
+index 651ef6670..e4d51e130 100644
 --- a/libweston/backend-drm/drm-internal.h
 +++ b/libweston/backend-drm/drm-internal.h
 @@ -526,6 +526,7 @@ struct drm_plane {
@@ -26,10 +26,10 @@ index 42da77f..0d803a1 100644
  
  struct drm_connector {
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index 34f0923..a2cf8e5 100644
+index ea5c8a906..e5f16d377 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
-@@ -1224,6 +1224,42 @@ err:
+@@ -1221,6 +1221,42 @@ err:
  	return NULL;
  }
  
@@ -72,7 +72,7 @@ index 34f0923..a2cf8e5 100644
  /**
   * Find, or create, a special-purpose plane
   *
-@@ -1236,8 +1272,11 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
+@@ -1233,8 +1269,11 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
  			      enum wdrm_plane_type type)
  {
  	struct drm_plane *plane;
@@ -84,7 +84,7 @@ index 34f0923..a2cf8e5 100644
  	num_primary = 0;
  	wl_list_for_each_reverse(plane, &b->plane_list, link) {
  		struct drm_output *tmp;
-@@ -1257,7 +1296,7 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
+@@ -1254,7 +1293,7 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
  		    num_primary - 1 != output->crtc->pipe)
  			continue;
  
@@ -93,7 +93,7 @@ index 34f0923..a2cf8e5 100644
  			continue;
  		if (!drm_plane_is_available(plane, output))
  			continue;
-@@ -1276,10 +1315,22 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
+@@ -1273,10 +1312,22 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
  		if (found_elsewhere)
  			continue;
  
@@ -116,7 +116,7 @@ index 34f0923..a2cf8e5 100644
  	return NULL;
  }
  
-@@ -4084,9 +4135,6 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -4107,9 +4158,6 @@ drm_backend_create(struct weston_compositor *compositor,
  
  	compositor->backend = &b->base;
  
@@ -126,7 +126,7 @@ index 34f0923..a2cf8e5 100644
  	/* Check if we run drm-backend using weston-launch */
  	compositor->launcher = weston_launcher_connect(compositor, config->tty,
  						       seat_id, true);
-@@ -4120,15 +4168,30 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -4143,15 +4191,30 @@ drm_backend_create(struct weston_compositor *compositor,
  		goto err_udev_dev;
  	}
  
@@ -159,7 +159,7 @@ index 34f0923..a2cf8e5 100644
  		}
  	}
  
-@@ -4145,7 +4208,7 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -4168,7 +4231,7 @@ drm_backend_create(struct weston_compositor *compositor,
  	res = drmModeGetResources(b->drm.fd);
  	if (!res) {
  		weston_log("Failed to get drmModeRes\n");
@@ -168,7 +168,7 @@ index 34f0923..a2cf8e5 100644
  	}
  
  	wl_list_init(&b->crtc_list);
-@@ -4154,9 +4217,6 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -4177,9 +4240,6 @@ drm_backend_create(struct weston_compositor *compositor,
  		goto err_create_crtc_list;
  	}
  
@@ -178,7 +178,7 @@ index 34f0923..a2cf8e5 100644
  	if (udev_input_init(&b->input,
  			    compositor, b->udev, seat_id,
  			    config->configure_device) < 0) {
-@@ -4292,10 +4352,10 @@ err_drm_source:
+@@ -4313,10 +4373,10 @@ err_drm_source:
  	wl_event_source_remove(b->drm_source);
  err_udev_input:
  	udev_input_destroy(&b->input);
@@ -192,7 +192,7 @@ index 34f0923..a2cf8e5 100644
  	udev_device_unref(drm_device);
  err_udev:
 diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
-index 4443741..6596d9e 100644
+index 444374131..6596d9e5c 100644
 --- a/libweston/backend-drm/kms.c
 +++ b/libweston/backend-drm/kms.c
 @@ -38,6 +38,7 @@
@@ -223,7 +223,7 @@ index 4443741..6596d9e 100644
  		if (ret == 0)
  			b->fb_modifiers = cap;
 diff --git a/libweston/pixel-formats.c b/libweston/pixel-formats.c
-index 172e6cc..85fae20 100644
+index 172e6cca9..85fae20f6 100644
 --- a/libweston/pixel-formats.c
 +++ b/libweston/pixel-formats.c
 @@ -220,6 +220,8 @@ static const struct pixel_format_info pixel_format_table[] = {

@@ -1,7 +1,7 @@
-From a37795c954bcf5f54e7d2d4481f458cca0b947e8 Mon Sep 17 00:00:00 2001
+From 013163d12649ab249e3668d90de8692e6db1ff85 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 15 Nov 2021 15:12:54 +0800
-Subject: [PATCH 53/63] gl-renderer: dmabuf: Support NV12(AFBC) and
+Subject: [PATCH 53/69] gl-renderer: dmabuf: Support NV12(AFBC) and
  NV12_10(AFBC)
 
 Support importing DRM_FORMAT_YUV420_(8|10)BIT dmabuf.
@@ -15,7 +15,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 14 insertions(+)
 
 diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
-index 86a0176..1b27b3e 100644
+index c45f5fa41..b1fa8e08a 100644
 --- a/libweston/renderer-gl/gl-renderer.c
 +++ b/libweston/renderer-gl/gl-renderer.c
 @@ -63,6 +63,14 @@
@@ -33,7 +33,7 @@ index 86a0176..1b27b3e 100644
  enum gl_border_status {
  	BORDER_STATUS_CLEAN = 0,
  	BORDER_TOP_DIRTY = 1 << GL_RENDERER_BORDER_TOP,
-@@ -2711,6 +2719,8 @@ choose_texture_target(struct gl_renderer *gr,
+@@ -2715,6 +2723,8 @@ choose_texture_target(struct gl_renderer *gr,
  		return GL_TEXTURE_EXTERNAL_OES;
  
  	switch (attributes->format & ~DRM_FORMAT_BIG_ENDIAN) {
@@ -42,7 +42,7 @@ index 86a0176..1b27b3e 100644
  	case DRM_FORMAT_YUYV:
  	case DRM_FORMAT_YVYU:
  	case DRM_FORMAT_UYVY:
-@@ -2903,6 +2913,10 @@ dmabuf_is_opaque(struct linux_dmabuf_buffer *dmabuf)
+@@ -2907,6 +2917,10 @@ dmabuf_is_opaque(struct linux_dmabuf_buffer *dmabuf)
  {
  	const struct pixel_format_info *info;
  

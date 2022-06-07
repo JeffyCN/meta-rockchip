@@ -1,7 +1,7 @@
-From 513904a6fa8e156b2bbad61ae3a04677809bfef2 Mon Sep 17 00:00:00 2001
+From f9ae40e05d9049877bf94f38d0ff9b604727a3f2 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 3 Jul 2020 14:43:49 +0800
-Subject: [PATCH 18/63] pixman-renderer: Support linux dmabuf
+Subject: [PATCH 18/69] pixman-renderer: Support linux dmabuf
 
 NOTE: Only support contig dmabuf.
 
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 253 insertions(+), 5 deletions(-)
 
 diff --git a/libweston/pixman-renderer.c b/libweston/pixman-renderer.c
-index 754adce..a93f8c3 100644
+index d7182e7f8..d5c5422f0 100644
 --- a/libweston/pixman-renderer.c
 +++ b/libweston/pixman-renderer.c
 @@ -37,8 +37,15 @@
@@ -44,7 +44,7 @@ index 754adce..a93f8c3 100644
  };
  
  static inline struct pixman_output_state *
-@@ -350,7 +364,7 @@ repaint_region(struct weston_view *ev, struct weston_output *output,
+@@ -353,7 +367,7 @@ repaint_region(struct weston_view *ev, struct weston_output *output,
  	else
  		filter = PIXMAN_FILTER_NEAREST;
  
@@ -53,7 +53,7 @@ index 754adce..a93f8c3 100644
  		wl_shm_buffer_begin_access(ps->buffer_ref.buffer->shm_buffer);
  
  	if (ev->alpha < 1.0) {
-@@ -370,7 +384,7 @@ repaint_region(struct weston_view *ev, struct weston_output *output,
+@@ -373,7 +387,7 @@ repaint_region(struct weston_view *ev, struct weston_output *output,
  	if (mask_image)
  		pixman_image_unref(mask_image);
  
@@ -62,7 +62,7 @@ index 754adce..a93f8c3 100644
  		wl_shm_buffer_end_access(ps->buffer_ref.buffer->shm_buffer);
  
  	if (pr->repaint_debug)
-@@ -619,11 +633,88 @@ buffer_state_handle_buffer_destroy(struct wl_listener *listener, void *data)
+@@ -622,11 +636,88 @@ buffer_state_handle_buffer_destroy(struct wl_listener *listener, void *data)
  	ps->buffer_destroy_listener.notify = NULL;
  }
  
@@ -151,7 +151,7 @@ index 754adce..a93f8c3 100644
  	const struct pixel_format_info *pixel_info;
  
  	weston_buffer_reference(&ps->buffer_ref, buffer);
-@@ -646,9 +737,17 @@ pixman_renderer_attach(struct weston_surface *es, struct weston_buffer *buffer)
+@@ -649,9 +740,17 @@ pixman_renderer_attach(struct weston_surface *es, struct weston_buffer *buffer)
  	shm_buffer = wl_shm_buffer_get(buffer->resource);
  
  	if (! shm_buffer) {
@@ -172,7 +172,7 @@ index 754adce..a93f8c3 100644
  		return;
  	}
  
-@@ -747,6 +846,9 @@ pixman_renderer_create_surface(struct weston_surface *surface)
+@@ -750,6 +849,9 @@ pixman_renderer_create_surface(struct weston_surface *surface)
  	wl_signal_add(&pr->destroy_signal,
  		      &ps->renderer_destroy_listener);
  
@@ -182,7 +182,7 @@ index 754adce..a93f8c3 100644
  	return 0;
  }
  
-@@ -777,6 +879,9 @@ pixman_renderer_destroy(struct weston_compositor *ec)
+@@ -780,6 +882,9 @@ pixman_renderer_destroy(struct weston_compositor *ec)
  
  	wl_signal_emit(&pr->destroy_signal, pr);
  	weston_binding_destroy(pr->debug_binding);
@@ -192,7 +192,7 @@ index 754adce..a93f8c3 100644
  	free(pr);
  
  	ec->renderer = NULL;
-@@ -850,12 +955,141 @@ debug_binding(struct weston_keyboard *keyboard, const struct timespec *time,
+@@ -853,12 +958,141 @@ debug_binding(struct weston_keyboard *keyboard, const struct timespec *time,
  	}
  }
  
@@ -334,7 +334,7 @@ index 754adce..a93f8c3 100644
  
  	renderer = zalloc(sizeof *renderer);
  	if (renderer == NULL)
-@@ -877,6 +1111,15 @@ pixman_renderer_init(struct weston_compositor *ec)
+@@ -880,6 +1114,15 @@ pixman_renderer_init(struct weston_compositor *ec)
  	ec->capabilities |= WESTON_CAP_ROTATION_ANY;
  	ec->capabilities |= WESTON_CAP_VIEW_CLIP_MASK;
  
@@ -350,7 +350,7 @@ index 754adce..a93f8c3 100644
  	renderer->debug_binding =
  		weston_compositor_add_debug_binding(ec, KEY_R,
  						    debug_binding, ec);
-@@ -899,6 +1142,11 @@ pixman_renderer_init(struct weston_compositor *ec)
+@@ -902,6 +1145,11 @@ pixman_renderer_init(struct weston_compositor *ec)
  
  	wl_signal_init(&renderer->destroy_signal);
  

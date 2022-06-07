@@ -1,29 +1,32 @@
-From 91f1cdb6965e8fa06c1220d9cbe8ea08bafde9a4 Mon Sep 17 00:00:00 2001
+From fb0af453b0fc49df45eb46027b22c2cac3e37302 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 3 Jul 2020 12:37:37 +0800
-Subject: [PATCH 26/63] backend-drm: Support controlling compositor dynamically
+Subject: [PATCH 26/69] backend-drm: Support controlling compositor dynamically
 
 Use config file to control compositor's state.
 
 Default config file is "/tmp/.weston_drm.conf", can override with
 "WESTON_DRM_CONFIG" environment.
 
-Supported configs format is "compositor:state:<state>", for
+Supported configs format is "compositor:<key>:<value>", for
 example:
 echo "compositor:state:sleep" > /tmp/.weston_drm.conf
 echo "compositor:state:off" > /tmp/.weston_drm.conf
 echo "compositor:state:on" > /tmp/.weston_drm.conf
+echo "compositor:hotplug:off" > /tmp/.weston_drm.conf
+echo "compositor:hotplug:on" > /tmp/.weston_drm.conf
+echo "compositor:hotplug:force" > /tmp/.weston_drm.conf
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- libweston/backend-drm/drm.c | 26 +++++++++++++++++++++++++-
- 1 file changed, 25 insertions(+), 1 deletion(-)
+ libweston/backend-drm/drm.c | 34 +++++++++++++++++++++++++++++++++-
+ 1 file changed, 33 insertions(+), 1 deletion(-)
 
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index 14bd6cb..ae7623a 100644
+index e9917269f..c604ebce2 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
-@@ -3651,6 +3651,26 @@ config_handle_output(struct drm_backend *b, const char *name,
+@@ -3670,6 +3670,34 @@ config_handle_output(struct drm_backend *b, const char *name,
  	}
  }
  
@@ -44,13 +47,21 @@ index 14bd6cb..ae7623a 100644
 +			if (b->input.suspended)
 +				udev_input_enable(&b->input);
 +		}
++	} else if (!strncmp(key, "hotplug", strlen("hotplug"))) {
++		if (!strncmp(value, "off", strlen("off")))
++			wl_event_source_fd_update(b->udev_drm_source, 0);
++		else if (!strncmp(value, "on", strlen("on")))
++			wl_event_source_fd_update(b->udev_drm_source,
++						  WL_EVENT_READABLE);
++		else if (!strncmp(value, "force", strlen("force")))
++			hotplug_timer_handler(b);
 +	}
 +}
 +
  static int
  config_timer_handler(void *data)
  {
-@@ -3684,7 +3704,9 @@ config_timer_handler(void *data)
+@@ -3701,7 +3729,9 @@ config_timer_handler(void *data)
  
  	/**
  	 * Parse configs, formated with <type>:<key>:<value>
@@ -61,7 +72,7 @@ index 14bd6cb..ae7623a 100644
  	 */
  	while (3 == fscanf(conf_fp,
  			   "%" STR(MAX_CONF_LEN) "[^:]:"
-@@ -3692,6 +3714,8 @@ config_timer_handler(void *data)
+@@ -3709,6 +3739,8 @@ config_timer_handler(void *data)
  			   "%" STR(MAX_CONF_LEN) "s ", type, key, value)) {
  		if (!strcmp(type, "output"))
  			config_handle_output(b, key, value);

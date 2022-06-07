@@ -1,24 +1,24 @@
-From 6b50e82c80e2eaf8a677b2623c9ca9941e7ee103 Mon Sep 17 00:00:00 2001
+From cc6d16ec9432018493d0cab29c57d2bb1691bb22 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 24 Jun 2020 11:59:42 +0800
-Subject: [PATCH 14/63] backend-drm: Support virtual screen size
+Subject: [PATCH 14/69] backend-drm: Support virtual screen size
 
 Support setting virtual screen size, for example:
 export WESTON_DRM_VIRTUAL_SIZE=1024x768
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- libweston/backend-drm/drm-internal.h |  22 +++++
- libweston/backend-drm/drm.c          |  20 ++++-
+ libweston/backend-drm/drm-internal.h |  23 ++++++
+ libweston/backend-drm/drm.c          |  28 ++++++-
  libweston/backend-drm/kms.c          | 115 ++++++++++++++++++++++-----
  libweston/backend-drm/modes.c        |  22 ++++-
- 4 files changed, 154 insertions(+), 25 deletions(-)
+ 4 files changed, 162 insertions(+), 26 deletions(-)
 
 diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
-index 5d22832..c22ec69 100644
+index caa9c55d0..ec68ed4ab 100644
 --- a/libweston/backend-drm/drm-internal.h
 +++ b/libweston/backend-drm/drm-internal.h
-@@ -165,6 +165,7 @@ enum wdrm_plane_property {
+@@ -166,6 +166,7 @@ enum wdrm_plane_property {
  	WDRM_PLANE_IN_FENCE_FD,
  	WDRM_PLANE_FB_DAMAGE_CLIPS,
  	WDRM_PLANE_ZPOS,
@@ -26,7 +26,7 @@ index 5d22832..c22ec69 100644
  	WDRM_PLANE__COUNT
  };
  
-@@ -178,6 +179,15 @@ enum wdrm_plane_type {
+@@ -179,6 +180,15 @@ enum wdrm_plane_type {
  	WDRM_PLANE_TYPE__COUNT
  };
  
@@ -42,7 +42,14 @@ index 5d22832..c22ec69 100644
  /**
   * List of properties attached to a DRM connector
   */
-@@ -328,6 +338,9 @@ struct drm_backend {
+@@ -324,12 +334,16 @@ struct drm_backend {
+ 	bool pending_update;
+ 	int64_t last_update_ms;
+ 	int64_t last_resize_ms;
++	int64_t resize_freeze_ms;
+ 
+ 	bool single_head;
+ 	bool head_fallback;
  	drm_head_match_t *head_matches;
  	struct drm_head *primary_head;
  	struct wl_listener output_create_listener;
@@ -52,7 +59,7 @@ index 5d22832..c22ec69 100644
  };
  
  struct drm_mode {
-@@ -497,6 +510,8 @@ struct drm_plane {
+@@ -499,6 +513,8 @@ struct drm_plane {
  	struct wl_list link;
  
  	struct weston_drm_format_array formats;
@@ -61,7 +68,7 @@ index 5d22832..c22ec69 100644
  };
  
  struct drm_connector {
-@@ -593,6 +608,9 @@ struct drm_output {
+@@ -595,6 +611,9 @@ struct drm_output {
  	submit_frame_cb virtual_submit_frame;
  
  	bool state_invalid;
@@ -71,7 +78,7 @@ index 5d22832..c22ec69 100644
  };
  
  static inline struct drm_head *
-@@ -690,6 +708,10 @@ uint64_t
+@@ -692,6 +711,10 @@ uint64_t
  drm_property_get_value(struct drm_property_info *info,
  		       const drmModeObjectProperties *props,
  		       uint64_t def);
@@ -83,7 +90,7 @@ index 5d22832..c22ec69 100644
  drm_property_get_range_values(struct drm_property_info *info,
  			      const drmModeObjectProperties *props);
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index b453cee..fc82ba8 100644
+index db8aaf2d9..77d3db41f 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
 @@ -324,6 +324,11 @@ drm_output_update_complete(struct drm_output *output, uint32_t flags,
@@ -120,7 +127,16 @@ index b453cee..fc82ba8 100644
  
  	pixman_region32_subtract(&c->primary_plane.damage,
  				 &c->primary_plane.damage, damage);
-@@ -845,6 +852,11 @@ drm_plane_create(struct drm_backend *b, const drmModePlane *kplane)
+@@ -516,7 +523,7 @@ drm_output_repaint(struct weston_output *output_base,
+ 
+ 	weston_compositor_read_presentation_clock(b->compositor, &now);
+ 	now_ms = timespec_to_msec(&now);
+-	if (now_ms < b->last_resize_ms + DRM_RESIZE_FREEZE_MS) {
++	if (now_ms < b->last_resize_ms + b->resize_freeze_ms) {
+ 		/* Resize fullscreen/maxmium views(not always success) */
+ 		if (now_ms < b->last_resize_ms + DRM_RESIZE_FREEZE_MS)
+ 			wl_signal_emit(&b->compositor->output_resized_signal,
+@@ -852,6 +859,11 @@ drm_plane_create(struct drm_backend *b, const drmModePlane *kplane)
  				       props,
  				       WDRM_PLANE_TYPE__COUNT);
  
@@ -132,7 +148,7 @@ index b453cee..fc82ba8 100644
  	zpos_range_values =
  		drm_property_get_range_values(&plane->props[WDRM_PLANE_ZPOS],
  					      props);
-@@ -3271,6 +3283,10 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -3284,6 +3296,16 @@ drm_backend_create(struct weston_compositor *compositor,
  
  	b->head_matches = drm_head_matches[head_mode];
  
@@ -140,11 +156,17 @@ index b453cee..fc82ba8 100644
 +	if (buf)
 +		sscanf(buf, "%dx%d", &b->virtual_width, &b->virtual_height);
 +
++	buf = getenv("WESTON_DRM_RESIZE_FREEZE_MS");
++	if (buf)
++		b->resize_freeze_ms = atoi(buf);
++	else
++		b->resize_freeze_ms = DRM_RESIZE_FREEZE_MS;
++
  	b->state_invalid = true;
  	b->drm.fd = -1;
  
 diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
-index 4426af4..1fcbdeb 100644
+index 4426af402..1fcbdeb61 100644
 --- a/libweston/backend-drm/kms.c
 +++ b/libweston/backend-drm/kms.c
 @@ -56,6 +56,15 @@ struct drm_property_enum_info plane_type_enums[] = {
@@ -327,7 +349,7 @@ index 4426af4..1fcbdeb 100644
  	drm_debug(backend, "\t[CRTC:%u, PLANE:%u] FORMAT: %s\n",
  			   crtc->crtc_id, scanout_state->plane->plane_id,
 diff --git a/libweston/backend-drm/modes.c b/libweston/backend-drm/modes.c
-index a071375..e7bbfa5 100644
+index a071375b9..e7bbfa536 100644
 --- a/libweston/backend-drm/modes.c
 +++ b/libweston/backend-drm/modes.c
 @@ -378,6 +378,7 @@ drm_refresh_rate_mHz(const drmModeModeInfo *info)
