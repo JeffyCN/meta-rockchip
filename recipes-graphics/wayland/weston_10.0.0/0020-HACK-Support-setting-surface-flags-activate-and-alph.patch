@@ -1,7 +1,7 @@
-From c606e53bb31689059c2bed866900a9b86fe8ce38 Mon Sep 17 00:00:00 2001
+From 62285face4bfe8f7e0d75e44f4edfc83671213f3 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 7 May 2020 08:55:42 +0800
-Subject: [PATCH 20/69] HACK: Support setting surface flags activate and alpha
+Subject: [PATCH 20/70] HACK: Support setting surface flags activate and alpha
 
 Support setting surface flags activate and alpha through app_id or
 title, for example:
@@ -12,16 +12,15 @@ xdg_toplevel_set_app_id("attrs=alpha:0.5")
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- desktop-shell/shell.c         |  21 ++++
+ desktop-shell/shell.c         |  29 ++++-
  desktop-shell/shell.h         |   2 +
  include/libweston/libweston.h |  13 +++
  libweston-desktop/surface.c   | 193 ++++++++++++++++++++++++++++++++++
  libweston/compositor.c        |  10 +-
- libweston/input.c             |   3 +
- 6 files changed, 241 insertions(+), 1 deletion(-)
+ 5 files changed, 244 insertions(+), 3 deletions(-)
 
 diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
-index 83f425fdb..0e2743595 100644
+index 83f425fdb..5c0760e0a 100644
 --- a/desktop-shell/shell.c
 +++ b/desktop-shell/shell.c
 @@ -1887,6 +1887,11 @@ shell_surface_update_layer(struct shell_surface *shsurf)
@@ -47,7 +46,43 @@ index 83f425fdb..0e2743595 100644
  
  	restore_focus_state(shell, get_current_workspace(shell));
  
-@@ -3914,6 +3923,8 @@ lock(struct desktop_shell *shell)
+@@ -3753,7 +3762,7 @@ activate(struct desktop_shell *shell, struct weston_view *view,
+ 	struct weston_surface *main_surface;
+ 	struct focus_state *state;
+ 	struct workspace *ws;
+-	struct weston_surface *old_es;
++	struct weston_surface *old_es = NULL;
+ 	struct shell_surface *shsurf, *shsurf_child;
+ 	struct shell_seat *shseat = get_shell_seat(seat);
+ 
+@@ -3773,6 +3782,9 @@ activate(struct desktop_shell *shell, struct weston_view *view,
+ 	if (shsurf->output)
+ 		lower_fullscreen_layer(shell, shsurf->output);
+ 
++	if (view->surface->flags & SURFACE_NO_FOCUS)
++		goto no_focus;
++
+ 	weston_view_activate_input(view, seat, flags);
+ 
+ 	if (shseat && shseat->focused_surface) {
+@@ -3793,6 +3805,7 @@ activate(struct desktop_shell *shell, struct weston_view *view,
+ 	old_es = state->keyboard_focus;
+ 	focus_state_set_focus(state, es);
+ 
++no_focus:
+ 	if (weston_desktop_surface_get_fullscreen(shsurf->desktop_surface) &&
+ 	    flags & WESTON_ACTIVATE_FLAG_CONFIGURE)
+ 		shell_configure_fullscreen(shsurf);
+@@ -3801,7 +3814,7 @@ activate(struct desktop_shell *shell, struct weston_view *view,
+ 	 * order as appropriate. */
+ 	shell_surface_update_layer(shsurf);
+ 
+-	if (shell->focus_animation_type != ANIMATION_NONE) {
++	if (old_es && shell->focus_animation_type != ANIMATION_NONE) {
+ 		ws = get_current_workspace(shell);
+ 		animate_focus_change(shell, ws, get_default_view(old_es), get_default_view(es));
+ 	}
+@@ -3914,6 +3927,8 @@ lock(struct desktop_shell *shell)
  	if (shell->showing_input_panels)
  		weston_layer_unset_position(&shell->input_panel_layer);
  	weston_layer_unset_position(&ws->layer);
@@ -56,7 +91,7 @@ index 83f425fdb..0e2743595 100644
  
  	weston_layer_set_position(&shell->lock_layer,
  				  WESTON_LAYER_POSITION_LOCK);
-@@ -4771,6 +4782,8 @@ shell_for_each_layer(struct desktop_shell *shell,
+@@ -4771,6 +4786,8 @@ shell_for_each_layer(struct desktop_shell *shell,
  	func(shell, &shell->background_layer, data);
  	func(shell, &shell->lock_layer, data);
  	func(shell, &shell->input_panel_layer, data);
@@ -65,7 +100,7 @@ index 83f425fdb..0e2743595 100644
  
  	wl_array_for_each(ws, &shell->workspaces.array)
  		func(shell, &(*ws)->layer, data);
-@@ -5056,6 +5069,8 @@ shell_destroy(struct wl_listener *listener, void *data)
+@@ -5056,6 +5073,8 @@ shell_destroy(struct wl_listener *listener, void *data)
  		workspace_destroy(*ws);
  	wl_array_release(&shell->workspaces.array);
  
@@ -74,7 +109,7 @@ index 83f425fdb..0e2743595 100644
  	desktop_shell_destroy_views_on_layer(&shell->panel_layer);
  	desktop_shell_destroy_views_on_layer(&shell->background_layer);
  	desktop_shell_destroy_views_on_layer(&shell->lock_layer);
-@@ -5211,6 +5226,8 @@ wet_shell_init(struct weston_compositor *ec,
+@@ -5211,6 +5230,8 @@ wet_shell_init(struct weston_compositor *ec,
  	weston_layer_init(&shell->background_layer, ec);
  	weston_layer_init(&shell->lock_layer, ec);
  	weston_layer_init(&shell->input_panel_layer, ec);
@@ -83,7 +118,7 @@ index 83f425fdb..0e2743595 100644
  
  	weston_layer_set_position(&shell->fullscreen_layer,
  				  WESTON_LAYER_POSITION_FULLSCREEN);
-@@ -5218,6 +5235,10 @@ wet_shell_init(struct weston_compositor *ec,
+@@ -5218,6 +5239,10 @@ wet_shell_init(struct weston_compositor *ec,
  				  WESTON_LAYER_POSITION_UI);
  	weston_layer_set_position(&shell->background_layer,
  				  WESTON_LAYER_POSITION_BACKGROUND);
@@ -390,20 +425,6 @@ index ae74de7be..be5c03d87 100644
  		*vx = view_x;
  		*vy = view_y;
  		return view;
-diff --git a/libweston/input.c b/libweston/input.c
-index ec7e416d7..ffa3221e1 100644
---- a/libweston/input.c
-+++ b/libweston/input.c
-@@ -1882,6 +1882,9 @@ weston_view_activate_input(struct weston_view *view,
- 			peek_next_activate_serial(compositor);
- 	}
- 
-+	if (view->surface->flags & SURFACE_NO_FOCUS)
-+		return;
-+
- 	weston_seat_set_keyboard_focus(seat, view->surface);
- }
- 
 -- 
 2.20.1
 

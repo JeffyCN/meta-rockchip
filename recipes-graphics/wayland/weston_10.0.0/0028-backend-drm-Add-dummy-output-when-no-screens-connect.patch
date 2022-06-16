@@ -1,7 +1,7 @@
-From 512a0518d2b3d109a206050e22b79ad8ba74ef64 Mon Sep 17 00:00:00 2001
+From 22395e7f96b7977ea8d95dc6cc201ef93553d7e9 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 12 Nov 2020 16:59:50 +0800
-Subject: [PATCH 28/69] backend-drm: Add dummy output when no screens connected
+Subject: [PATCH 28/70] backend-drm: Add dummy output when no screens connected
 
 Some clients are not expecting no screens, add a dummy output for them.
 
@@ -30,10 +30,10 @@ index 128016b33..38244041c 100644
  
  		connected = weston_head_is_connected(head);
 diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
-index 0e2743595..bbd1c1c5c 100644
+index 5c0760e0a..212238c1c 100644
 --- a/desktop-shell/shell.c
 +++ b/desktop-shell/shell.c
-@@ -4765,10 +4765,6 @@ shell_reposition_view_on_output_change(struct weston_view *view)
+@@ -4769,10 +4769,6 @@ shell_reposition_view_on_output_change(struct weston_view *view)
  	shsurf = get_shell_surface(view->surface);
  	if (!shsurf)
  		return;
@@ -44,7 +44,7 @@ index 0e2743595..bbd1c1c5c 100644
  }
  
  void
-@@ -4900,6 +4896,9 @@ handle_output_resized(struct wl_listener *listener, void *data)
+@@ -4904,6 +4900,9 @@ handle_output_resized(struct wl_listener *listener, void *data)
  	struct weston_output *output = (struct weston_output *)data;
  	struct shell_output *sh_output = find_shell_output_from_weston_output(shell, output);
  
@@ -69,7 +69,7 @@ index b34dcde0a..651ef6670 100644
  
  struct drm_mode {
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index c604ebce2..7cbc0fd38 100644
+index 5c3d5d393..aae54af25 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
 @@ -210,8 +210,14 @@ drm_backend_update_outputs(struct drm_backend *b)
@@ -151,7 +151,7 @@ index c604ebce2..7cbc0fd38 100644
  	udev_input_destroy(&b->input);
  
  	wl_event_source_remove(b->config_timer);
-@@ -3750,6 +3770,180 @@ config_timer_handler(void *data)
+@@ -3753,6 +3773,180 @@ config_timer_handler(void *data)
  	return 0;
  }
  
@@ -332,7 +332,7 @@ index c604ebce2..7cbc0fd38 100644
  enum drm_head_mode {
  	DRM_HEAD_MODE_DEFAULT,
  	DRM_HEAD_MODE_PRIMARY,
-@@ -3987,6 +4181,11 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -3990,6 +4184,11 @@ drm_backend_create(struct weston_compositor *compositor,
  		goto err_sprite;
  	}
  

@@ -1,7 +1,7 @@
-From d3d15732c1ac92361f909f348ca0d5e78b050849 Mon Sep 17 00:00:00 2001
+From 6f648d61ec778ae75b33fe35a548a46dd7f73952 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 2 Jun 2022 18:22:38 +0800
-Subject: [PATCH 68/69] compositor: Fix damage tracking error when overlapped
+Subject: [PATCH 68/72] compositor: Fix damage tracking error when overlapped
  outputs
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
@@ -24,7 +24,7 @@ index 74dec9d46..26804e251 100644
  	int dirty;
  	struct wl_signal frame_signal;
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index f780ff213..8738c6810 100644
+index 1fa8887fc..56437f87e 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
 @@ -1112,6 +1112,22 @@ weston_view_move_to_plane(struct weston_view *view,
@@ -99,7 +99,7 @@ index f780ff213..8738c6810 100644
  	pixman_region32_fini(&output_damage);
  
  	if (output->repaint_needed)
-@@ -6787,6 +6805,7 @@ weston_output_init(struct weston_output *output,
+@@ -6789,6 +6807,7 @@ weston_output_init(struct weston_output *output,
  
  	output->down_scale = 1.0f;
  
@@ -107,7 +107,7 @@ index f780ff213..8738c6810 100644
  	pixman_region32_init(&output->region);
  	wl_list_init(&output->mode_list);
  }
-@@ -7103,6 +7122,7 @@ weston_output_release(struct weston_output *output)
+@@ -7105,6 +7124,7 @@ weston_output_release(struct weston_output *output)
  
  	weston_color_profile_unref(output->color_profile);
  
