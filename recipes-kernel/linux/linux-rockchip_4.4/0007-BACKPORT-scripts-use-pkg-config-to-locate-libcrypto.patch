@@ -1,7 +1,7 @@
-From 1973812864a4f9ad2d6dce6f6c57814134028bd8 Mon Sep 17 00:00:00 2001
+From 908deae315799ec2bd63179be7587ecc21d8147f Mon Sep 17 00:00:00 2001
 From: Rolf Eike Beer <eb@emlix.com>
 Date: Thu, 22 Nov 2018 16:40:49 +0100
-Subject: [PATCH 9/9] BACKPORT: scripts: use pkg-config to locate libcrypto
+Subject: [PATCH 7/7] BACKPORT: scripts: use pkg-config to locate libcrypto
 
 Otherwise build fails if the headers are not in the default location. While at
 it also ask pkg-config for the libs, with fallback to the existing value.
