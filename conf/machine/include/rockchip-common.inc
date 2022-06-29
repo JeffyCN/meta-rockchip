@@ -91,14 +91,6 @@ do_post_rootfs() {
 		ln -sf /lib/firmware ${firmware_dir}
 	done
 
-	for volume in ${RK_EXTRA_VOLUMES};do
-		echo "Creating ${volume##*:} for ${volume%:*}(fslabel)..."
-		mkdir -p "${IMAGE_ROOTFS}${volume##*:}"
-
-		echo "PARTLABEL=${volume%:*}\t${volume##*:}\tauto defaults 0 2" \
-			>> "${IMAGE_ROOTFS}/etc/fstab"
-	done
-
 	for overlay in ${RK_OVERLAY_DIRS};do
 		[ -d "${overlay}" ] || continue
 		echo "Installing overlay: ${overlay}..."
