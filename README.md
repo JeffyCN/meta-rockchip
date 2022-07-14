@@ -147,17 +147,17 @@ For example using the kernel/ and u-boot/ in the same directory of meta-rockchip
 
 ```makefile
 # build/conf/local.conf
-SRC_URI_pn-linux-rockchip = " \
+SRC_URI:pn-linux-rockchip = " \
         git://${TOPDIR}/../kernel;protocol=file;usehead=1 \
         file://cgroups.cfg \
 "
-SRCREV_pn-linux-rockchip = "${AUTOREV}"
+SRCREV:pn-linux-rockchip = "${AUTOREV}"
 KBRANCH = "HEAD"
 
-SRC_URI_pn-u-boot = " \
+SRC_URI:pn-u-boot = " \
         git://${TOPDIR}/../u-boot;protocol=file;usehead=1 \
 "
-SRCREV_pn-u-boot = "${AUTOREV}"
+SRCREV:pn-u-boot = "${AUTOREV}"
 ```
 
 ## Maintainers
