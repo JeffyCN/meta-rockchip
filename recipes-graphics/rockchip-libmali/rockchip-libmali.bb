@@ -17,7 +17,7 @@ SRC_URI = " \
 SRCREV = "21d3ac0cdab888ccc090c8c9bb62b2fa60582b17"
 S = "${WORKDIR}/git"
 
-DEPENDS = "libdrm"
+DEPENDS = "coreutils-native libdrm"
 
 PROVIDES += "virtual/egl virtual/libgles1 virtual/libgles2 virtual/libgles3 virtual/libgbm"
 
