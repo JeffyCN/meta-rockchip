@@ -1,7 +1,7 @@
-From 67007512592f67850869fa875b5d87fb24a0093c Mon Sep 17 00:00:00 2001
+From b527a8f4106bccf39945db2af6edbefe049085b2 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 5 May 2022 17:56:46 +0800
-Subject: [PATCH 32/33] waylandsink: Support pointer and touch
+Subject: [PATCH 31/33] waylandsink: Support pointer and touch
 
 Based on weston's client window and simple-egl.
 
@@ -386,7 +386,7 @@ index 29c15f6..8914d31 100644
    struct wl_registry *registry;
    struct wl_compositor *compositor;
 diff --git a/ext/wayland/wlwindow.c b/ext/wayland/wlwindow.c
-index cba168a..2dd5d89 100644
+index 2ba0eee..9917beb 100644
 --- a/ext/wayland/wlwindow.c
 +++ b/ext/wayland/wlwindow.c
 @@ -205,6 +205,8 @@ gst_wl_window_new_internal (GstWlDisplay * display, GMutex * render_lock)

@@ -1,7 +1,7 @@
-From 0124444318c4154e24f3c9b7a68fe1fbcb5e7361 Mon Sep 17 00:00:00 2001
+From cf89234a530bd85e575b7386b30f1425e2305411 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 25 Feb 2022 17:48:58 +0800
-Subject: [PATCH 31/33] kmssink: Support setting prefered frame syncing mode
+Subject: [PATCH 30/33] kmssink: Support setting prefered frame syncing mode
 
 Tested with:
 gst-launch-1.0 videotestsrc ! kmssink sync-mode=vblank
