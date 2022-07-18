@@ -1,7 +1,7 @@
-From f3dd2a8e3adbfcac0ed55484f111028a0834cd9c Mon Sep 17 00:00:00 2001
+From 6e92a44a4867444e46366b03e51ce2a141bced54 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 1 Sep 2020 08:51:17 +0800
-Subject: [PATCH 27/69] HACK: backend-drm: Consider linear and invalid modifier
+Subject: [PATCH 27/75] HACK: backend-drm: Consider linear and invalid modifier
  are the same
 
 That is true with Rockchip BSP drivers and packages.
@@ -169,11 +169,11 @@ index 7cae93c58..cfbdc2829 100644
  typedef void (*dmabuf_user_data_destroy_func)(
  			struct linux_dmabuf_buffer *buffer);
 diff --git a/libweston/pixman-renderer.c b/libweston/pixman-renderer.c
-index 593d7c8c3..e7d73354d 100644
+index ece4d910a..b245fd6fe 100644
 --- a/libweston/pixman-renderer.c
 +++ b/libweston/pixman-renderer.c
-@@ -1086,7 +1086,7 @@ pixman_renderer_import_dmabuf(struct weston_compositor *ec,
- 	int i;
+@@ -701,7 +701,7 @@ pixman_renderer_prepare_dmabuf(struct linux_dmabuf_buffer *dmabuf)
+ 	total_size = lseek(attributes->fd[0], 0, SEEK_END);
  
  	for (i = 0; i < attributes->n_planes; i++) {
 -		if (attributes->modifier[i] != DRM_FORMAT_MOD_INVALID)
@@ -181,7 +181,7 @@ index 593d7c8c3..e7d73354d 100644
  			return false;
  	}
  
-@@ -1181,7 +1181,7 @@ populate_supported_formats(struct weston_compositor *ec,
+@@ -1197,7 +1197,7 @@ populate_supported_formats(struct weston_compositor *ec,
  
  		/* Always add DRM_FORMAT_MOD_INVALID, as EGL implementations
  		 * support implicit modifiers. */

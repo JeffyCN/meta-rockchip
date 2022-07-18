@@ -1,7 +1,7 @@
-From 34a31088d843082eb2dfda26aeeb59fbbf87d317 Mon Sep 17 00:00:00 2001
+From 5e7e62353150cf9e790ffd52ac500b5b46532f5e Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 23 Jun 2020 10:05:48 +0800
-Subject: [PATCH 13/72] backend-drm: Support selecting monitors
+Subject: [PATCH 13/75] backend-drm: Support selecting monitors
 
 Using these environments:
 
@@ -31,8 +31,8 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  libweston/backend-drm/drm-internal.h |  22 ++
  libweston/backend-drm/drm.c          | 361 +++++++++++++++++++++++----
  libweston/backend-drm/kms.c          |  42 +++-
- libweston/compositor.c               |  44 +++-
- 7 files changed, 461 insertions(+), 60 deletions(-)
+ libweston/compositor.c               |  42 +++-
+ 7 files changed, 459 insertions(+), 60 deletions(-)
 
 diff --git a/compositor/main.c b/compositor/main.c
 index e946b4a54..47bf54093 100644
@@ -912,7 +912,7 @@ index 35113d54d..4426af402 100644
  
  	return 0;
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index 6b769fa22..4465589e3 100644
+index 491008836..33def20cc 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
 @@ -157,6 +157,25 @@ weston_paint_node_destroy(struct weston_paint_node *pnode)
@@ -989,15 +989,6 @@ index 6b769fa22..4465589e3 100644
  	wl_list_for_each(view, &compositor->view_list, link) {
  		if (view->output_mask & (1u << output->id))
  			weston_view_assign_output(view);
-@@ -6515,6 +6553,8 @@ weston_output_set_transform(struct weston_output *output,
- 
- 	weston_output_init_geometry(output, output->x, output->y);
- 
-+	output->dirty = 1;
-+
- 	weston_compositor_reflow_outputs(output->compositor);
- 
- 	/* Notify clients of the change for output transform. */
 -- 
 2.20.1
 

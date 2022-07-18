@@ -1,7 +1,7 @@
-From 254c1ed5c638773ee13d22029b960de472902bb5 Mon Sep 17 00:00:00 2001
+From d4b392122b84292566be7345a79b78223bd5e15b Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 6 Jan 2021 04:11:48 +0800
-Subject: [PATCH 39/70] backend-drm: Support modifier
+Subject: [PATCH 39/75] backend-drm: Support modifier
 
 Tested on rk356x with ARM AFBC modifier.
 
@@ -26,7 +26,7 @@ index 651ef6670..e4d51e130 100644
  
  struct drm_connector {
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index e6b01a1fd..6870e87b3 100644
+index ac9d88c0e..de25b907a 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
 @@ -1221,6 +1221,42 @@ err:
@@ -116,7 +116,7 @@ index e6b01a1fd..6870e87b3 100644
  	return NULL;
  }
  
-@@ -4110,9 +4161,6 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -4113,9 +4164,6 @@ drm_backend_create(struct weston_compositor *compositor,
  
  	compositor->backend = &b->base;
  
@@ -126,7 +126,7 @@ index e6b01a1fd..6870e87b3 100644
  	/* Check if we run drm-backend using weston-launch */
  	compositor->launcher = weston_launcher_connect(compositor, config->tty,
  						       seat_id, true);
-@@ -4146,15 +4194,30 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -4149,15 +4197,30 @@ drm_backend_create(struct weston_compositor *compositor,
  		goto err_udev_dev;
  	}
  
@@ -159,7 +159,7 @@ index e6b01a1fd..6870e87b3 100644
  		}
  	}
  
-@@ -4171,7 +4234,7 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -4174,7 +4237,7 @@ drm_backend_create(struct weston_compositor *compositor,
  	res = drmModeGetResources(b->drm.fd);
  	if (!res) {
  		weston_log("Failed to get drmModeRes\n");
@@ -168,7 +168,7 @@ index e6b01a1fd..6870e87b3 100644
  	}
  
  	wl_list_init(&b->crtc_list);
-@@ -4180,9 +4243,6 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -4183,9 +4246,6 @@ drm_backend_create(struct weston_compositor *compositor,
  		goto err_create_crtc_list;
  	}
  
@@ -178,7 +178,7 @@ index e6b01a1fd..6870e87b3 100644
  	if (udev_input_init(&b->input,
  			    compositor, b->udev, seat_id,
  			    config->configure_device) < 0) {
-@@ -4316,10 +4376,10 @@ err_drm_source:
+@@ -4319,10 +4379,10 @@ err_drm_source:
  	wl_event_source_remove(b->drm_source);
  err_udev_input:
  	udev_input_destroy(&b->input);

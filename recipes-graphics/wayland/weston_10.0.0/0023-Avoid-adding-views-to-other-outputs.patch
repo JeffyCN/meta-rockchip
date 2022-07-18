@@ -1,93 +1,38 @@
-From 0ede13fb20ac61db56a234580a3dc83adba7b37d Mon Sep 17 00:00:00 2001
+From 8759ae294d207935131d9c2cecba328d2c190abf Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Sat, 7 May 2022 16:41:20 +0800
-Subject: [PATCH 23/69] Avoid adding views to other outputs
+Subject: [PATCH 23/75] Avoid adding views to other outputs
 
 The outputs can be overlapped now.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- libweston/compositor.c | 21 +++++++++++----------
- 1 file changed, 11 insertions(+), 10 deletions(-)
+ libweston/compositor.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index be5c03d87..daeedfe13 100644
+index d36d70a89..5bbf5cbb0 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
-@@ -95,8 +95,7 @@ weston_output_transform_scale_init(struct weston_output *output,
- 				   uint32_t transform, uint32_t scale);
- 
- static void
--weston_compositor_build_view_list(struct weston_compositor *compositor,
--				  struct weston_output *output);
-+weston_compositor_build_view_list(struct weston_compositor *compositor);
- 
- static char *
- weston_output_create_heads_string(struct weston_output *output);
-@@ -2315,8 +2314,7 @@ weston_view_destroy(struct weston_view *view)
- 
- 	if (weston_view_is_mapped(view)) {
- 		weston_view_unmap(view);
--		weston_compositor_build_view_list(view->surface->compositor,
--						  NULL);
-+		weston_compositor_build_view_list(view->surface->compositor);
+@@ -1314,6 +1314,7 @@ weston_view_set_output(struct weston_view *view, struct weston_output *output)
  	}
- 
- 	wl_list_for_each_safe(pnode, pntmp, &view->paint_node_list, view_link)
-@@ -2830,6 +2828,9 @@ view_list_add(struct weston_compositor *compositor,
+ 	view->output = output;
+ 	if (output) {
++		view->output_mask |= output->id;
+ 		view->output_destroy_listener.notify =
+ 			notify_view_output_destroy;
+ 		wl_signal_add(&output->destroy_signal,
+@@ -2830,6 +2831,10 @@ view_list_add(struct weston_compositor *compositor,
  	struct weston_paint_node *pnode;
  	struct weston_subsurface *sub;
  
-+	if (output && !weston_output_valid(output))
-+		return;
++	/* HACK: Avoid adding views to other outputs */
++	if (output && !(view->output_mask & 1 << output->id))
++		output = NULL;
 +
  	weston_view_update_transform(view);
  	pnode = view_ensure_paint_node(view, output);
  
-@@ -2850,13 +2851,13 @@ view_list_add(struct weston_compositor *compositor,
- }
- 
- static void
--weston_compositor_build_view_list(struct weston_compositor *compositor,
--				  struct weston_output *output)
-+weston_compositor_build_view_list(struct weston_compositor *compositor)
- {
- 	struct weston_view *view, *tmp;
-+	struct weston_output *output;
- 	struct weston_layer *layer;
- 
--	if (output) {
-+	wl_list_for_each(output, &compositor->output_list, link) {
- 		wl_list_remove(&output->paint_node_z_order_list);
- 		wl_list_init(&output->paint_node_z_order_list);
- 	}
-@@ -2871,7 +2872,7 @@ weston_compositor_build_view_list(struct weston_compositor *compositor,
- 
- 	wl_list_for_each(layer, &compositor->layer_list, link) {
- 		wl_list_for_each(view, &layer->view_list.link, layer_link.link) {
--			view_list_add(compositor, view, output);
-+			view_list_add(compositor, view, view->output);
- 		}
- 	}
- 
-@@ -2924,7 +2925,7 @@ weston_output_repaint(struct weston_output *output, void *repaint_data)
- 	TL_POINT(ec, "core_repaint_begin", TLP_OUTPUT(output), TLP_END);
- 
- 	/* Rebuild the surface list and update surface transforms up front. */
--	weston_compositor_build_view_list(ec, output);
-+	weston_compositor_build_view_list(ec);
- 
- 	/* Find the highest protection desired for an output */
- 	wl_list_for_each(pnode, &output->paint_node_z_order_list,
-@@ -6505,7 +6506,7 @@ weston_compositor_remove_output(struct weston_output *output)
- 	 * Use view_list in case the output did not go through repaint
- 	 * after a view came on it, lacking a paint node. Just to be sure.
- 	 */
--	weston_compositor_build_view_list(compositor, NULL);
-+	weston_compositor_build_view_list(compositor);
- 	wl_list_for_each(view, &compositor->view_list, link) {
- 		if (view->output_mask & (1u << output->id))
- 			weston_view_assign_output(view);
 -- 
 2.20.1
 
