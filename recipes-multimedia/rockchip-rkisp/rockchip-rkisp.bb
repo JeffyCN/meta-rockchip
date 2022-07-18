@@ -47,6 +47,8 @@ do_compile() {
 		ARCH=aarch64
 	fi
 
+	sed -i 's/(cmd)/((unsigned long)cmd)/' ${S}/xcore/fake_v4l2_device.h
+
 	oe_runmake ARCH="${ARCH}" \
 		TARGET_GCC="${CC} ${CFLAGS} ${LDFLAGS}" \
 		TARGET_GPP="${CXX} ${CPPFLAGS} ${LDFLAGS} -Wno-error=cpp" \
