@@ -1,0 +1,48 @@
+From 2146902b89cf2f039741ca004ea1ed668fd50b55 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 19 Jul 2022 18:19:48 +0800
+Subject: [PATCH 3/3] HACK: caps: Consider dmabuf subset of system memory
+
+Note, this is only true when the dmabuf is mmapable.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/gstcaps.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/gst/gstcaps.c b/gst/gstcaps.c
+index bbb9211..41dd61f 100644
+--- a/gst/gstcaps.c
++++ b/gst/gstcaps.c
+@@ -1330,6 +1330,8 @@ gst_caps_is_subset (const GstCaps * subset, const GstCaps * superset)
+     if (!f1)
+       f1 = GST_CAPS_FEATURES_MEMORY_SYSTEM_MEMORY;
+ 
++    f1 = gst_caps_features_copy (f1);
++retry:
+     for (j = GST_CAPS_LEN (superset) - 1; j >= 0; j--) {
+       s2 = gst_caps_get_structure_unchecked (superset, j);
+       f2 = gst_caps_get_features_unchecked (superset, j);
+@@ -1344,6 +1346,19 @@ gst_caps_is_subset (const GstCaps * subset, const GstCaps * superset)
+       }
+     }
+ 
++    /* HACK: dma memory would likely provide system memory through mmap */
++#ifndef GST_CAPS_FEATURE_MEMORY_DMABUF
++#define GST_CAPS_FEATURE_MEMORY_DMABUF "memory:DMABuf"
++#endif
++    if (j == -1 &&
++        gst_caps_features_contains (f1, GST_CAPS_FEATURE_MEMORY_DMABUF)) {
++      gst_caps_features_remove (f1, GST_CAPS_FEATURE_MEMORY_DMABUF);
++      gst_caps_features_add (f1, GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY);
++      goto retry;
++    }
++
++    gst_caps_features_free (f1);
++
+     /* If we found no superset for this subset structure
+      * we return FALSE immediately */
+     if (j == -1) {
+-- 
+2.20.1
+
