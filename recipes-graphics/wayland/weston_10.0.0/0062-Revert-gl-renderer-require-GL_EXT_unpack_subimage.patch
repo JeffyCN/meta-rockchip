@@ -1,7 +1,7 @@
-From 07b1fcfe7537f2bb2a37ef4d55def1aa630eaa1a Mon Sep 17 00:00:00 2001
+From 373a474e9aec6b2367949a18125843a4e22ba548 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 27 Apr 2022 22:59:32 +0800
-Subject: [PATCH 62/69] Revert "gl-renderer: require GL_EXT_unpack_subimage"
+Subject: [PATCH 62/75] Revert "gl-renderer: require GL_EXT_unpack_subimage"
 
 This reverts commit 593d5af43a8e2c2a3371088fa7ae430d0517c82d.
 
@@ -27,10 +27,10 @@ index e7e169371..ebeaadbe8 100644
  	PFNEGLUNBINDWAYLANDDISPLAYWL unbind_display;
  	PFNEGLQUERYWAYLANDBUFFERWL query_buffer;
 diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
-index b1fa8e08a..0e15c2cf3 100644
+index ac79edd09..c0863c165 100644
 --- a/libweston/renderer-gl/gl-renderer.c
 +++ b/libweston/renderer-gl/gl-renderer.c
-@@ -1918,8 +1918,8 @@ gl_renderer_flush_damage(struct weston_surface *surface)
+@@ -1920,8 +1920,8 @@ gl_renderer_flush_damage(struct weston_surface *surface)
  {
  	const struct weston_testsuite_quirks *quirks =
  		&surface->compositor->test_data.test_quirks;
@@ -40,7 +40,7 @@ index b1fa8e08a..0e15c2cf3 100644
  	struct weston_buffer *buffer = gs->buffer_ref.buffer;
  	struct weston_view *view;
  	bool texture_used;
-@@ -1960,6 +1960,24 @@ gl_renderer_flush_damage(struct weston_surface *surface)
+@@ -1962,6 +1962,24 @@ gl_renderer_flush_damage(struct weston_surface *surface)
  
  	glActiveTexture(GL_TEXTURE0);
  
@@ -65,7 +65,7 @@ index b1fa8e08a..0e15c2cf3 100644
  	if (gs->needs_full_upload || quirks->gl_force_full_upload) {
  		glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, 0);
  		glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, 0);
-@@ -4085,11 +4103,9 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
+@@ -4087,11 +4105,9 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
  	else
  		ec->read_format = PIXMAN_a8b8g8r8;
  
@@ -80,7 +80,7 @@ index b1fa8e08a..0e15c2cf3 100644
  
  	if (gr->gl_version >= gr_gl_version(3, 0) ||
  	    weston_check_egl_extension(extensions, "GL_EXT_texture_type_2_10_10_10_REV"))
-@@ -4130,6 +4146,8 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
+@@ -4132,6 +4148,8 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
  		   gr_gl_version_minor(gr->gl_version));
  	weston_log_continue(STAMP_SPACE "read-back format: %s\n",
  		ec->read_format == PIXMAN_a8r8g8b8 ? "BGRA" : "RGBA");

@@ -1,4 +1,4 @@
-From 688023f5f4b4bb46b449a31f5cde1920350897cd Mon Sep 17 00:00:00 2001
+From 6c14e9d2e226777d76bde0c12acd7d43e94aec01 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 3 Jul 2020 12:37:37 +0800
 Subject: [PATCH 16/75] backend-drm: Support controlling output dynamically
@@ -191,7 +191,7 @@ index 886862240..24e44a206 100644
  
  struct weston_buffer {
 diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
-index 0bfb0a88f..b34dcde0a 100644
+index 91e548ac5..b0fef67fe 100644
 --- a/libweston/backend-drm/drm-internal.h
 +++ b/libweston/backend-drm/drm-internal.h
 @@ -115,6 +115,9 @@
@@ -204,7 +204,7 @@ index 0bfb0a88f..b34dcde0a 100644
  /**
   * Represents the values of an enum-type KMS property
   */
-@@ -346,6 +349,9 @@ struct drm_backend {
+@@ -347,6 +350,9 @@ struct drm_backend {
  	int virtual_height;
  
  	bool mirror_mode;
@@ -214,7 +214,7 @@ index 0bfb0a88f..b34dcde0a 100644
  };
  
  struct drm_mode {
-@@ -624,6 +630,9 @@ struct drm_output {
+@@ -625,6 +631,9 @@ struct drm_output {
  	bool is_mirror;
  
  	pixman_box32_t plane_bounds;
@@ -224,7 +224,7 @@ index 0bfb0a88f..b34dcde0a 100644
  };
  
  static inline struct drm_head *
-@@ -706,6 +715,13 @@ drm_mode_list_destroy(struct drm_backend *backend, struct wl_list *mode_list);
+@@ -707,6 +716,13 @@ drm_mode_list_destroy(struct drm_backend *backend, struct wl_list *mode_list);
  void
  drm_output_print_modes(struct drm_output *output);
  
@@ -239,7 +239,7 @@ index 0bfb0a88f..b34dcde0a 100644
  drm_output_set_mode(struct weston_output *base,
  		    enum weston_drm_backend_output_mode mode,
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index bf61bb726..d0d594845 100644
+index 696df68e0..1d6f7dbbd 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
 @@ -40,6 +40,7 @@
@@ -330,7 +330,7 @@ index bf61bb726..d0d594845 100644
  	output->state_invalid = true;
  
  	weston_log("Output %s (crtc %d) video modes:\n",
-@@ -3041,6 +3054,7 @@ drm_destroy(struct weston_compositor *ec)
+@@ -3061,6 +3074,7 @@ drm_destroy(struct weston_compositor *ec)
  
  	udev_input_destroy(&b->input);
  
@@ -338,7 +338,7 @@ index bf61bb726..d0d594845 100644
  	wl_event_source_remove(b->hotplug_timer);
  	wl_event_source_remove(b->udev_drm_source);
  	wl_event_source_remove(b->drm_source);
-@@ -3463,6 +3477,10 @@ output_create_notify(struct wl_listener *listener, void *data)
+@@ -3483,6 +3497,10 @@ output_create_notify(struct wl_listener *listener, void *data)
  					     output_create_listener);
  
  	drm_backend_update_outputs(b);
@@ -349,7 +349,7 @@ index bf61bb726..d0d594845 100644
  }
  
  static const struct weston_drm_output_api api = {
-@@ -3471,6 +3489,236 @@ static const struct weston_drm_output_api api = {
+@@ -3491,6 +3509,236 @@ static const struct weston_drm_output_api api = {
  	drm_output_set_seat,
  };
  
@@ -586,7 +586,7 @@ index bf61bb726..d0d594845 100644
  enum drm_head_mode {
  	DRM_HEAD_MODE_DEFAULT,
  	DRM_HEAD_MODE_PRIMARY,
-@@ -3816,6 +4064,10 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -3830,6 +4078,10 @@ drm_backend_create(struct weston_compositor *compositor,
  	b->hotplug_timer =
  		wl_event_loop_add_timer(loop, hotplug_timer_handler, b);
  
@@ -811,10 +811,10 @@ index 754adce2f..d7182e7f8 100644
  		weston_matrix_multiply(&matrix, &ev->transform.inverse);
  	} else {
 diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
-index dbeb85c5d..00e0c7464 100644
+index 6e04baa7d..f853149e0 100644
 --- a/libweston/renderer-gl/gl-renderer.c
 +++ b/libweston/renderer-gl/gl-renderer.c
-@@ -1718,6 +1718,10 @@ gl_renderer_repaint_output(struct weston_output *output,
+@@ -1720,6 +1720,10 @@ gl_renderer_repaint_output(struct weston_output *output,
  
  	/* Calculate the global GL matrix */
  	go->output_matrix = output->matrix;

@@ -1,4 +1,4 @@
-From 6468f84a2883b97982415ca1c4558878ce40a9b3 Mon Sep 17 00:00:00 2001
+From 5db2c7a3b4f836cd27a1bd628c42420b3826e22a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 7 Jul 2022 11:09:23 +0800
 Subject: [PATCH 75/75] gl-renderer: Support SHM XBGR8888 and ABGR8888
@@ -9,10 +9,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 16 insertions(+)
 
 diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
-index 0e15c2cf3..cb7481b30 100644
+index c0863c165..7ffcfedc0 100644
 --- a/libweston/renderer-gl/gl-renderer.c
 +++ b/libweston/renderer-gl/gl-renderer.c
-@@ -2095,6 +2095,20 @@ gl_renderer_attach_shm(struct weston_surface *es, struct weston_buffer *buffer,
+@@ -2097,6 +2097,20 @@ gl_renderer_attach_shm(struct weston_surface *es, struct weston_buffer *buffer,
  		gl_pixel_type = GL_UNSIGNED_BYTE;
  		es->is_opaque = false;
  		break;
@@ -33,7 +33,7 @@ index 0e15c2cf3..cb7481b30 100644
  	case WL_SHM_FORMAT_RGB565:
  		gs->shader_variant = SHADER_VARIANT_RGBX;
  		pitch = wl_shm_buffer_get_stride(shm_buffer) / 2;
-@@ -3922,6 +3936,8 @@ gl_renderer_display_create(struct weston_compositor *ec,
+@@ -3924,6 +3938,8 @@ gl_renderer_display_create(struct weston_compositor *ec,
  		goto fail_with_error;
  	}
  

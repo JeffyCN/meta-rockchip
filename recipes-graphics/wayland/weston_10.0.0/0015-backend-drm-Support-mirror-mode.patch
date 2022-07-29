@@ -1,7 +1,7 @@
-From 9438b7299549b45768cdb430f9b0858df19c1867 Mon Sep 17 00:00:00 2001
+From 4f8d66ff9cf187e96b63f5a589aa1ec1d43ec9d1 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 19 Nov 2020 09:41:47 +0800
-Subject: [PATCH 15/69] backend-drm: Support mirror mode
+Subject: [PATCH 15/75] backend-drm: Support mirror mode
 
 Set env "WESTON_DRM_MIRROR" to enable mirror mode, and set env
 "WESTON_DRM_KEEP_RATIO" to keep the aspect ratio.
@@ -88,10 +88,10 @@ index d0a4c6ca4..d7bd05f13 100644
  	}
  
 diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
-index ec68ed4ab..0bfb0a88f 100644
+index 212a56719..91e548ac5 100644
 --- a/libweston/backend-drm/drm-internal.h
 +++ b/libweston/backend-drm/drm-internal.h
-@@ -344,6 +344,8 @@ struct drm_backend {
+@@ -345,6 +345,8 @@ struct drm_backend {
  
  	int virtual_width;
  	int virtual_height;
@@ -100,7 +100,7 @@ index ec68ed4ab..0bfb0a88f 100644
  };
  
  struct drm_mode {
-@@ -601,6 +603,10 @@ struct drm_output {
+@@ -602,6 +604,10 @@ struct drm_output {
  	int current_image;
  	pixman_region32_t previous_damage;
  
@@ -111,7 +111,7 @@ index ec68ed4ab..0bfb0a88f 100644
  	struct vaapi_recorder *recorder;
  	struct wl_listener recorder_frame_listener;
  
-@@ -614,6 +620,10 @@ struct drm_output {
+@@ -615,6 +621,10 @@ struct drm_output {
  
  	/* The dummy framebuffer for SET_CRTC. */
  	struct drm_fb *fb_dummy;
@@ -123,7 +123,7 @@ index ec68ed4ab..0bfb0a88f 100644
  
  static inline struct drm_head *
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index 77d3db41f..bf61bb726 100644
+index 1c839c515..696df68e0 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
 @@ -67,6 +67,11 @@
@@ -532,7 +532,7 @@ index 77d3db41f..bf61bb726 100644
  	free(output);
  }
  
-@@ -3306,6 +3608,12 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -3320,6 +3622,12 @@ drm_backend_create(struct weston_compositor *compositor,
  	else
  		b->resize_freeze_ms = DRM_RESIZE_FREEZE_MS;
  
@@ -607,7 +607,7 @@ index 72e4db933..dc6d6d4cd 100644
  		state = drm_output_propose_state(output_base, pending_state, mode);
  		if (!state) {
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index 9b3e98061..b7b835e37 100644
+index 33def20cc..d7721d6bb 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
 @@ -1407,7 +1407,7 @@ weston_view_assign_output(struct weston_view *ev)

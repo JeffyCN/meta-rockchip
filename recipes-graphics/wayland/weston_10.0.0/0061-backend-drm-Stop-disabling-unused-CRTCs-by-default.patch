@@ -1,4 +1,4 @@
-From 009d42965adbf3c3cab51fa5f9ddd086f33ae66b Mon Sep 17 00:00:00 2001
+From 3e1e51c2722c1ad2b6d31856d426549242169c22 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 27 Apr 2022 15:17:39 +0800
 Subject: [PATCH 61/75] backend-drm: Stop disabling unused CRTCs by default
@@ -15,7 +15,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  3 files changed, 11 insertions(+), 3 deletions(-)
 
 diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
-index ffe60394b..11a37fba5 100644
+index fa8f55a02..cbbd0ad8e 100644
 --- a/libweston/backend-drm/drm-internal.h
 +++ b/libweston/backend-drm/drm-internal.h
 @@ -339,6 +339,7 @@ struct drm_backend {
@@ -25,9 +25,9 @@ index ffe60394b..11a37fba5 100644
 +	bool master;
  	bool single_head;
  	bool head_fallback;
- 	drm_head_match_t *head_matches;
+ 	bool head_fallback_all;
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index 77d59765a..848b15eca 100644
+index ff41669b6..ed289562f 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
 @@ -2251,6 +2251,9 @@ drm_output_detach_crtc(struct drm_output *output)
@@ -40,7 +40,7 @@ index 77d59765a..848b15eca 100644
  }
  
  static int
-@@ -4110,6 +4113,10 @@ drm_backend_create(struct weston_compositor *compositor,
+@@ -4120,6 +4123,10 @@ drm_backend_create(struct weston_compositor *compositor,
  	if (b == NULL)
  		return NULL;
  

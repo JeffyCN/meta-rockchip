@@ -1,7 +1,7 @@
-From cc5a8f9b4061e088178f6e631e4036dd041fd57d Mon Sep 17 00:00:00 2001
+From 787031a9304ffb7390c850c9ca14a13a9db72ee1 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 15 Jul 2021 14:38:13 +0800
-Subject: [PATCH 48/69] gl-renderer: Support NV16 dma buf
+Subject: [PATCH 48/75] gl-renderer: Support NV16 dma buf
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -9,10 +9,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
-index 01dec6d01..c45f5fa41 100644
+index 15b229226..a059f369e 100644
 --- a/libweston/renderer-gl/gl-renderer.c
 +++ b/libweston/renderer-gl/gl-renderer.c
-@@ -2773,6 +2773,7 @@ gl_renderer_query_dmabuf_formats(struct weston_compositor *wc,
+@@ -2775,6 +2775,7 @@ gl_renderer_query_dmabuf_formats(struct weston_compositor *wc,
  		DRM_FORMAT_XRGB8888,
  		DRM_FORMAT_YUYV,
  		DRM_FORMAT_NV12,

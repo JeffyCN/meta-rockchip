@@ -1,17 +1,17 @@
-From 328724e8c748fb464c81cd7bdb0b734a73695e9a Mon Sep 17 00:00:00 2001
+From 331456e7806ba8a9785b5c94225ae083f977e6f3 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 7 Jul 2020 17:00:40 +0800
-Subject: [PATCH 10/63] HACK: gl-renderer: Support making hole for surface
+Subject: [PATCH 10/75] HACK: gl-renderer: Support making hole for surface
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  include/libweston/libweston.h       |  3 ++
  libweston/compositor.c              | 29 ++++++++++++
- libweston/renderer-gl/gl-renderer.c | 69 +++++++++++++++++++++++++++++
- 3 files changed, 101 insertions(+)
+ libweston/renderer-gl/gl-renderer.c | 71 +++++++++++++++++++++++++++++
+ 3 files changed, 103 insertions(+)
 
 diff --git a/include/libweston/libweston.h b/include/libweston/libweston.h
-index bfa7e36..be2514a 100644
+index bfa7e36da..be2514a40 100644
 --- a/include/libweston/libweston.h
 +++ b/include/libweston/libweston.h
 @@ -1551,6 +1551,9 @@ struct weston_surface {
@@ -25,7 +25,7 @@ index bfa7e36..be2514a 100644
  
  struct weston_subsurface {
 diff --git a/libweston/compositor.c b/libweston/compositor.c
-index 2649535..b586f0f 100644
+index 264953598..b586f0f82 100644
 --- a/libweston/compositor.c
 +++ b/libweston/compositor.c
 @@ -605,6 +605,7 @@ weston_surface_create(struct weston_compositor *compositor)
@@ -79,7 +79,7 @@ index 2649535..b586f0f 100644
  				     &region->region);
  	} else {
 diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
-index 053fd52..dbeb85c 100644
+index 053fd5203..6e04baa7d 100644
 --- a/libweston/renderer-gl/gl-renderer.c
 +++ b/libweston/renderer-gl/gl-renderer.c
 @@ -1034,6 +1034,46 @@ gl_shader_config_init_for_paint_node(struct gl_shader_config *sconf,
@@ -129,7 +129,7 @@ index 053fd52..dbeb85c 100644
  static void
  draw_paint_node(struct weston_paint_node *pnode,
  		pixman_region32_t *damage /* in global coordinates */)
-@@ -1077,6 +1117,35 @@ draw_paint_node(struct weston_paint_node *pnode,
+@@ -1077,6 +1117,37 @@ draw_paint_node(struct weston_paint_node *pnode,
  	if (!gl_shader_config_init_for_paint_node(&sconf, pnode, filter))
  		goto out;
  
@@ -156,6 +156,8 @@ index 053fd52..dbeb85c 100644
 +		weston_view_to_global_region(pnode->view, &region, &hole);
 +
 +		pixman_region32_intersect(&hole, &hole, &repaint);
++
++		weston_output_region_from_global(pnode->output, &hole);
 +		clear_region(pnode->view, &hole);
 +
 +		pixman_region32_fini(&hole);
