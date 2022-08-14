@@ -1,35 +1,44 @@
-From b516e756f08685ed1f11df13b0fae61d72d4e662 Mon Sep 17 00:00:00 2001
+From 094fec0f3717ec330426a1c004d6350239926f2d Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 3 Jul 2019 19:54:36 +0800
-Subject: [PATCH 07/11] HACK: xvimagesink: Support dma buffer rendering
+Subject: [PATCH 07/13] HACK: xvimagesink: Support dma buffer rendering
 
 Send dma buffer to xv port when it supports dma port attributes.
 
 Change-Id: I69d94ffb700eb95af83799cdd5cde476d2930f92
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- sys/xvimage/meson.build   |   2 +-
+ sys/xvimage/meson.build   |   4 +-
  sys/xvimage/xvcontext.c   |  71 +++++++++-
  sys/xvimage/xvcontext.h   |  20 +++
  sys/xvimage/xvimagesink.c | 270 ++++++++++++++++++++++++++++++++++++--
  sys/xvimage/xvimagesink.h |  10 ++
- 5 files changed, 359 insertions(+), 14 deletions(-)
+ 5 files changed, 361 insertions(+), 14 deletions(-)
 
 diff --git a/sys/xvimage/meson.build b/sys/xvimage/meson.build
-index f1aaecf..f798a37 100644
+index f1aaecf1a..9b21c6046 100644
 --- a/sys/xvimage/meson.build
 +++ b/sys/xvimage/meson.build
-@@ -19,7 +19,7 @@ if xvideo_dep.found()
+@@ -12,6 +12,8 @@ if cc.has_argument ('-Wno-deprecated-declarations')
+   no_warn_args += '-Wno-deprecated-declarations'
+ endif
+ 
++libdrm_dep = dependency('libdrm')
++
+ xvideo_dep = dependency('xv', required : get_option('xvideo'))
+ 
+ if xvideo_dep.found()
+@@ -19,7 +21,7 @@ if xvideo_dep.found()
      xvimage_sources,
      c_args : gst_plugins_base_args + no_warn_args,
      include_directories: [configinc, libsinc],
 -    dependencies : glib_deps + [video_dep, gst_base_dep, gst_dep, x11_dep, xshm_dep, xvideo_dep, libm],
-+    dependencies : glib_deps + [video_dep, gst_base_dep, gst_dep, x11_dep, xshm_dep, xvideo_dep, libm, allocators_dep],
++    dependencies : glib_deps + [video_dep, gst_base_dep, gst_dep, x11_dep, xshm_dep, xvideo_dep, libdrm_dep, libm, allocators_dep],
      install : true,
      install_dir : plugins_install_dir,
    )
 diff --git a/sys/xvimage/xvcontext.c b/sys/xvimage/xvcontext.c
-index 56dee97..839fb71 100644
+index 56dee97e0..839fb71aa 100644
 --- a/sys/xvimage/xvcontext.c
 +++ b/sys/xvimage/xvcontext.c
 @@ -97,7 +97,7 @@ gst_lookup_xv_port_from_adaptor (GstXvContext * context,
@@ -155,7 +164,7 @@ index 56dee97..839fb71 100644
  
    while (list) {
 diff --git a/sys/xvimage/xvcontext.h b/sys/xvimage/xvcontext.h
-index 701b527..607f6f9 100644
+index 701b527fa..607f6f934 100644
 --- a/sys/xvimage/xvcontext.h
 +++ b/sys/xvimage/xvcontext.h
 @@ -42,6 +42,19 @@
@@ -200,7 +209,7 @@ index 701b527..607f6f9 100644
    GList *formats_list;
  
 diff --git a/sys/xvimage/xvimagesink.c b/sys/xvimage/xvimagesink.c
-index 993d3f7..00f995a 100644
+index 993d3f773..00f995a8e 100644
 --- a/sys/xvimage/xvimagesink.c
 +++ b/sys/xvimage/xvimagesink.c
 @@ -121,6 +121,7 @@
@@ -546,7 +555,7 @@ index 993d3f7..00f995a 100644
  
    /* the normal size of a frame */
 diff --git a/sys/xvimage/xvimagesink.h b/sys/xvimage/xvimagesink.h
-index 6f5ffa1..35a3081 100644
+index 6f5ffa156..35a3081e9 100644
 --- a/sys/xvimage/xvimagesink.h
 +++ b/sys/xvimage/xvimagesink.h
 @@ -25,6 +25,16 @@

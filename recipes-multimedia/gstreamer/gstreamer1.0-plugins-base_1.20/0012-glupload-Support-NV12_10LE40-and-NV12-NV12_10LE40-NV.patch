@@ -1,7 +1,7 @@
-From 30d9e439c1e290753355b8a6e9565dc9bfb1011f Mon Sep 17 00:00:00 2001
+From 595efb2c8be13f30e454eeb849ef43a855d337c5 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 24 May 2022 16:16:33 +0800
-Subject: [PATCH 12/12] glupload: Support NV12_10LE40 and NV12|NV12_10LE40|NV16
+Subject: [PATCH 12/13] glupload: Support NV12_10LE40 and NV12|NV12_10LE40|NV16
  (AFBC)
 
 Tested on RK356x with:
@@ -14,10 +14,11 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  gst-libs/gst/gl/egl/gsteglimage.h | 44 +++++++++++++++++++++++++++
  gst-libs/gst/gl/gstglmemory.h     |  2 +-
  gst-libs/gst/gl/gstglupload.c     | 15 +++++++++-
- 4 files changed, 101 insertions(+), 9 deletions(-)
+ gst-libs/gst/gl/meson.build       |  5 +++-
+ 5 files changed, 105 insertions(+), 10 deletions(-)
 
 diff --git a/gst-libs/gst/gl/egl/gsteglimage.c b/gst-libs/gst/gl/egl/gsteglimage.c
-index 90cc32d..1704e0b 100644
+index 90cc32dd3..1704e0b77 100644
 --- a/gst-libs/gst/gl/egl/gsteglimage.c
 +++ b/gst-libs/gst/gl/egl/gsteglimage.c
 @@ -629,6 +629,19 @@ _drm_direct_fourcc_from_info (const GstVideoInfo * info)
@@ -135,7 +136,7 @@ index 90cc32d..1704e0b 100644
    }
  
 diff --git a/gst-libs/gst/gl/egl/gsteglimage.h b/gst-libs/gst/gl/egl/gsteglimage.h
-index f90fa82..e6fc1df 100644
+index f90fa82a3..e6fc1df4f 100644
 --- a/gst-libs/gst/gl/egl/gsteglimage.h
 +++ b/gst-libs/gst/gl/egl/gsteglimage.h
 @@ -26,8 +26,52 @@
@@ -192,7 +193,7 @@ index f90fa82..e6fc1df 100644
  
  #define GST_TYPE_EGL_IMAGE                         (gst_egl_image_get_type())
 diff --git a/gst-libs/gst/gl/gstglmemory.h b/gst-libs/gst/gl/gstglmemory.h
-index daea4d1..8d8b36f 100644
+index daea4d12a..8d8b36f81 100644
 --- a/gst-libs/gst/gl/gstglmemory.h
 +++ b/gst-libs/gst/gl/gstglmemory.h
 @@ -64,7 +64,7 @@ GType gst_gl_memory_allocator_get_type(void);
@@ -205,7 +206,7 @@ index daea4d1..8d8b36f 100644
  
  /**
 diff --git a/gst-libs/gst/gl/gstglupload.c b/gst-libs/gst/gl/gstglupload.c
-index 998a5ef..6afc281 100644
+index 998a5ef4d..6afc2812f 100644
 --- a/gst-libs/gst/gl/gstglupload.c
 +++ b/gst-libs/gst/gl/gstglupload.c
 @@ -506,7 +506,8 @@ static GstStaticCaps _dma_buf_upload_caps =
@@ -244,6 +245,29 @@ index 998a5ef..6afc281 100644
    upload->priv->method = NULL;
    upload->priv->method_impl = NULL;
    upload->priv->method_i = 0;
+diff --git a/gst-libs/gst/gl/meson.build b/gst-libs/gst/gl/meson.build
+index b88e18cf3..6970607ea 100644
+--- a/gst-libs/gst/gl/meson.build
++++ b/gst-libs/gst/gl/meson.build
+@@ -1039,6 +1039,8 @@ if build_gstgl
+   # case-insensitive FS would include gst-libs/gl/egl/egl.h as EGL/egl.h.
+   common_args += '-I@0@'.format(meson.current_build_dir())
+ 
++  libdrm_dep = dependency('libdrm')
++
+   gstgl = library('gstgl-' + api_version,
+     gl_sources, gl_egl_sources, gl_x11_sources, gl_wayland_sources, gl_priv_sources, gl_enumtypes_c, gl_enumtypes_h,
+     c_args : common_args,
+@@ -1050,7 +1052,8 @@ if build_gstgl
+     darwin_versions : osxversion,
+     install : true,
+     dependencies : [gst_base_dep, video_dep, allocators_dep, gmodule_dep,
+-                    gl_lib_deps, gl_platform_deps, gl_winsys_deps, gl_misc_deps],
++                    gl_lib_deps, gl_platform_deps, gl_winsys_deps, gl_misc_deps,
++                    libdrm_dep],
+     # don't confuse EGL/egl.h with gst-libs/gl/egl/egl.h on case-insensitive file systems
+     implicit_include_directories : false)
+ 
 -- 
 2.20.1
 
