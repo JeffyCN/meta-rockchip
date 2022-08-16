@@ -1,0 +1,67 @@
+From 4b76e301fc197b2499d725c0ce950f11f0e2866d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 28 Sep 2020 20:02:00 +0800
+Subject: [PATCH 07/14] media: gpu: v4l2: Fix compile error when ozone not
+ enabled
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/v4l2/BUILD.gn               | 5 ++++-
+ media/gpu/v4l2/generic_v4l2_device.cc | 7 +++++++
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
+index 3a47d1166..800a42faa 100644
+--- a/media/gpu/v4l2/BUILD.gn
++++ b/media/gpu/v4l2/BUILD.gn
+@@ -105,9 +105,12 @@ source_set("v4l2") {
+     "//media/parsers",
+     "//third_party/libyuv",
+     "//ui/gfx/geometry",
+-    "//ui/ozone",
+   ]
+ 
++  if (use_ozone) {
++    deps += [ "//ui/ozone" ]
++  }
++
+   if (use_v4lplugin) {
+     deps += [ ":libv4l2_stubs" ]
+   }
+diff --git a/media/gpu/v4l2/generic_v4l2_device.cc b/media/gpu/v4l2/generic_v4l2_device.cc
+index eb756a914..55901af1a 100644
+--- a/media/gpu/v4l2/generic_v4l2_device.cc
++++ b/media/gpu/v4l2/generic_v4l2_device.cc
+@@ -33,8 +33,11 @@
+ #include "ui/gl/egl_util.h"
+ #include "ui/gl/gl_bindings.h"
+ #include "ui/gl/gl_image_native_pixmap.h"
++
++#if defined(USE_OZONE)
+ #include "ui/ozone/public/ozone_platform.h"
+ #include "ui/ozone/public/surface_factory_ozone.h"
++#endif
+ 
+ #if BUILDFLAG(USE_LIBV4L2)
+ // Auto-generated for dlopen libv4l2 libraries
+@@ -302,6 +305,9 @@ scoped_refptr<gl::GLImage> GenericV4L2Device::CreateGLImage(
+     const gfx::Size& size,
+     const Fourcc fourcc,
+     gfx::NativePixmapHandle handle) const {
++#if !defined(USE_OZONE)
++  return nullptr;
++#else
+   DVLOGF(3);
+   DCHECK(CanCreateEGLImageFrom(fourcc));
+ 
+@@ -336,6 +342,7 @@ scoped_refptr<gl::GLImage> GenericV4L2Device::CreateGLImage(
+   bool ret = image->Initialize(std::move(pixmap));
+   DCHECK(ret);
+   return image;
++#endif
+ }
+ 
+ EGLBoolean GenericV4L2Device::DestroyEGLImage(EGLDisplay egl_display,
+-- 
+2.20.1
+
