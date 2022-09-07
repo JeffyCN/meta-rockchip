@@ -1,8 +1,8 @@
-From c952bf57d25c91c2e977da1d5b3ba94753b88426 Mon Sep 17 00:00:00 2001
+From 0bc269086cd37b6af9f35d393d9feec89ac5b384 Mon Sep 17 00:00:00 2001
 From: Arnaldo Carvalho de Melo <acme@redhat.com>
 Date: Mon, 2 Mar 2020 12:09:38 -0300
-Subject: [PATCH 1/7] perf bench: Share some global variables to fix build with
- gcc 10
+Subject: [PATCH 1/9] BACKPORT: perf bench: Share some global variables to fix
+ build with gcc 10
 
 Noticed with gcc 10 (fedora rawhide) that those variables were not being
 declared as static, so end up with:
@@ -31,8 +31,9 @@ Signed-off-by: Arnaldo Carvalho de Melo <acme@redhat.com>
 Conflicts:
 	tools/perf/bench/epoll-ctl.c
 	tools/perf/bench/epoll-wait.c
+        [not exist in 4.19]
 
-Change-Id: Iaf5780df3a5f10ed0b5221da05883f0aac2864cf
+Change-Id: Ie187ae48e2dca16c20752061ccdef8dfcfd578fd
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  tools/perf/bench/bench.h         |  4 ++++

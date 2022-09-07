@@ -1,8 +1,8 @@
-From 73081c61b2919185ccff748e074ba3e3bc663aa2 Mon Sep 17 00:00:00 2001
+From 111962dcddd08baa97b3f93265a2f1999b86d0de Mon Sep 17 00:00:00 2001
 From: Arnaldo Carvalho de Melo <acme@redhat.com>
 Date: Mon, 2 Mar 2020 11:55:47 -0300
-Subject: [PATCH 2/7] perf parse-events: Use asprintf() instead of strncpy() to
- read tracepoint files
+Subject: [PATCH 2/9] UPSTREAM: perf parse-events: Use asprintf() instead of
+ strncpy() to read tracepoint files
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -47,6 +47,8 @@ Cc: Namhyung Kim <namhyung@kernel.org>
 Link: http://lore.kernel.org/lkml/20200302145535.GA28183@kernel.org
 Signed-off-by: Arnaldo Carvalho de Melo <acme@redhat.com>
 (cherry picked from commit 7125f204501ed55493593209c6c71ac7c38f6b6c)
+
+Change-Id: I0dd149a9bdc6fbf56d796d7c89a8312188a294ac
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  tools/perf/util/parse-events.c | 10 ++--------
