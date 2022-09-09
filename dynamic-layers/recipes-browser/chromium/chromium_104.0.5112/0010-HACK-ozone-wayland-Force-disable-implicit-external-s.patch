@@ -1,7 +1,7 @@
-From 59a8815fe78686be35b91fc32e2ac8f74dd27469 Mon Sep 17 00:00:00 2001
+From 1806bb01880ce06cf8e163b750febe3d40ac5fdc Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 31 May 2021 01:41:57 +0800
-Subject: [PATCH 10/14] HACK: [ozone/wayland]: Force disable implicit external
+Subject: [PATCH 10/17] HACK: [ozone/wayland]: Force disable implicit external
  sync
 
 The Mali's implicit external sync seems broken.
