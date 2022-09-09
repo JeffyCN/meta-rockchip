@@ -1,7 +1,7 @@
-From 92414939630f7b1d5c8e35ad68046b40f881f160 Mon Sep 17 00:00:00 2001
+From 9e82e1ad8be9cb9f0838c0e657ab1a8f04278882 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 20 May 2021 01:05:29 +0800
-Subject: [PATCH 08/14] ui: events: ozone: Define SW_PEN_INSERTED for old
+Subject: [PATCH 08/17] ui: events: ozone: Define SW_PEN_INSERTED for old
  kernel headers
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
