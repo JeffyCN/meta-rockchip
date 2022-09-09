@@ -1,7 +1,7 @@
-From 09d9a89199cdcbdfdceca89a5b4c8afabaa0f7f4 Mon Sep 17 00:00:00 2001
+From d799502fe7622c6515af60033685be456976ee7c Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 31 May 2021 01:29:11 +0800
-Subject: [PATCH 09/14] Create new fence when there's no in-fences
+Subject: [PATCH 09/17] Create new fence when there's no in-fences
 
 There're cases that in-fences are not provided.
 

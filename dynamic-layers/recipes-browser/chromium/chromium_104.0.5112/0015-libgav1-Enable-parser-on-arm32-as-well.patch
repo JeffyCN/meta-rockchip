@@ -1,7 +1,7 @@
-From a14a9fb3f75ddc8df074b3773c7ed837cddf373c Mon Sep 17 00:00:00 2001
+From 0b84b4c2bb019a508ec2e917a43e72e61f24122a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 6 Sep 2022 18:24:32 +0800
-Subject: [PATCH] libgav1: Enable parser on arm32 as well
+Subject: [PATCH 15/17] libgav1: Enable parser on arm32 as well
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

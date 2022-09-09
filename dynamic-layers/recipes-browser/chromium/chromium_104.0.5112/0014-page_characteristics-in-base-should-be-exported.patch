@@ -1,7 +1,7 @@
-From 973b0f668c8bc2cf2bd17685d702388fb201c085 Mon Sep 17 00:00:00 2001
+From 8ce23d5fae2f523753547c9d656aeeb29914976e Mon Sep 17 00:00:00 2001
 From: Qi Tiezheng <qitiezheng@360.cn>
 Date: Fri, 29 Jul 2022 14:50:19 +0000
-Subject: [PATCH 14/14] page_characteristics in base should be exported
+Subject: [PATCH 14/17] page_characteristics in base should be exported
 
 Cross compiling Chromium for linux arm64 may fails,
 partition_alloc::internal::page_characteristics is used on arm64
