@@ -1,7 +1,7 @@
 # Copyright (C) 2019, Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-DESCRIPTION = "A V4L2 plugin that wraps rockchip-mpp for the chromium's V4L2 VDA"
+DESCRIPTION = "A V4L2 plugin that wraps rockchip-mpp for the chromium's V4L2 VDA/VEA"
 
 SECTION = "libs"
 
@@ -12,13 +12,13 @@ PV_append = "+git${SRCPV}"
 
 inherit freeze-rev
 
-SRCREV = "c6839a92ec1facf45500f9cd4ea70a3923ecd8ba"
+SRCREV = "97b75e7b6d0328bf936c9c17c5d2d56ef2f25174"
 SRC_URI = "git://github.com/JeffyCN/libv4l-rkmpp.git;protocol=https;branch=master"
 
 S = "${WORKDIR}/git"
 
 DEPENDS = "rockchip-mpp rockchip-librga libv4l"
 
-inherit autotools pkgconfig
+inherit meson pkgconfig
 
 FILES_${PN} = "${libdir}/libv4l/plugins/*.so"
