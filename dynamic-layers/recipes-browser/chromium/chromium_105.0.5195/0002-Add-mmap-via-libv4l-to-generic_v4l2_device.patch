@@ -1,0 +1,49 @@
+From 7b685dab8b859ae74f88d6b68056c58bbf10bb0f Mon Sep 17 00:00:00 2001
+From: Damian Hobson-Garcia <dhobsong@igel.co.jp>
+Date: Wed, 21 Mar 2018 13:18:17 +0200
+Subject: [PATCH 02/17] Add mmap via libv4l to generic_v4l2_device
+
+Issue #437
+---
+ media/gpu/v4l2/generic_v4l2_device.cc | 10 ++++++++++
+ media/gpu/v4l2/v4l2.sig               |  2 ++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/media/gpu/v4l2/generic_v4l2_device.cc b/media/gpu/v4l2/generic_v4l2_device.cc
+index 184111288..ee637c196 100644
+--- a/media/gpu/v4l2/generic_v4l2_device.cc
++++ b/media/gpu/v4l2/generic_v4l2_device.cc
+@@ -124,10 +124,20 @@ void* GenericV4L2Device::Mmap(void* addr,
+                               int flags,
+                               unsigned int offset) {
+   DCHECK(device_fd_.is_valid());
++#if BUILDFLAG(USE_LIBV4L2)
++  if (use_libv4l2_)
++    return v4l2_mmap(addr, len, prot, flags, device_fd_.get(), offset);
++#endif
+   return mmap(addr, len, prot, flags, device_fd_.get(), offset);
+ }
+ 
+ void GenericV4L2Device::Munmap(void* addr, unsigned int len) {
++#if BUILDFLAG(USE_LIBV4L2)
++  if (use_libv4l2_) {
++    v4l2_munmap(addr, len);
++    return;
++  }
++#endif
+   munmap(addr, len);
+ }
+ 
+diff --git a/media/gpu/v4l2/v4l2.sig b/media/gpu/v4l2/v4l2.sig
+index 4269fb48d..71b5b3787 100644
+--- a/media/gpu/v4l2/v4l2.sig
++++ b/media/gpu/v4l2/v4l2.sig
+@@ -8,3 +8,5 @@
+ LIBV4L_PUBLIC int v4l2_close(int fd);
+ LIBV4L_PUBLIC int v4l2_ioctl(int fd, unsigned long int request, ...);
+ LIBV4L_PUBLIC int v4l2_fd_open(int fd, int v4l2_flags);
++LIBV4L_PUBLIC void *v4l2_mmap(void *start, size_t length, int prot, int flags, int fd, int64_t offset);
++LIBV4L_PUBLIC int v4l2_munmap(void *_start, size_t length);
+-- 
+2.20.1
+
