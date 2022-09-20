@@ -7,5 +7,3 @@ SRC_URI += " \
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 FILESPATH_prepend := "${THISDIR}/${PN}:"
-
-PACKAGECONFIG_remove += "qt5"
