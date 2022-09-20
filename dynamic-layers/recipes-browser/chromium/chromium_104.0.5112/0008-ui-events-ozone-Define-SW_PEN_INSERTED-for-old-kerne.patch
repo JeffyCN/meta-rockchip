@@ -1,0 +1,29 @@
+From 9e82e1ad8be9cb9f0838c0e657ab1a8f04278882 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 20 May 2021 01:05:29 +0800
+Subject: [PATCH 08/17] ui: events: ozone: Define SW_PEN_INSERTED for old
+ kernel headers
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ui/events/ozone/evdev/event_converter_evdev_impl.cc | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/ui/events/ozone/evdev/event_converter_evdev_impl.cc b/ui/events/ozone/evdev/event_converter_evdev_impl.cc
+index 60835c6af..9ee4719f6 100644
+--- a/ui/events/ozone/evdev/event_converter_evdev_impl.cc
++++ b/ui/events/ozone/evdev/event_converter_evdev_impl.cc
+@@ -31,6 +31,10 @@ namespace {
+ const int kKeyReleaseValue = 0;
+ const int kKeyRepeatValue = 2;
+ 
++#ifndef SW_PEN_INSERTED
++#define SW_PEN_INSERTED            0x0f  /* set = pen inserted */
++#endif
++
+ // Values for the EV_SW code.
+ const int kSwitchStylusInserted = SW_PEN_INSERTED;
+ 
+-- 
+2.20.1
+

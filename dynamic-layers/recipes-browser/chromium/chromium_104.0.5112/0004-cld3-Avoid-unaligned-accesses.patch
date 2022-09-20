@@ -1,0 +1,46 @@
+From 8defbc643a5f57c2289d16138924cd776ed784bf Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 27 Mar 2020 17:48:20 +0800
+Subject: [PATCH 04/17] cld3: Avoid unaligned accesses
+
+Although the unaligned memory accesses are enabled, somehow i still hit
+the SIGBUS:
+[23496.643138] Unhandled fault: alignment fault (0x92000021) at 0x00000000b182e636
+Received signal 7 BUS_ADRALN 0000b182e636
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ third_party/cld_3/src/src/script_span/port.h | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/third_party/cld_3/src/src/script_span/port.h b/third_party/cld_3/src/src/script_span/port.h
+index 2b3bc515a..1d437babf 100644
+--- a/third_party/cld_3/src/src/script_span/port.h
++++ b/third_party/cld_3/src/src/script_span/port.h
+@@ -78,11 +78,23 @@ namespace CLD2 {
+ //
+ // This is a mess, but there's not much we can do about it.
+ 
++#if 0
+ #define UNALIGNED_LOAD16(_p) (*reinterpret_cast<const uint16 *>(_p))
+ #define UNALIGNED_LOAD32(_p) (*reinterpret_cast<const uint32 *>(_p))
+ 
+ #define UNALIGNED_STORE16(_p, _val) (*reinterpret_cast<uint16 *>(_p) = (_val))
+ #define UNALIGNED_STORE32(_p, _val) (*reinterpret_cast<uint32 *>(_p) = (_val))
++#else
++inline uint32 UNALIGNED_LOAD32(const void *p) {
++  uint32 t;
++  memcpy(&t, p, sizeof t);
++  return t;
++}
++
++inline void UNALIGNED_STORE32(void *p, uint32 v) {
++  memcpy(p, &v, sizeof v);
++}
++#endif
+ 
+ // TODO(sesse): NEON supports unaligned 64-bit loads and stores.
+ // See if that would be more efficient on platforms supporting it,
+-- 
+2.20.1
+

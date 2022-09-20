@@ -1,0 +1,58 @@
+From 8ce23d5fae2f523753547c9d656aeeb29914976e Mon Sep 17 00:00:00 2001
+From: Qi Tiezheng <qitiezheng@360.cn>
+Date: Fri, 29 Jul 2022 14:50:19 +0000
+Subject: [PATCH 14/17] page_characteristics in base should be exported
+
+Cross compiling Chromium for linux arm64 may fails,
+partition_alloc::internal::page_characteristics is used on arm64
+in inline function PageAllocationGranularityShift()
+
+[42925/82488] SOLINK ./libwtf.so
+FAILED: libwtf.so libwtf.so.TOC
+python3 "../../build/toolchain/gcc_solink_wrapper.py" --readelf="../../third_party/llvm-build/Release+Asserts/bin/llvm-readelf" --nm="../../third_party/llvm-build/Release+Asserts/bin/llvm-nm"  --sofile="./libwtf.so" --tocfile="./libwtf.so.TOC" --output="./libwtf.so" -- ../../third_party/llvm-build/Release+Asserts/bin/clang++ -shared -Wl,-soname="libwtf.so" -Werror -fuse-ld=lld -Wl,--fatal-warnings -Wl,--build-id -fPIC -Wl,-z,noexecstack -Wl,-z,relro -Wl,--color-diagnostics -Wl,--no-call-graph-profile-sort --target=aarch64-linux-gnu -no-canonical-prefixes -rdynamic -Wl,-z,defs -Wl,--as-needed -nostdlib++ --sysroot=../../build/linux/debian_stretch_arm64-sysroot -Wl,-rpath=\$ORIGIN -Wl,--gdb-index -L../../build/linux/debian_stretch_arm64-sysroot/usr/lib/aarch64-linux-gnu -o "./libwtf.so" @"./libwtf.so.rsp"
+ld.lld: error: undefined symbol: partition_alloc::internal::page_characteristics
+>>> referenced by page_allocator_constants.h:0 (../../base/allocator/partition_allocator/page_allocator_constants.h:0)
+>>>               obj/third_party/blink/renderer/platform/wtf/wtf/partitions.o:(partition_alloc::internal::PageAllocationGranularity())
+>>> referenced by page_allocator_constants.h:0 (../../base/allocator/partition_allocator/page_allocator_constants.h:0)
+>>>               obj/third_party/blink/renderer/platform/wtf/wtf/partitions.o:(partition_alloc::internal::PageAllocationGranularity())
+>>> referenced by page_allocator_constants.h:0 (../../base/allocator/partition_allocator/page_allocator_constants.h:0)
+>>>               obj/third_party/blink/renderer/platform/wtf/wtf/partitions.o:(partition_alloc::internal::PageAllocationGranularity())
+>>> referenced 3 more times
+clang++: error: linker command failed with exit code 1 (use -v to see invocation)
+[43049/82488] ACTION //third_party/blink/renderer/bindings:generate_bindings_all(//build/toolchain/linux:clang_x64_v8_arm64)
+
+Bug: 1346491
+Change-Id: Ie5ce8d9cea0b3eff2303f8fe372eb2e3773e8839
+Reviewed-on: https://chromium-review.googlesource.com/c/chromium/src/+/3780440
+Auto-Submit: Qi Tiezheng <qitiezheng@360.cn>
+Reviewed-by: Takashi Sakamoto <tasak@google.com>
+Commit-Queue: Benoit Lize <lizeb@chromium.org>
+Reviewed-by: Benoit Lize <lizeb@chromium.org>
+Cr-Commit-Position: refs/heads/main@{#1029784}
+---
+ base/allocator/partition_allocator/page_allocator_constants.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/base/allocator/partition_allocator/page_allocator_constants.h b/base/allocator/partition_allocator/page_allocator_constants.h
+index 5ed440c3f..004dcfd96 100644
+--- a/base/allocator/partition_allocator/page_allocator_constants.h
++++ b/base/allocator/partition_allocator/page_allocator_constants.h
+@@ -7,6 +7,7 @@
+ 
+ #include <stddef.h>
+ 
++#include "base/allocator/partition_allocator/partition_alloc_base/component_export.h"
+ #include "base/allocator/partition_allocator/partition_alloc_base/compiler_specific.h"
+ #include "build/build_config.h"
+ 
+@@ -45,6 +46,7 @@ struct PageCharacteristics {
+   std::atomic<int> size;
+   std::atomic<int> shift;
+ };
++PA_COMPONENT_EXPORT(PARTITION_ALLOC)
+ extern PageCharacteristics page_characteristics;
+ 
+ }  // namespace partition_alloc::internal
+-- 
+2.20.1
+

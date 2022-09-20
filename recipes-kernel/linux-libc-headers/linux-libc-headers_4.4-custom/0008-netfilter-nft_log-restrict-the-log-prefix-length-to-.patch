@@ -1,0 +1,75 @@
+From 69cfdf5cbb0c848916db2b1bfd4495a382f43330 Mon Sep 17 00:00:00 2001
+From: Liping Zhang <zlpnobody@gmail.com>
+Date: Sun, 22 Jan 2017 22:10:32 +0800
+Subject: [PATCH] netfilter: nft_log: restrict the log prefix length to 127
+
+First, log prefix will be truncated to NF_LOG_PREFIXLEN-1, i.e. 127,
+at nf_log_packet(), so the extra part is useless.
+
+Second, after adding a log rule with a very very long prefix, we will
+fail to dump the nft rules after this _special_ one, but acctually,
+they do exist. For example:
+  # name_65000=$(printf "%0.sQ" {1..65000})
+  # nft add rule filter output log prefix "$name_65000"
+  # nft add rule filter output counter
+  # nft add rule filter output counter
+  # nft list chain filter output
+  table ip filter {
+      chain output {
+          type filter hook output priority 0; policy accept;
+      }
+  }
+
+So now, restrict the log prefix length to NF_LOG_PREFIXLEN-1.
+
+Fixes: 96518518cc41 ("netfilter: add nftables")
+Signed-off-by: Liping Zhang <zlpnobody@gmail.com>
+Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
+(cherry picked from commit 5ce6b04ce96896e8a79e6f60740ced911eaac7a4)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ include/uapi/linux/netfilter/nf_log.h | 2 ++
+ net/netfilter/nf_log.c                | 1 -
+ net/netfilter/nft_log.c               | 3 ++-
+ 3 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/include/uapi/linux/netfilter/nf_log.h b/include/uapi/linux/netfilter/nf_log.h
+index 8be21e02387d..d0b5fa91ff54 100644
+--- a/include/uapi/linux/netfilter/nf_log.h
++++ b/include/uapi/linux/netfilter/nf_log.h
+@@ -9,4 +9,6 @@
+ #define NF_LOG_MACDECODE	0x20	/* Decode MAC header */
+ #define NF_LOG_MASK		0x2f
+ 
++#define NF_LOG_PREFIXLEN	128
++
+ #endif /* _NETFILTER_NF_LOG_H */
+diff --git a/net/netfilter/nf_log.c b/net/netfilter/nf_log.c
+index f94a2e1172f0..45d0215ba584 100644
+--- a/net/netfilter/nf_log.c
++++ b/net/netfilter/nf_log.c
+@@ -13,7 +13,6 @@
+ /* Internal logging interface, which relies on the real
+    LOG target modules */
+ 
+-#define NF_LOG_PREFIXLEN		128
+ #define NFLOGGER_NAME_LEN		64
+ 
+ static struct nf_logger __rcu *loggers[NFPROTO_NUMPROTO][NF_LOG_TYPE_MAX] __read_mostly;
+diff --git a/net/netfilter/nft_log.c b/net/netfilter/nft_log.c
+index 2e5db32c82f1..5991f4bd6990 100644
+--- a/net/netfilter/nft_log.c
++++ b/net/netfilter/nft_log.c
+@@ -38,7 +38,8 @@ static void nft_log_eval(const struct nft_expr *expr,
+ 
+ static const struct nla_policy nft_log_policy[NFTA_LOG_MAX + 1] = {
+ 	[NFTA_LOG_GROUP]	= { .type = NLA_U16 },
+-	[NFTA_LOG_PREFIX]	= { .type = NLA_STRING },
++	[NFTA_LOG_PREFIX]	= { .type = NLA_STRING,
++				    .len = NF_LOG_PREFIXLEN - 1 },
+ 	[NFTA_LOG_SNAPLEN]	= { .type = NLA_U32 },
+ 	[NFTA_LOG_QTHRESHOLD]	= { .type = NLA_U16 },
+ 	[NFTA_LOG_LEVEL]	= { .type = NLA_U32 },
+-- 
+2.20.1
+

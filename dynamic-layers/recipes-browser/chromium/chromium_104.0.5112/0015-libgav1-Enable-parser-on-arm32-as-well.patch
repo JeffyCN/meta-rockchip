@@ -1,0 +1,24 @@
+From 0b84b4c2bb019a508ec2e917a43e72e61f24122a Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 6 Sep 2022 18:24:32 +0800
+Subject: [PATCH 15/17] libgav1: Enable parser on arm32 as well
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ third_party/libgav1/options.gni | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/third_party/libgav1/options.gni b/third_party/libgav1/options.gni
+index 5e0fe7ea3..bd6a4a572 100644
+--- a/third_party/libgav1/options.gni
++++ b/third_party/libgav1/options.gni
+@@ -13,5 +13,5 @@ declare_args() {
+   use_libgav1_parser =
+       (is_chromeos || is_linux || is_win) &&
+       (target_cpu == "x86" || target_cpu == "x64" ||
+-      target_cpu == "arm64" || target_cpu == "ppc64")
++      target_cpu == "arm" || target_cpu == "arm64" || target_cpu == "ppc64")
+ }
+-- 
+2.20.1
+
