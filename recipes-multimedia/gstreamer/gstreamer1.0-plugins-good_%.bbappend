@@ -6,6 +6,6 @@ PATCHPATH = "${CURDIR}/${BPN}_${MAJ_VER}"
 
 inherit auto-patch
 
-PACKAGECONFIG:remove = "qt5"
+#PACKAGECONFIG:remove = "qt5"
 
 DEPENDS:append = " rockchip-librga"
