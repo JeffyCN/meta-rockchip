@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf0
 
 inherit freeze-rev local-git
 
-SRCREV = "983d6c05097db78f514443adc41761dd9cfbb352"
+SRCREV = "54d05e00e73a91c14c86005e86fff45fa094203e"
 SRC_URI = "git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkwifibt;"
 
 S = "${WORKDIR}/git"
@@ -17,11 +17,10 @@ S = "${WORKDIR}/git"
 inherit allarch deploy
 
 do_install() {
-	install -d ${D}/lib/firmware/
-	install -m 0644 ${S}/firmware/broadcom/all/*/* -t ${D}/lib/firmware/
-
 	install -d ${D}/lib/firmware/rtlbt/
-	install -m 0644 ${S}/realtek/RTL*/* -t ${D}/lib/firmware/rtlbt/
+
+	cp -u $(find ${S}/firmware/ -type f) ${D}/lib/firmware/
+	ln -rsf ${D}/lib/firmware/*rtl*_* ${D}/lib/firmware/rtlbt/
 }
 
 PACKAGES =+ " \
