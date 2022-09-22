@@ -1,0 +1,94 @@
+From 499e9f7b9caa1e47194f8043d607f71eef2248bb Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 5 Aug 2022 11:39:00 +0800
+Subject: [PATCH 36/36] waylandsink: Support transparent video
+
+Tested with transparent png picture.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/wlwindow.c | 32 ++++++++++++++++++++++----------
+ ext/wayland/wlwindow.h |  3 +++
+ 2 files changed, 25 insertions(+), 10 deletions(-)
+
+diff --git a/ext/wayland/wlwindow.c b/ext/wayland/wlwindow.c
+index ba1046a..330579f 100644
+--- a/ext/wayland/wlwindow.c
++++ b/ext/wayland/wlwindow.c
+@@ -528,17 +528,19 @@ gst_wl_window_resize_video_surface (GstWlWindow * window, gboolean commit)
+ }
+ 
+ static void
+-gst_wl_window_set_opaque (GstWlWindow * window, const GstVideoInfo * info)
++gst_wl_window_set_opaque (GstWlWindow * window)
+ {
+   struct wl_region *region;
+ 
+-  /* Set area opaque */
+-  region = wl_compositor_create_region (window->display->compositor);
+-  wl_region_add (region, 0, 0, G_MAXINT32, G_MAXINT32);
+-  wl_surface_set_opaque_region (window->area_surface, region);
+-  wl_region_destroy (region);
++  if (window->area_opaque) {
++    /* Set area opaque */
++    region = wl_compositor_create_region (window->display->compositor);
++    wl_region_add (region, 0, 0, G_MAXINT32, G_MAXINT32);
++    wl_surface_set_opaque_region (window->area_surface, region);
++    wl_region_destroy (region);
++  }
+ 
+-  if (!GST_VIDEO_INFO_HAS_ALPHA (info)) {
++  if (window->video_opaque) {
+     /* Set video opaque */
+     region = wl_compositor_create_region (window->display->compositor);
+     wl_region_add (region, 0, 0, G_MAXINT32, G_MAXINT32);
+@@ -554,10 +556,15 @@ gst_wl_window_render (GstWlWindow * window, GstWlBuffer * buffer,
+   if (G_UNLIKELY (info)) {
+     window->video_width = info->width;
+     window->video_height = info->height;
++    window->video_opaque = !GST_VIDEO_INFO_HAS_ALPHA (info);
++    window->area_opaque = window->video_opaque;
++
++    if (g_getenv ("WAYLANDSINK_FORCE_OPAQUE"))
++      window->area_opaque = window->video_opaque = TRUE;
+ 
+     wl_subsurface_set_sync (window->video_subsurface);
+     gst_wl_window_resize_video_surface (window, FALSE);
+-    gst_wl_window_set_opaque (window, info);
++    gst_wl_window_set_opaque (window);
+   } else if (window->crop_dirty) {
+     gst_wl_window_resize_video_surface (window, FALSE);
+   }
+@@ -624,8 +631,13 @@ gst_wl_window_update_borders (GstWlWindow * window)
+     height = window->render_rectangle.h;
+   }
+ 
+-  /* we want WL_SHM_FORMAT_XRGB8888 */
+-  format = GST_VIDEO_FORMAT_BGRx;
++  if (window->area_opaque) {
++    /* we want WL_SHM_FORMAT_XRGB8888 */
++    format = GST_VIDEO_FORMAT_BGRx;
++  } else {
++    /* we want WL_SHM_FORMAT_ARGB8888 */
++    format = GST_VIDEO_FORMAT_BGRA;
++  }
+ 
+   /* draw the area_subsurface */
+   gst_video_info_set_format (&info, format, width, height);
+diff --git a/ext/wayland/wlwindow.h b/ext/wayland/wlwindow.h
+index 672e15a..66b69f4 100644
+--- a/ext/wayland/wlwindow.h
++++ b/ext/wayland/wlwindow.h
+@@ -77,6 +77,9 @@ struct _GstWlWindow
+   gint crop_x, crop_y, crop_w, crop_h;
+   gboolean crop_dirty;
+ 
++  gboolean video_opaque;
++  gboolean area_opaque;
++
+   /* when this is not set both the area_surface and the video_surface are not
+    * visible and certain steps should be skipped */
+   gboolean is_area_surface_mapped;
+-- 
+2.20.1
+

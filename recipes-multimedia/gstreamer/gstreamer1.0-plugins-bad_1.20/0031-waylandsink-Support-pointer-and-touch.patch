@@ -1,17 +1,17 @@
-From b527a8f4106bccf39945db2af6edbefe049085b2 Mon Sep 17 00:00:00 2001
+From aba56acd328d0843eaa69401e951f95fc6e56eaf Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 5 May 2022 17:56:46 +0800
-Subject: [PATCH 31/33] waylandsink: Support pointer and touch
+Subject: [PATCH 31/35] waylandsink: Support pointer and touch
 
 Based on weston's client window and simple-egl.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  ext/wayland/meson.build |   3 +-
- ext/wayland/wldisplay.c | 271 ++++++++++++++++++++++++++++++++++++++++
+ ext/wayland/wldisplay.c | 278 ++++++++++++++++++++++++++++++++++++++++
  ext/wayland/wldisplay.h |   8 ++
  ext/wayland/wlwindow.c  |   4 +
- 4 files changed, 285 insertions(+), 1 deletion(-)
+ 4 files changed, 292 insertions(+), 1 deletion(-)
 
 diff --git a/ext/wayland/meson.build b/ext/wayland/meson.build
 index a3ffb70..c8a32da 100644
@@ -33,7 +33,7 @@ index a3ffb70..c8a32da 100644
          install_dir : plugins_install_dir,
      )
 diff --git a/ext/wayland/wldisplay.c b/ext/wayland/wldisplay.c
-index fcf2853..41beaf2 100644
+index fcf2853..701ee5e 100644
 --- a/ext/wayland/wldisplay.c
 +++ b/ext/wayland/wldisplay.c
 @@ -24,9 +24,11 @@
@@ -112,7 +112,7 @@ index fcf2853..41beaf2 100644
    /* to avoid buffers being unregistered from another thread
     * at the same time, take their ownership */
    g_mutex_lock (&self->buffers_mutex);
-@@ -223,6 +268,218 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
+@@ -223,6 +268,225 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
    handle_xdg_wm_base_ping
  };
  
@@ -212,11 +212,18 @@ index fcf2853..41beaf2 100644
 +  }
 +}
 +
++static void
++pointer_handle_axis(void *data, struct wl_pointer *wl_pointer,
++    uint32_t time, uint32_t axis, wl_fixed_t value)
++{
++}
++
 +static const struct wl_pointer_listener pointer_listener = {
 +  pointer_handle_enter,
 +  pointer_handle_leave,
 +  pointer_handle_motion,
 +  pointer_handle_button,
++  pointer_handle_axis,
 +};
 +
 +static void
@@ -331,7 +338,7 @@ index fcf2853..41beaf2 100644
  static void
  registry_handle_global (void *data, struct wl_registry *registry,
      uint32_t id, const char *interface, uint32_t version)
-@@ -247,6 +504,18 @@ registry_handle_global (void *data, struct wl_registry *registry,
+@@ -247,6 +511,18 @@ registry_handle_global (void *data, struct wl_registry *registry,
    } else if (g_strcmp0 (interface, "wl_shm") == 0) {
      self->shm = wl_registry_bind (registry, id, &wl_shm_interface, 1);
      wl_shm_add_listener (self->shm, &shm_listener, self);
@@ -350,7 +357,7 @@ index fcf2853..41beaf2 100644
    } else if (g_strcmp0 (interface, "wp_viewporter") == 0) {
      self->viewporter =
          wl_registry_bind (registry, id, &wp_viewporter_interface, 1);
-@@ -337,6 +606,8 @@ gst_wl_display_new_existing (struct wl_display * display,
+@@ -337,6 +613,8 @@ gst_wl_display_new_existing (struct wl_display * display,
    self->display_wrapper = wl_proxy_create_wrapper (display);
    self->own_display = take_ownership;
  
