@@ -17,7 +17,7 @@ inherit freeze-rev local-git
 
 SRCREV = "${@oe.utils.version_less_or_equal('RK_ISP_VERSION', '1', '0123456789012345678901234567890123456789', '${AUTOREV}', d)}"
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=rkaiq/${SOC_FAMILY}-2022_03_17; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=rkaiq-2022_09_22; \
 	file://rkaiq_daemons.sh \
 "
 
@@ -28,6 +28,7 @@ inherit pkgconfig cmake
 EXTRA_OECMAKE = "     \
     -DARCH=${@bb.utils.contains('TUNE_FEATURES', 'aarch64', 'aarch64', 'arm', d)} \
     -DISP_HW_VERSION=-DISP_HW_V${@d.getVar('RK_ISP_VERSION').replace('.','')} \
+    -DRKAIQ_TARGET_SOC=${@d.getVar('SOC_FAMILY').replace('rk3568','rk356x')} \
 "
 
 do_generate_toolchain_file:append () {
