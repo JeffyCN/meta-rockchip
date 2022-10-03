@@ -1,7 +1,7 @@
-From 3408f85dd0d0e6e452c53c28ff7142cadcfda630 Mon Sep 17 00:00:00 2001
+From 997d8625178cd705d3e98c3e2fe146fdd35a6a82 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 6 Apr 2021 10:51:35 +0800
-Subject: [PATCH 1/3] filesrc: Fix stopping race in pull-mode
+Subject: [PATCH 1/4] filesrc: Fix stopping race in pull-mode
 
 When using qtmultimedia + playbin3, there's a chance that stop() been
 called before fill().
