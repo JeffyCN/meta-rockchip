@@ -1,0 +1,27 @@
+From 8e61ec315214833b71f75e463919626fd519af48 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 10 Oct 2022 18:03:13 +0800
+Subject: [PATCH] swiftshader: Don't check system wayland for non-wayland
+ platform
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ third_party/swiftshader/src/WSI/BUILD.gn | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/third_party/swiftshader/src/WSI/BUILD.gn b/third_party/swiftshader/src/WSI/BUILD.gn
+index 4709332e2..dbe29a2a3 100644
+--- a/third_party/swiftshader/src/WSI/BUILD.gn
++++ b/third_party/swiftshader/src/WSI/BUILD.gn
+@@ -87,7 +87,7 @@ swiftshader_source_set("WSI") {
+     "../Vulkan:swiftshader_libvulkan_headers",
+   ]
+ 
+-  if (is_linux && !use_system_libwayland) {
++  if (is_linux && !use_system_libwayland && ozone_platform_wayland) {
+     # Use third-party targets
+     deps += [ "$wayland_gn_dir:wayland_client" ]
+   }
+-- 
+2.20.1
+
