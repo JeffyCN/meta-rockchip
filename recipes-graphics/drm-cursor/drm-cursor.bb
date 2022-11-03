@@ -12,7 +12,7 @@ DEPENDS = "libdrm virtual/libgles2 virtual/libgbm"
 SRC_URI = " \
 	git://github.com/JeffyCN/drm-cursor.git;protocol=https;branch=master \
 "
-SRCREV = "6ea7c6be466bf697c77be7fa3ab51941e08ea052"
+SRCREV = "733510b21da23a7d9bc6976624e5a0dea14dc667"
 S = "${WORKDIR}/git"
 
 inherit meson pkgconfig
