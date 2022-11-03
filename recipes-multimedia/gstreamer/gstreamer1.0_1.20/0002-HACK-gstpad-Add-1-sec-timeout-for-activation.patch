@@ -1,4 +1,4 @@
-From be19c8592bc8ab0c38d734297f3389f06e064343 Mon Sep 17 00:00:00 2001
+From 98f949385c555b72e68db867969bf7bd3e642355 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 29 Nov 2021 14:49:25 +0800
 Subject: [PATCH 2/2] HACK: gstpad: Add 1 sec timeout for activation
@@ -66,5 +66,5 @@ index bccba4e..1c43e1e 100644
          GST_WARNING_OBJECT (pad,
              "Pad is already in the process of being activated");
 -- 
-2.17.1
+2.20.1
 

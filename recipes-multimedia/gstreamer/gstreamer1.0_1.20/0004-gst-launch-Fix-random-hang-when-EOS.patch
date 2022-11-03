@@ -1,0 +1,61 @@
+From 8486605464354e70f30626c1e12649128197e983 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 3 Oct 2022 15:07:33 +0800
+Subject: [PATCH 4/4] gst-launch: Fix random hang when EOS
+
+There's a race between the async initial pause and initial play.
+
+When the async pausing message arrives later than the playing one, the
+gstbin's state machine would be confused.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ tools/gst-launch.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/tools/gst-launch.c b/tools/gst-launch.c
+index 5733152..fdaf579 100644
+--- a/tools/gst-launch.c
++++ b/tools/gst-launch.c
+@@ -78,6 +78,7 @@ static gboolean eos_on_shutdown = FALSE;
+ static gchar **exclude_args = NULL;
+ 
+ /* pipeline status */
++static gboolean pending_async_done = FALSE;
+ static gboolean is_live = FALSE;
+ static gboolean buffering = FALSE;
+ static LaunchExitCode last_launch_code = LEC_NO_ERROR;
+@@ -737,12 +738,22 @@ bus_handler (GstBus * bus, GstMessage * message, gpointer data)
+             PRINT (_("Prerolled, waiting for progress to finish...\n"));
+             break;
+           }
++          if (pending_async_done) {
++            PRINT (_("Prerolled, waiting for async message to finish...\n"));
++            break;
++          }
+ 
+           do_initial_play (pipeline);
+         }
+         /* else not an interesting message */
+         break;
+       }
++      case GST_MESSAGE_ASYNC_DONE:
++      {
++        if (target_state == GST_STATE_PAUSED)
++          do_initial_play (pipeline);
++        break;
++      }
+       case GST_MESSAGE_BUFFERING:{
+         gint percent;
+ 
+@@ -1274,6 +1285,7 @@ main (int argc, char *argv[])
+         break;
+       case GST_STATE_CHANGE_ASYNC:
+         PRINT (_("Pipeline is PREROLLING ...\n"));
++        pending_async_done = TRUE;
+         break;
+       default:
+         break;
+-- 
+2.20.1
+
