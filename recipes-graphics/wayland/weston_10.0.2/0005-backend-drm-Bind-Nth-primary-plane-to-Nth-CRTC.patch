@@ -1,0 +1,48 @@
+From b19a3ce2e942bd534760a4316e4a26a5dc113f67 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 2 Apr 2021 11:23:36 +0800
+Subject: [PATCH 05/79] backend-drm: Bind Nth primary plane to Nth CRTC
+
+The vop2 allows primary planes to bind with random CRTC, but we need to
+use the same pair as the driver registered.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm.c | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 4278770..e557d41 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -842,10 +842,26 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
+ 			      enum wdrm_plane_type type)
+ {
+ 	struct drm_plane *plane;
++	int num_primary;
+ 
+-	wl_list_for_each(plane, &b->plane_list, link) {
++	num_primary = 0;
++	wl_list_for_each_reverse(plane, &b->plane_list, link) {
+ 		struct drm_output *tmp;
+ 		bool found_elsewhere = false;
++		bool is_primary = plane->type == WDRM_PLANE_TYPE_PRIMARY;
++
++		if (is_primary)
++			num_primary ++;
++
++		/**
++		 * HACK: Assuming Nth primary plane (or cursor) is the primary
++		 * plane for the Nth crtc.
++		 * See:
++		 * https://lore.kernel.org/dri-devel/20200807090706.GA2352366@phenom.ffwll.local/
++		 */
++		if (type == WDRM_PLANE_TYPE_PRIMARY &&
++		    num_primary - 1 != output->crtc->pipe)
++			continue;
+ 
+ 		if (plane->type != type)
+ 			continue;
+-- 
+2.20.1
+

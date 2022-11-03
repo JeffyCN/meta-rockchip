@@ -1,0 +1,61 @@
+From d4c7770214227985ca61182ec5096b764bd1f1a8 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 23 Oct 2020 17:37:04 +0800
+Subject: [PATCH 34/79] backend-drm: Support using ARGB8888 gbm_format
+
+Tested with:
+/etc/xdg/weston/weston.ini:
+[core]
+gbm-format=argb8888
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm-gbm.c | 8 ++++++--
+ libweston/backend-drm/drm.c     | 3 +++
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/libweston/backend-drm/drm-gbm.c b/libweston/backend-drm/drm-gbm.c
+index ecc7a5f..bcc2b17 100644
+--- a/libweston/backend-drm/drm-gbm.c
++++ b/libweston/backend-drm/drm-gbm.c
+@@ -282,8 +282,10 @@ drm_output_render_gl(struct drm_output_state *state, pixman_region32_t *damage)
+ {
+ 	struct drm_output *output = state->output;
+ 	struct drm_backend *b = to_drm_backend(output->base.compositor);
++	const struct pixel_format_info *format;
+ 	struct gbm_bo *bo;
+ 	struct drm_fb *ret;
++	bool is_opaque;
+ 
+ 	output->base.compositor->renderer->repaint_output(&output->base,
+ 							  damage);
+@@ -295,8 +297,10 @@ drm_output_render_gl(struct drm_output_state *state, pixman_region32_t *damage)
+ 		return NULL;
+ 	}
+ 
+-	/* The renderer always produces an opaque image. */
+-	ret = drm_fb_get_from_bo(bo, b, true, BUFFER_GBM_SURFACE);
++	format = pixel_format_get_info(output->gbm_format);
++	is_opaque = format && pixel_format_is_opaque(format);
++
++	ret = drm_fb_get_from_bo(bo, b, is_opaque, BUFFER_GBM_SURFACE);
+ 	if (!ret) {
+ 		weston_log("failed to get drm_fb for bo\n");
+ 		gbm_surface_release_buffer(output->gbm_surface, bo);
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 3667b8d..df9db5c 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -1554,6 +1554,9 @@ drm_output_init_pixman(struct drm_output *output, struct drm_backend *b)
+ 	};
+ 
+ 	switch (format) {
++		case DRM_FORMAT_ARGB8888:
++			pixman_format = PIXMAN_a8r8g8b8;
++			break;
+ 		case DRM_FORMAT_XRGB8888:
+ 			pixman_format = PIXMAN_x8r8g8b8;
+ 			break;
+-- 
+2.20.1
+

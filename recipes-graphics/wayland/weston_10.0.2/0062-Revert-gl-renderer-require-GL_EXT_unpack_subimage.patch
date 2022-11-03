@@ -1,0 +1,94 @@
+From 363ab921c577c045cc50b2e90eeca1cfc4abcaee Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 27 Apr 2022 22:59:32 +0800
+Subject: [PATCH 62/79] Revert "gl-renderer: require GL_EXT_unpack_subimage"
+
+This reverts commit 593d5af43a8e2c2a3371088fa7ae430d0517c82d.
+
+For old mali, e.g. utgard.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/renderer-gl/gl-renderer-internal.h |  2 ++
+ libweston/renderer-gl/gl-renderer.c          | 30 ++++++++++++++++----
+ 2 files changed, 26 insertions(+), 6 deletions(-)
+
+diff --git a/libweston/renderer-gl/gl-renderer-internal.h b/libweston/renderer-gl/gl-renderer-internal.h
+index e7e1693..ebeaadb 100644
+--- a/libweston/renderer-gl/gl-renderer-internal.h
++++ b/libweston/renderer-gl/gl-renderer-internal.h
+@@ -133,6 +133,8 @@ struct gl_renderer {
+ 	PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC create_platform_window;
+ 	bool has_platform_base;
+ 
++	bool has_unpack_subimage;
++
+ 	PFNEGLBINDWAYLANDDISPLAYWL bind_display;
+ 	PFNEGLUNBINDWAYLANDDISPLAYWL unbind_display;
+ 	PFNEGLQUERYWAYLANDBUFFERWL query_buffer;
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index ac79edd..c0863c1 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -1920,8 +1920,8 @@ gl_renderer_flush_damage(struct weston_surface *surface)
+ {
+ 	const struct weston_testsuite_quirks *quirks =
+ 		&surface->compositor->test_data.test_quirks;
+-	struct gl_surface_state *gs = get_surface_state(surface);
+ 	struct gl_renderer *gr = get_renderer(surface->compositor);
++	struct gl_surface_state *gs = get_surface_state(surface);
+ 	struct weston_buffer *buffer = gs->buffer_ref.buffer;
+ 	struct weston_view *view;
+ 	bool texture_used;
+@@ -1962,6 +1962,24 @@ gl_renderer_flush_damage(struct weston_surface *surface)
+ 
+ 	glActiveTexture(GL_TEXTURE0);
+ 
++	if (!gr->has_unpack_subimage) {
++		wl_shm_buffer_begin_access(buffer->shm_buffer);
++		for (j = 0; j < gs->num_textures; j++) {
++			glBindTexture(GL_TEXTURE_2D, gs->textures[j]);
++			glTexImage2D(GL_TEXTURE_2D, 0,
++				     gs->gl_format[j],
++				     gs->pitch / gs->hsub[j],
++				     buffer->height / gs->vsub[j],
++				     0,
++				     gl_format_from_internal(gs->gl_format[j]),
++				     gs->gl_pixel_type,
++				     data + gs->offset[j]);
++		}
++		wl_shm_buffer_end_access(buffer->shm_buffer);
++
++		goto done;
++	}
++
+ 	if (gs->needs_full_upload || quirks->gl_force_full_upload) {
+ 		glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, 0);
+ 		glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, 0);
+@@ -4087,11 +4105,9 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
+ 	else
+ 		ec->read_format = PIXMAN_a8b8g8r8;
+ 
+-	if (gr->gl_version < gr_gl_version(3, 0) &&
+-	    !weston_check_egl_extension(extensions, "GL_EXT_unpack_subimage")) {
+-		weston_log("GL_EXT_unpack_subimage not available.\n");
+-		return -1;
+-	}
++	if (gr->gl_version >= gr_gl_version(3, 0) ||
++	    weston_check_egl_extension(extensions, "GL_EXT_unpack_subimage"))
++		gr->has_unpack_subimage = true;
+ 
+ 	if (gr->gl_version >= gr_gl_version(3, 0) ||
+ 	    weston_check_egl_extension(extensions, "GL_EXT_texture_type_2_10_10_10_REV"))
+@@ -4132,6 +4148,8 @@ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface)
+ 		   gr_gl_version_minor(gr->gl_version));
+ 	weston_log_continue(STAMP_SPACE "read-back format: %s\n",
+ 		ec->read_format == PIXMAN_a8r8g8b8 ? "BGRA" : "RGBA");
++	weston_log_continue(STAMP_SPACE "wl_shm sub-image to texture: %s\n",
++			    gr->has_unpack_subimage ? "yes" : "no");
+ 	weston_log_continue(STAMP_SPACE "EGL Wayland extension: %s\n",
+ 			    gr->has_bind_display ? "yes" : "no");
+ 
+-- 
+2.20.1
+

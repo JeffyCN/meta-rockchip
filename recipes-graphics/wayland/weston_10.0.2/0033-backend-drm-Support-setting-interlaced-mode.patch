@@ -1,0 +1,107 @@
+From 7e43521bb942516f810dde29745ba9f8360708e0 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 21 Oct 2020 15:27:38 +0800
+Subject: [PATCH 33/79] backend-drm: Support setting interlaced mode
+
+Tested with:
+echo "output:HDMI-A-1:mode=1920x1080i" > /tmp/.weston_drm.conf
+> Output HDMI-A-1 changed to 1920x1080i@60 for mode(1920x1080i)
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm.c   |  4 ++--
+ libweston/backend-drm/modes.c | 24 ++++++++++++++----------
+ 2 files changed, 16 insertions(+), 12 deletions(-)
+
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index e829d77..3667b8d 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -3575,9 +3575,9 @@ drm_output_modeset(struct drm_output *output, const char *modeline)
+ 
+ 	mode = to_drm_mode(output->base.current_mode);
+ 
+-	weston_log("Output %s changed to %dx%d@%d for mode(%s)\n",
++	weston_log("Output %s changed to %s@%d for mode(%s)\n",
+ 		   output->base.name,
+-		   mode->mode_info.hdisplay, mode->mode_info.vdisplay,
++		   mode->mode_info.name,
+ 		   mode->mode_info.vrefresh,
+ 		   modeline);
+ 
+diff --git a/libweston/backend-drm/modes.c b/libweston/backend-drm/modes.c
+index ff7421d..25f61b8 100644
+--- a/libweston/backend-drm/modes.c
++++ b/libweston/backend-drm/modes.c
+@@ -450,9 +450,8 @@ drm_output_print_modes(struct drm_output *output)
+ 		dm = to_drm_mode(m);
+ 
+ 		aspect_ratio = aspect_ratio_to_string(m->aspect_ratio);
+-		weston_log_continue(STAMP_SPACE "%dx%d@%.1f%s%s%s, %.1f MHz\n",
+-				    dm->mode_info.hdisplay,
+-				    dm->mode_info.vdisplay,
++		weston_log_continue(STAMP_SPACE "%s@%.1f%s%s%s, %.1f MHz\n",
++				    dm->mode_info.name,
+ 				    m->refresh / 1000.0,
+ 				    aspect_ratio,
+ 				    m->flags & WL_OUTPUT_MODE_PREFERRED ?
+@@ -495,11 +494,14 @@ drm_output_choose_mode(struct drm_output *output,
+ 	enum weston_mode_aspect_ratio target_aspect = WESTON_MODE_PIC_AR_NONE;
+ 	struct drm_backend *b;
+ 
++#define WESTON_MODE_NAME(mode) \
++	to_drm_mode(mode)->mode_info.name
++
+ 	b = to_drm_backend(output->base.compositor);
+ 	target_aspect = target_mode->aspect_ratio;
+ 	src_aspect = output->base.current_mode->aspect_ratio;
+-	if (output->base.current_mode->width == target_mode->width &&
+-	    output->base.current_mode->height == target_mode->height &&
++	if (!strcmp(WESTON_MODE_NAME(output->base.current_mode),
++		    WESTON_MODE_NAME(target_mode)) &&
+ 	    (output->base.current_mode->refresh == target_mode->refresh ||
+ 	     target_mode->refresh == 0)) {
+ 		if (!b->aspect_ratio_supported || src_aspect == target_aspect)
+@@ -509,8 +511,8 @@ drm_output_choose_mode(struct drm_output *output,
+ 	wl_list_for_each(mode, &output->base.mode_list, base.link) {
+ 
+ 		src_aspect = mode->base.aspect_ratio;
+-		if (mode->mode_info.hdisplay == target_mode->width &&
+-		    mode->mode_info.vdisplay == target_mode->height) {
++		if (!strcmp(mode->mode_info.name,
++			    WESTON_MODE_NAME(target_mode))) {
+ 			if (mode->base.refresh == target_mode->refresh ||
+ 			    target_mode->refresh == 0) {
+ 				if (!b->aspect_ratio_supported ||
+@@ -584,6 +586,7 @@ drm_output_choose_initial_mode(struct drm_backend *backend,
+ 	struct drm_mode *best = NULL;
+ 	struct drm_mode *drm_mode;
+ 	drmModeModeInfo drm_modeline;
++	char name[16] = {0};
+ 	int32_t width = 0;
+ 	int32_t height = 0;
+ 	uint32_t refresh = 0;
+@@ -593,7 +596,9 @@ drm_output_choose_initial_mode(struct drm_backend *backend,
+ 	int n;
+ 
+ 	if (mode == WESTON_DRM_BACKEND_OUTPUT_PREFERRED && modeline) {
+-		n = sscanf(modeline, "%dx%d@%d %u:%u", &width, &height,
++		sscanf(modeline, "%12[^@pP]", name);
++
++		n = sscanf(modeline, "%dx%d%*[^0-9]%d %u:%u", &width, &height,
+ 			   &refresh, &aspect_width, &aspect_height);
+ 		if (backend->aspect_ratio_supported && n == 5) {
+ 			if (aspect_width == 4 && aspect_height == 3)
+@@ -623,8 +628,7 @@ drm_output_choose_initial_mode(struct drm_backend *backend,
+ 	}
+ 
+ 	wl_list_for_each_reverse(drm_mode, &output->base.mode_list, base.link) {
+-		if (width == drm_mode->mode_info.hdisplay &&
+-		    height == drm_mode->mode_info.vdisplay &&
++		if (!strcmp(name, drm_mode->mode_info.name) &&
+ 		    (refresh == 0 || refresh == drm_mode->mode_info.vrefresh)) {
+ 			if (!backend->aspect_ratio_supported ||
+ 			    aspect_ratio == drm_mode->base.aspect_ratio)
+-- 
+2.20.1
+

@@ -1,0 +1,93 @@
+From 6527d1d6c7809bb50213778cac81228523a9d9e1 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 3 Jul 2020 12:37:37 +0800
+Subject: [PATCH 26/79] backend-drm: Support controlling compositor dynamically
+
+Use config file to control compositor's state.
+
+Default config file is "/tmp/.weston_drm.conf", can override with
+"WESTON_DRM_CONFIG" environment.
+
+Supported configs format is "compositor:<key>:<value>", for
+example:
+echo "compositor:state:sleep" > /tmp/.weston_drm.conf
+echo "compositor:state:block" > /tmp/.weston_drm.conf
+echo "compositor:state:freeze" > /tmp/.weston_drm.conf
+echo "compositor:state:off" > /tmp/.weston_drm.conf
+echo "compositor:state:on" > /tmp/.weston_drm.conf
+echo "compositor:hotplug:off" > /tmp/.weston_drm.conf
+echo "compositor:hotplug:on" > /tmp/.weston_drm.conf
+echo "compositor:hotplug:force" > /tmp/.weston_drm.conf
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm.c | 39 ++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 38 insertions(+), 1 deletion(-)
+
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 1d6f7db..53a3d49 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -3691,6 +3691,39 @@ config_handle_output(struct drm_backend *b, const char *name,
+ 	}
+ }
+ 
++static void
++config_handle_compositor(struct drm_backend *b, const char *key,
++			 const char *value)
++{
++	if (!strncmp(key, "state", strlen("state"))) {
++		if (!strncmp(value, "sleep", strlen("sleep"))) {
++			weston_compositor_sleep(b->compositor);
++		} else if (!strncmp(value, "block", strlen("block"))) {
++			udev_input_disable(&b->input);
++		} else if (!strncmp(value, "freeze", strlen("freeze"))) {
++			udev_input_disable(&b->input);
++			weston_compositor_offscreen(b->compositor);
++		} else if (!strncmp(value, "off", strlen("off"))) {
++			udev_input_disable(&b->input);
++			weston_compositor_sleep(b->compositor);
++		} else {
++			weston_compositor_wake(b->compositor);
++			weston_compositor_damage_all(b->compositor);
++
++			if (b->input.suspended)
++				udev_input_enable(&b->input);
++		}
++	} else if (!strncmp(key, "hotplug", strlen("hotplug"))) {
++		if (!strncmp(value, "off", strlen("off")))
++			wl_event_source_fd_update(b->udev_drm_source, 0);
++		else if (!strncmp(value, "on", strlen("on")))
++			wl_event_source_fd_update(b->udev_drm_source,
++						  WL_EVENT_READABLE);
++		else if (!strncmp(value, "force", strlen("force")))
++			hotplug_timer_handler(b);
++	}
++}
++
+ static int
+ config_timer_handler(void *data)
+ {
+@@ -3722,7 +3755,9 @@ config_timer_handler(void *data)
+ 
+ 	/**
+ 	 * Parse configs, formated with <type>:<key>:<value>
+-	 * For example: "output:all:rotate90"
++	 * For example:
++	 *	output:all:rotate90
++	 *	compositor:state:off
+ 	 */
+ 	while (3 == fscanf(conf_fp,
+ 			   "%" STR(MAX_CONF_LEN) "[^:]:"
+@@ -3730,6 +3765,8 @@ config_timer_handler(void *data)
+ 			   "%" STR(MAX_CONF_LEN) "s ", type, key, value)) {
+ 		if (!strcmp(type, "output"))
+ 			config_handle_output(b, key, value);
++		else if (!strcmp(type, "compositor"))
++			config_handle_compositor(b, key, value);
+ 	}
+ 
+ 	fclose(conf_fp);
+-- 
+2.20.1
+

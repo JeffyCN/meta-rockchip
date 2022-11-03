@@ -1,0 +1,80 @@
+From f938f8c7d225535ad41058e38b699cb712a3eb03 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 1 Jun 2022 11:28:24 +0800
+Subject: [PATCH 66/79] desktop-shell: Delay locking when having pending
+ fade-out animations
+
+Avoid "unexpectedly large timestamp jump" warning when resuming with
+multi-head.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ desktop-shell/shell.c         | 14 +++++++++++++-
+ include/libweston/libweston.h |  1 +
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
+index 0643418..eca22c6 100644
+--- a/desktop-shell/shell.c
++++ b/desktop-shell/shell.c
+@@ -4018,18 +4018,24 @@ shell_fade_done_for_output(struct weston_view_animation *animation, void *data)
+ {
+ 	struct shell_output *shell_output = data;
+ 	struct desktop_shell *shell = shell_output->shell;
++	struct weston_compositor *compositor = shell->compositor;
++
++	if (shell_output->fade.type == FADE_OUT)
++		shell->compositor->pending_fade_out --;
+ 
+ 	if (!shell_output->fade.view)
+ 		return;
+ 
+ 	shell_output->fade.animation = NULL;
++
+ 	switch (shell_output->fade.type) {
+ 	case FADE_IN:
+ 		weston_surface_destroy(shell_output->fade.view->surface);
+ 		shell_output->fade.view = NULL;
+ 		break;
+ 	case FADE_OUT:
+-		lock(shell);
++		if (!compositor->pending_fade_out)
++			lock(shell);
+ 		break;
+ 	default:
+ 		break;
+@@ -4131,6 +4137,9 @@ shell_fade(struct desktop_shell *shell, enum fade_type type)
+ 		} else if (shell_output->fade.animation) {
+ 			weston_fade_update(shell_output->fade.animation, tint);
+ 		} else {
++			if (type == FADE_OUT)
++				shell->compositor->pending_fade_out ++;
++
+ 			shell_output->fade.animation =
+ 				weston_fade_run(shell_output->fade.view,
+ 						1.0 - tint, tint, 300.0,
+@@ -4878,6 +4887,9 @@ shell_output_destroy(struct shell_output *shell_output)
+ 	if (shell_output->fade.animation) {
+ 		weston_view_animation_destroy(shell_output->fade.animation);
+ 		shell_output->fade.animation = NULL;
++
++		if (shell_output->fade.type == FADE_OUT)
++			shell->compositor->pending_fade_out --;
+ 	}
+ 
+ 	if (shell_output->fade.view) {
+diff --git a/include/libweston/libweston.h b/include/libweston/libweston.h
+index 4e8bfec..74dec9d 100644
+--- a/include/libweston/libweston.h
++++ b/include/libweston/libweston.h
+@@ -1207,6 +1207,7 @@ struct weston_compositor {
+ 	struct weston_output *prefer_output;
+ 
+ 	bool warm_up;
++	uint32_t pending_fade_out;
+ };
+ 
+ struct weston_buffer {
+-- 
+2.20.1
+

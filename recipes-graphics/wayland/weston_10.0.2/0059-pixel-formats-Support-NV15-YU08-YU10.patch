@@ -1,0 +1,62 @@
+From eaa1f13dfdd0679fbb6d48e3521a0a1d50fe9f07 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 7 Mar 2022 18:22:04 +0800
+Subject: [PATCH 59/79] pixel-formats: Support NV15/YU08/YU10
+
+Only for importing dmabuf to drm fb.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/pixel-formats.c | 12 ++++++++++++
+ libweston/pixel-formats.h | 12 ++++++++++++
+ 2 files changed, 24 insertions(+)
+
+diff --git a/libweston/pixel-formats.c b/libweston/pixel-formats.c
+index 85fae20..18f9c0e 100644
+--- a/libweston/pixel-formats.c
++++ b/libweston/pixel-formats.c
+@@ -485,6 +485,18 @@ static const struct pixel_format_info pixel_format_table[] = {
+ 		.num_planes = 3,
+ 		.chroma_order = ORDER_VU,
+ 	},
++	{
++		DRM_FORMAT(NV15),
++		.num_planes = 1,
++	},
++	{
++		DRM_FORMAT(YUV420_8BIT),
++		.num_planes = 1,
++	},
++	{
++		DRM_FORMAT(YUV420_10BIT),
++		.num_planes = 1,
++	},
+ };
+ 
+ WL_EXPORT const struct pixel_format_info *
+diff --git a/libweston/pixel-formats.h b/libweston/pixel-formats.h
+index 0b1a5f5..4592ce3 100644
+--- a/libweston/pixel-formats.h
++++ b/libweston/pixel-formats.h
+@@ -28,6 +28,18 @@
+ #include <stdbool.h>
+ #include <pixman.h>
+ 
++#ifndef DRM_FORMAT_NV15
++#define DRM_FORMAT_NV15 fourcc_code('N', 'V', '1', '5')
++#endif
++
++#ifndef DRM_FORMAT_YUV420_8BIT
++#define DRM_FORMAT_YUV420_8BIT fourcc_code('Y', 'U', '0', '8')
++#endif
++
++#ifndef DRM_FORMAT_YUV420_10BIT
++#define DRM_FORMAT_YUV420_10BIT fourcc_code('Y', 'U', '1', '0')
++#endif
++
+ /**
+  * Contains information about pixel formats, mapping format codes from
+  * wl_shm and drm_fourcc.h (which are deliberately identical, but for the
+-- 
+2.20.1
+

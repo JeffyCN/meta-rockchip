@@ -1,0 +1,430 @@
+From c4b8f02cca601a25767de29392940f0dc5ef2e24 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 7 May 2020 08:55:42 +0800
+Subject: [PATCH 20/79] HACK: Support setting surface flags activate and alpha
+
+Support setting surface flags activate and alpha through app_id or
+title, for example:
+
+xdg_toplevel_set_app_id("flags=stay-on-top|stay-on-bottom|no-focus")
+xdg_toplevel_set_title("requests=activate")
+xdg_toplevel_set_app_id("attrs=alpha:0.5")
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ desktop-shell/shell.c         |  29 ++++-
+ desktop-shell/shell.h         |   2 +
+ include/libweston/libweston.h |  13 +++
+ libweston-desktop/surface.c   | 193 ++++++++++++++++++++++++++++++++++
+ libweston/compositor.c        |  10 +-
+ 5 files changed, 244 insertions(+), 3 deletions(-)
+
+diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
+index 8b4ed45..4cb29dd 100644
+--- a/desktop-shell/shell.c
++++ b/desktop-shell/shell.c
+@@ -1895,6 +1895,11 @@ shell_surface_update_layer(struct shell_surface *shsurf)
+ 
+ 	new_layer_link = shell_surface_calculate_layer_link(shsurf);
+ 
++	if (surface->flags & SURFACE_STAY_ON_TOP)
++		new_layer_link = &shsurf->shell->top_layer.view_list;
++	else if (surface->flags & SURFACE_STAY_ON_BOTTOM)
++		new_layer_link = &shsurf->shell->bottom_layer.view_list;
++
+ 	if (new_layer_link == NULL)
+ 		return;
+ 	if (new_layer_link == &shsurf->view->layer_link)
+@@ -3220,6 +3225,10 @@ resume_desktop(struct desktop_shell *shell)
+ 	weston_layer_set_position(&shell->panel_layer,
+ 				  WESTON_LAYER_POSITION_UI);
+ 	weston_layer_set_position(&ws->layer, WESTON_LAYER_POSITION_NORMAL);
++	weston_layer_set_position(&shell->top_layer,
++				  WESTON_LAYER_POSITION_TOP_UI);
++	weston_layer_set_position(&shell->bottom_layer,
++				  WESTON_LAYER_POSITION_BOTTOM_UI);
+ 
+ 	restore_focus_state(shell, get_current_workspace(shell));
+ 
+@@ -3781,7 +3790,7 @@ activate(struct desktop_shell *shell, struct weston_view *view,
+ 	struct weston_surface *main_surface;
+ 	struct focus_state *state;
+ 	struct workspace *ws;
+-	struct weston_surface *old_es;
++	struct weston_surface *old_es = NULL;
+ 	struct shell_surface *shsurf, *shsurf_child;
+ 	struct shell_seat *shseat = get_shell_seat(seat);
+ 
+@@ -3801,6 +3810,9 @@ activate(struct desktop_shell *shell, struct weston_view *view,
+ 	if (shsurf->output)
+ 		lower_fullscreen_layer(shell, shsurf->output);
+ 
++	if (view->surface->flags & SURFACE_NO_FOCUS)
++		goto no_focus;
++
+ 	weston_view_activate_input(view, seat, flags);
+ 
+ 	if (shseat && shseat->focused_surface) {
+@@ -3821,6 +3833,7 @@ activate(struct desktop_shell *shell, struct weston_view *view,
+ 	old_es = state->keyboard_focus;
+ 	focus_state_set_focus(state, es);
+ 
++no_focus:
+ 	if (weston_desktop_surface_get_fullscreen(shsurf->desktop_surface) &&
+ 	    flags & WESTON_ACTIVATE_FLAG_CONFIGURE)
+ 		shell_configure_fullscreen(shsurf);
+@@ -3829,7 +3842,7 @@ activate(struct desktop_shell *shell, struct weston_view *view,
+ 	 * order as appropriate. */
+ 	shell_surface_update_layer(shsurf);
+ 
+-	if (shell->focus_animation_type != ANIMATION_NONE) {
++	if (old_es && shell->focus_animation_type != ANIMATION_NONE) {
+ 		ws = get_current_workspace(shell);
+ 		animate_focus_change(shell, ws, get_default_view(old_es), get_default_view(es));
+ 	}
+@@ -3942,6 +3955,8 @@ lock(struct desktop_shell *shell)
+ 	if (shell->showing_input_panels)
+ 		weston_layer_unset_position(&shell->input_panel_layer);
+ 	weston_layer_unset_position(&ws->layer);
++	weston_layer_unset_position(&shell->top_layer);
++	weston_layer_unset_position(&shell->bottom_layer);
+ 
+ 	weston_layer_set_position(&shell->lock_layer,
+ 				  WESTON_LAYER_POSITION_LOCK);
+@@ -4822,6 +4837,8 @@ shell_for_each_layer(struct desktop_shell *shell,
+ 	func(shell, &shell->background_layer, data);
+ 	func(shell, &shell->lock_layer, data);
+ 	func(shell, &shell->input_panel_layer, data);
++	func(shell, &shell->top_layer, data);
++	func(shell, &shell->bottom_layer, data);
+ 
+ 	wl_array_for_each(ws, &shell->workspaces.array)
+ 		func(shell, &(*ws)->layer, data);
+@@ -5115,6 +5132,8 @@ shell_destroy(struct wl_listener *listener, void *data)
+ 		workspace_destroy(*ws);
+ 	wl_array_release(&shell->workspaces.array);
+ 
++	desktop_shell_destroy_layer(&shell->bottom_layer);
++	desktop_shell_destroy_layer(&shell->top_layer);
+ 	desktop_shell_destroy_layer(&shell->panel_layer);
+ 	desktop_shell_destroy_layer(&shell->background_layer);
+ 	desktop_shell_destroy_layer(&shell->lock_layer);
+@@ -5270,6 +5289,8 @@ wet_shell_init(struct weston_compositor *ec,
+ 	weston_layer_init(&shell->background_layer, ec);
+ 	weston_layer_init(&shell->lock_layer, ec);
+ 	weston_layer_init(&shell->input_panel_layer, ec);
++	weston_layer_init(&shell->top_layer, ec);
++	weston_layer_init(&shell->bottom_layer, ec);
+ 
+ 	weston_layer_set_position(&shell->fullscreen_layer,
+ 				  WESTON_LAYER_POSITION_FULLSCREEN);
+@@ -5277,6 +5298,10 @@ wet_shell_init(struct weston_compositor *ec,
+ 				  WESTON_LAYER_POSITION_UI);
+ 	weston_layer_set_position(&shell->background_layer,
+ 				  WESTON_LAYER_POSITION_BACKGROUND);
++	weston_layer_set_position(&shell->top_layer,
++				  WESTON_LAYER_POSITION_TOP_UI);
++	weston_layer_set_position(&shell->bottom_layer,
++				  WESTON_LAYER_POSITION_BOTTOM_UI);
+ 
+ 	wl_array_init(&shell->workspaces.array);
+ 	wl_list_init(&shell->workspaces.client_list);
+diff --git a/desktop-shell/shell.h b/desktop-shell/shell.h
+index b06b906..e0a0620 100644
+--- a/desktop-shell/shell.h
++++ b/desktop-shell/shell.h
+@@ -148,6 +148,8 @@ struct desktop_shell {
+ 	struct weston_layer background_layer;
+ 	struct weston_layer lock_layer;
+ 	struct weston_layer input_panel_layer;
++	struct weston_layer top_layer;
++	struct weston_layer bottom_layer;
+ 
+ 	struct wl_listener pointer_focus_listener;
+ 	struct weston_surface *grab_surface;
+diff --git a/include/libweston/libweston.h b/include/libweston/libweston.h
+index 24e44a2..7bc01e3 100644
+--- a/include/libweston/libweston.h
++++ b/include/libweston/libweston.h
+@@ -1469,6 +1469,14 @@ struct weston_pointer_constraint {
+ 	struct wl_listener surface_activate_listener;
+ };
+ 
++enum weston_surface_flags {
++	SURFACE_NO_FOCUS	= 1 << 0,
++	SURFACE_STAY_ON_TOP	= 1 << 1,
++	SURFACE_STAY_ON_BOTTOM	= 1 << 2,
++	SURFACE_BLOCKED		= 1 << 3,
++	SURFACE_TRANS_INPUT	= 1 << 4,
++};
++
+ struct weston_surface {
+ 	struct wl_resource *resource;
+ 	struct wl_signal destroy_signal; /* callback argument: this surface */
+@@ -1575,6 +1583,11 @@ struct weston_surface {
+ 
+ 	/* Transparent hole region(excluding it's lower subsurface area) */
+ 	pixman_region32_t hole;
++
++	/* Hacky surface flags */
++	enum weston_surface_flags flags;
++
++	double alpha;
+ };
+ 
+ struct weston_subsurface {
+diff --git a/libweston-desktop/surface.c b/libweston-desktop/surface.c
+index 21ff080..e86ef52 100644
+--- a/libweston-desktop/surface.c
++++ b/libweston-desktop/surface.c
+@@ -695,12 +695,202 @@ weston_desktop_surface_set_position(struct weston_desktop_surface *surface,
+ 		weston_view_set_position(view->view, x, y);
+ }
+ 
++static bool
++weston_desktop_surface_set_flags(struct weston_desktop_surface *surface,
++				 char *s)
++{
++	struct weston_surface *wsurface = surface->surface;
++	char *p;
++
++#define SURFACE_FLAG_PREFIX "flags="
++	s = strstr(s, SURFACE_FLAG_PREFIX);
++	if (!s)
++		return false;
++
++	s += strlen(SURFACE_FLAG_PREFIX);
++
++	p = strtok(s, "|");
++	while (p) {
++		enum weston_surface_flags flag = 0;
++		bool clear = false;
++
++		switch (p[0]) {
++		case ';':
++			/* fall through */
++		case '&':
++			return true;
++		case '-':
++			clear = true;
++			/* fall through */
++		case '+':
++			p++;
++		default:
++			break;
++		}
++
++		if (!strcmp(p, "no-focus"))
++			flag = SURFACE_NO_FOCUS;
++		else if (!strcmp(p, "stay-on-top"))
++			flag = SURFACE_STAY_ON_TOP;
++		else if (!strcmp(p, "stay-on-bottom"))
++			flag = SURFACE_STAY_ON_BOTTOM;
++		else if (!strcmp(p, "blocked"))
++			flag = SURFACE_BLOCKED;
++		else if (!strcmp(p, "trans-input"))
++			flag = SURFACE_TRANS_INPUT;
++		else
++			weston_log("%s: warning: unsupported flag: %s\n",
++				   __func__, p);
++
++		if (clear)
++			wsurface->flags &= ~flag;
++		else
++			wsurface->flags |= flag;
++
++		p = strtok(NULL, "|");
++	};
++
++	return true;
++}
++
++static bool
++weston_desktop_surface_set_requests(struct weston_desktop_surface *surface,
++				    char *s)
++{
++	struct weston_surface *wsurface = surface->surface;
++	char *p;
++
++#define SURFACE_REQUEST_PREFIX "requests="
++	s = strstr(s, SURFACE_REQUEST_PREFIX);
++	if (!s)
++		return false;
++
++	s += strlen(SURFACE_REQUEST_PREFIX);
++
++	p = strtok(s, "|");
++	while (p) {
++		switch (p[0]) {
++		case ';':
++			/* fall through */
++		case '&':
++			return true;
++		default:
++			break;
++		}
++
++		if (!strcmp(p, "activate")) {
++			if (weston_surface_is_mapped(wsurface))
++				weston_surface_unmap(wsurface);
++
++			weston_desktop_api_committed(surface->desktop,
++						     surface, 0, 0);
++		} else {
++			weston_log("%s: warning: unsupported request: %s\n",
++				   __func__, p);
++		}
++
++		p = strtok(NULL, "|");
++	};
++
++	return true;
++}
++
++static void
++weston_surface_set_alpha(struct weston_surface *wsurface, float alpha)
++{
++	struct weston_subsurface *sub;
++	struct weston_view *view;
++
++	wsurface->alpha = alpha;
++	wsurface->is_opaque = !(alpha < 1.0);
++
++	wl_list_for_each(view, &wsurface->views,
++			 surface_link) {
++		view->alpha = alpha;
++		weston_view_geometry_dirty(view);
++	}
++
++	wl_list_for_each(sub, &wsurface->subsurface_list,
++			 parent_link) {
++		if (sub->surface != wsurface)
++			weston_surface_set_alpha(sub->surface, alpha);
++	}
++}
++
++static bool
++weston_desktop_surface_set_attrs(struct weston_desktop_surface *surface,
++				 char *s)
++{
++	struct weston_surface *wsurface = surface->surface;
++	char *p;
++
++#define SURFACE_ATTRS_PREFIX "attrs="
++	s = strstr(s, SURFACE_ATTRS_PREFIX);
++	if (!s)
++		return false;
++
++	s += strlen(SURFACE_ATTRS_PREFIX);
++
++	p = strtok(s, "|");
++	while (p) {
++		switch (p[0]) {
++		case ';':
++			/* fall through */
++		case '&':
++			return true;
++		default:
++			break;
++		}
++
++#define SURFACE_ATTR_ALPHA "alpha:"
++		if (!strncmp(p, SURFACE_ATTR_ALPHA,
++			     strlen(SURFACE_ATTR_ALPHA))) {
++			double alpha = atof(p + strlen(SURFACE_ATTR_ALPHA));
++
++			weston_surface_set_alpha(wsurface, alpha);
++		} else {
++			weston_log("%s: warning: unsupported attr: %s\n",
++				   __func__, p);
++		}
++
++		p = strtok(NULL, "|");
++	};
++
++	return true;
++}
++
++static bool
++weston_desktop_surface_handle_config(struct weston_desktop_surface *surface,
++				     const char *s)
++{
++	char *tmp;
++	bool handled = false;
++
++	tmp = strdup(s);
++	if (tmp == NULL)
++		return false;
++
++	handled |= weston_desktop_surface_set_flags(surface, tmp);
++
++	strcpy(tmp, s);
++	handled |= weston_desktop_surface_set_requests(surface, tmp);
++
++	strcpy(tmp, s);
++	handled |= weston_desktop_surface_set_attrs(surface, tmp);
++
++	free(tmp);
++	return handled;
++}
++
+ void
+ weston_desktop_surface_set_title(struct weston_desktop_surface *surface,
+ 				 const char *title)
+ {
+ 	char *tmp, *old;
+ 
++	if (weston_desktop_surface_handle_config(surface, title))
++		return;
++
+ 	tmp = strdup(title);
+ 	if (tmp == NULL)
+ 		return;
+@@ -717,6 +907,9 @@ weston_desktop_surface_set_app_id(struct weston_desktop_surface *surface,
+ {
+ 	char *tmp, *old;
+ 
++	if (weston_desktop_surface_handle_config(surface, app_id))
++		return;
++
+ 	tmp = strdup(app_id);
+ 	if (tmp == NULL)
+ 		return;
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index 0aa9d1a..b959424 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -412,7 +412,7 @@ weston_view_create(struct weston_surface *surface)
+ 
+ 	pixman_region32_init(&view->clip);
+ 
+-	view->alpha = 1.0;
++	view->alpha = surface->alpha;
+ 	pixman_region32_init(&view->transform.opaque);
+ 
+ 	wl_list_init(&view->geometry.transformation_list);
+@@ -608,6 +608,8 @@ weston_surface_create(struct weston_compositor *compositor)
+ 	surface->compositor = compositor;
+ 	surface->ref_count = 1;
+ 
++	surface->alpha = 1.0;
++
+ 	surface->buffer_viewport.buffer.transform = WL_OUTPUT_TRANSFORM_NORMAL;
+ 	surface->buffer_viewport.buffer.scale = 1;
+ 	surface->buffer_viewport.buffer.src_width = wl_fixed_from_int(-1);
+@@ -2217,6 +2219,12 @@ weston_compositor_pick_view(struct weston_compositor *compositor,
+ 						    view_ix, view_iy, NULL))
+ 			continue;
+ 
++		if (view->surface->flags & SURFACE_BLOCKED)
++			break;
++
++		if (view->surface->flags & SURFACE_TRANS_INPUT)
++			continue;
++
+ 		*vx = view_x;
+ 		*vy = view_y;
+ 		return view;
+-- 
+2.20.1
+

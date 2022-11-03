@@ -1,0 +1,32 @@
+From c0757c5bf57f4ba4566795682940767fec5e95b8 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 8 Aug 2022 15:46:35 +0800
+Subject: [PATCH 76/79] HACK: compositor: Allow mapping bufferless subsurfaces
+
+The current qtwayland needs it.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/compositor.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index fc8cef3..79a72bd 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -4493,6 +4493,12 @@ subsurface_committed(struct weston_surface *surface, int32_t dx, int32_t dy)
+ 	if (!weston_surface_is_mapped(surface)) {
+ 		surface->is_mapped = surface->buffer_ref.buffer != NULL;
+ 
++		/**
++		 * HACK: Allow mapping bufferless subsurfaces
++		 * See: https://bugreports.qt.io/browse/QTBUG-86229
++		 */
++		surface->is_mapped = true;
++
+ 		/* Cannot call weston_view_update_transform(),
+ 		 * because that would call it also for the parent surface,
+ 		 * which might not be mapped yet. That would lead to
+-- 
+2.20.1
+

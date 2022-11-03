@@ -1,0 +1,53 @@
+From 2c89288a271cb0db7ba6b9ded9cb444daa119234 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 28 Oct 2021 12:47:09 +0800
+Subject: [PATCH 51/79] HACK: Use negative value for dynamic repaint window
+
+Support using negative value for a vblank based dynamic repaint window:
+When negative, repaint-window = vblank-duration - abs(repaint-window)
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ compositor/main.c      | 2 +-
+ libweston/compositor.c | 9 ++++++++-
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/compositor/main.c b/compositor/main.c
+index 33dd4e5..558537e 100644
+--- a/compositor/main.c
++++ b/compositor/main.c
+@@ -1127,7 +1127,7 @@ weston_compositor_init_config(struct weston_compositor *ec,
+ 	s = weston_config_get_section(config, "core", NULL, NULL);
+ 	weston_config_section_get_int(s, "repaint-window", &repaint_msec,
+ 				      ec->repaint_msec);
+-	if (repaint_msec < -10 || repaint_msec > 1000) {
++	if (repaint_msec < -1000 || repaint_msec > 1000) {
+ 		weston_log("Invalid repaint_window value in config: %d\n",
+ 			   repaint_msec);
+ 	} else {
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index af69ab3..02cb51b 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -3288,10 +3288,17 @@ weston_output_finish_frame(struct weston_output *output,
+ 
+ 	output->frame_time = *stamp;
+ 
+-	timespec_add_nsec(&output->next_repaint, stamp, refresh_nsec);
++	/* HACK: Use negative value for dynamic repaint window */
++	if (compositor->repaint_msec > 0)
++		timespec_add_nsec(&output->next_repaint, stamp, refresh_nsec);
++
+ 	timespec_add_msec(&output->next_repaint, &output->next_repaint,
+ 			  -compositor->repaint_msec);
+ 	msec_rel = timespec_sub_to_msec(&output->next_repaint, &now);
++	if (msec_rel < 0) {
++		output->next_repaint = now;
++		msec_rel = 0;
++	}
+ 
+ 	if (msec_rel < -1000 || msec_rel > 1000) {
+ 		static bool warned;
+-- 
+2.20.1
+

@@ -1,0 +1,32 @@
+From f896699c8cdac55e0460c506ba633d22b9086626 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 5 Aug 2022 11:27:54 +0800
+Subject: [PATCH 75/79] gl-renderer: Clear RGB when alpha is zero in fast path
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/renderer-gl/fragment.glsl | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/libweston/renderer-gl/fragment.glsl b/libweston/renderer-gl/fragment.glsl
+index 4414b63..a90cbfa 100644
+--- a/libweston/renderer-gl/fragment.glsl
++++ b/libweston/renderer-gl/fragment.glsl
+@@ -253,8 +253,12 @@ main()
+ 		/* Fast path for disabled color management */
+ 
+ 		if (c_input_is_premult) {
+-			/* View alpha (opacity) */
+-			color *= alpha;
++			if (color.a == 0.0) {
++				color.rgb = vec3(0, 0, 0);
++			} else {
++				/* View alpha (opacity) */
++				color *= alpha;
++			}
+ 		} else {
+ 			/* View alpha (opacity) */
+ 			color.a *= alpha;
+-- 
+2.20.1
+

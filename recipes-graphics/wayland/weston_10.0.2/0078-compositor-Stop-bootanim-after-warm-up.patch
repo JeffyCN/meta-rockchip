@@ -1,0 +1,36 @@
+From 5810584bc2167652bada505ec11f509283103cc0 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 28 Sep 2022 10:44:07 +0800
+Subject: [PATCH 78/79] compositor: Stop bootanim after warm-up
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/compositor.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index 6e917f3..f0ddf80 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -2933,6 +2933,10 @@ weston_compositor_build_view_list(struct weston_compositor *compositor,
+ 				weston_log("seeing the first app\n");
+ 				compositor->warm_up = false;
+ 
++#define BOOTANIM "/usr/bin/bootanim"
++				if (!access(BOOTANIM, X_OK))
++					(void)!system(BOOTANIM " stop&");
++
+ 				/* Assuming it's a launcher */
+ 				view->surface->flags |= SURFACE_STAY_ON_BOTTOM;
+ 			}
+@@ -3200,6 +3204,7 @@ output_repaint_timer_handler(void *data)
+ 
+ 	if (!access(getenv("WESTON_FREEZE_DISPLAY") ? : "", F_OK)) {
+ 		usleep(DEFAULT_REPAINT_WINDOW * 1000);
++		weston_compositor_build_view_list(compositor, NULL);
+ 		goto out;
+ 	}
+ 
+-- 
+2.20.1
+

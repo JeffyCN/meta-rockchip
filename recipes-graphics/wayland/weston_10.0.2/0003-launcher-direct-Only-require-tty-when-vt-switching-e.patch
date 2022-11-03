@@ -1,0 +1,27 @@
+From 8ffe3afb0f41f07c69efa17bfce969d0d2255c9d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 7 Jan 2021 03:38:36 +0800
+Subject: [PATCH 03/79] launcher-direct: Only require tty when vt switching
+ enabled
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/launcher-direct.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libweston/launcher-direct.c b/libweston/launcher-direct.c
+index c04ba85..87fe826 100644
+--- a/libweston/launcher-direct.c
++++ b/libweston/launcher-direct.c
+@@ -318,7 +318,7 @@ launcher_direct_connect(struct weston_launcher **out, struct weston_compositor *
+ 	/* Checking the existance of /dev/tty0 and verifying it's a TTY
+ 	 * device, as kernels compiled with CONFIG_VT=0 do not create these
+ 	 * devices. */
+-	if (stat("/dev/tty0", &buf) == 0 &&
++	if (compositor->vt_switching && stat("/dev/tty0", &buf) == 0 &&
+ 	    strcmp("seat0", seat_id) == 0 && major(buf.st_rdev) == TTY_MAJOR) {
+ 		if (setup_tty(launcher, tty) == -1) {
+ 			free(launcher);
+-- 
+2.20.1
+

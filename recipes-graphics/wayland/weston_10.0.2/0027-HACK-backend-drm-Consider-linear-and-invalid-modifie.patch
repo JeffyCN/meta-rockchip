@@ -1,0 +1,235 @@
+From 9ae9bc0f952538ee7abd79798f608b1bb433f604 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 1 Sep 2020 08:51:17 +0800
+Subject: [PATCH 27/79] HACK: backend-drm: Consider linear and invalid modifier
+ are the same
+
+That is true with Rockchip BSP drivers and packages.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ clients/simple-dmabuf-egl.c         |  8 ++++++--
+ libweston/backend-drm/drm-gbm.c     |  3 ++-
+ libweston/backend-drm/drm-virtual.c |  8 +-------
+ libweston/backend-drm/fb.c          | 10 ++++++----
+ libweston/backend-drm/kms.c         |  2 +-
+ libweston/linux-dmabuf.h            |  4 ++++
+ libweston/pixman-renderer.c         |  4 ++--
+ libweston/renderer-gl/gl-renderer.c |  8 ++++----
+ 8 files changed, 26 insertions(+), 21 deletions(-)
+
+diff --git a/clients/simple-dmabuf-egl.c b/clients/simple-dmabuf-egl.c
+index ef0d9de..e984503 100644
+--- a/clients/simple-dmabuf-egl.c
++++ b/clients/simple-dmabuf-egl.c
+@@ -68,6 +68,9 @@
+ 
+ #define MAX_BUFFER_PLANES 4
+ 
++#define DRM_MOD_VALID(mod) \
++	((mod) != DRM_FORMAT_MOD_LINEAR && (mod) != DRM_FORMAT_MOD_INVALID)
++
+ struct display {
+ 	struct wl_display *display;
+ 	struct wl_registry *registry;
+@@ -265,7 +268,8 @@ create_fbo_for_buffer(struct display *display, struct buffer *buffer)
+ 	attribs[atti++] = (int) buffer->offsets[plane_idx]; \
+ 	attribs[atti++] = EGL_DMA_BUF_PLANE ## plane_idx ## _PITCH_EXT; \
+ 	attribs[atti++] = (int) buffer->strides[plane_idx]; \
+-	if (display->egl.has_dma_buf_import_modifiers) { \
++	if (DRM_MOD_VALID(buffer->modifier) && \
++	    display->egl.has_dma_buf_import_modifiers) { \
+ 		attribs[atti++] = EGL_DMA_BUF_PLANE ## plane_idx ## _MODIFIER_LO_EXT; \
+ 		attribs[atti++] = buffer->modifier & 0xFFFFFFFF; \
+ 		attribs[atti++] = EGL_DMA_BUF_PLANE ## plane_idx ## _MODIFIER_HI_EXT; \
+@@ -1008,7 +1012,7 @@ dmabuf_modifiers(void *data, struct zwp_linux_dmabuf_v1 *zwp_linux_dmabuf,
+ 
+ 	d->format_supported = true;
+ 
+-	if (modifier != DRM_FORMAT_MOD_INVALID) {
++	if (DRM_MOD_VALID(modifier)) {
+ 		++d->modifiers_count;
+ 		d->modifiers = realloc(d->modifiers,
+ 				       d->modifiers_count * sizeof(*d->modifiers));
+diff --git a/libweston/backend-drm/drm-gbm.c b/libweston/backend-drm/drm-gbm.c
+index d7bd05f..ecc7a5f 100644
+--- a/libweston/backend-drm/drm-gbm.c
++++ b/libweston/backend-drm/drm-gbm.c
+@@ -196,7 +196,8 @@ create_gbm_surface(struct gbm_device *gbm, struct drm_output *output)
+ 	}
+ 
+ #ifdef HAVE_GBM_MODIFIERS
+-	if (!weston_drm_format_has_modifier(fmt, DRM_FORMAT_MOD_INVALID)) {
++	if (!weston_drm_format_has_modifier(fmt, DRM_FORMAT_MOD_INVALID) &&
++	    !weston_drm_format_has_modifier(fmt, DRM_FORMAT_MOD_LINEAR)) {
+ 		modifiers = weston_drm_format_get_modifiers(fmt, &num_modifiers);
+ 		output->gbm_surface =
+ 			gbm_surface_create_with_modifiers(gbm,
+diff --git a/libweston/backend-drm/drm-virtual.c b/libweston/backend-drm/drm-virtual.c
+index 597e71c..20f6809 100644
+--- a/libweston/backend-drm/drm-virtual.c
++++ b/libweston/backend-drm/drm-virtual.c
+@@ -112,13 +112,7 @@ drm_virtual_plane_create(struct drm_backend *b, struct drm_output *output)
+ 	if (!fmt)
+ 		goto err;
+ 
+-	/* If output supports linear modifier, we add it to the plane.
+-	 * Otherwise we add DRM_FORMAT_MOD_INVALID, as explicit modifiers
+-	 * are not supported. */
+-	if ((output->gbm_bo_flags & GBM_BO_USE_LINEAR) && b->fb_modifiers)
+-		mod = DRM_FORMAT_MOD_LINEAR;
+-	else
+-		mod = DRM_FORMAT_MOD_INVALID;
++	mod = DRM_FORMAT_MOD_LINEAR;
+ 
+ 	if (weston_drm_format_add_modifier(fmt, mod) < 0)
+ 		goto err;
+diff --git a/libweston/backend-drm/fb.c b/libweston/backend-drm/fb.c
+index ba0c177..af31a8a 100644
+--- a/libweston/backend-drm/fb.c
++++ b/libweston/backend-drm/fb.c
+@@ -77,7 +77,7 @@ drm_fb_addfb(struct drm_backend *b, struct drm_fb *fb)
+ 
+ 	/* If we have a modifier set, we must only use the WithModifiers
+ 	 * entrypoint; we cannot import it through legacy ioctls. */
+-	if (b->fb_modifiers && fb->modifier != DRM_FORMAT_MOD_INVALID) {
++	if (b->fb_modifiers && DRM_MOD_VALID(fb->modifier)) {
+ 		/* KMS demands that if a modifier is set, it must be the same
+ 		 * for all planes. */
+ 		for (i = 0; i < ARRAY_LENGTH(mods) && fb->handles[i]; i++)
+@@ -150,7 +150,7 @@ drm_fb_create_dumb(struct drm_backend *b, int width, int height,
+ 		goto err_fb;
+ 
+ 	fb->type = BUFFER_PIXMAN_DUMB;
+-	fb->modifier = DRM_FORMAT_MOD_INVALID;
++	fb->modifier = DRM_FORMAT_MOD_LINEAR;
+ 	fb->handles[0] = create_arg.handle;
+ 	fb->strides[0] = create_arg.pitch;
+ 	fb->num_planes = 1;
+@@ -237,6 +237,7 @@ drm_fb_get_from_dmabuf(struct linux_dmabuf_buffer *dmabuf,
+ 		.modifier = dmabuf->attributes.modifier[0],
+ 	};
+ 
++#if 0
+ 	/* We should not import to KMS a buffer that has been allocated using no
+ 	 * modifiers. Usually drivers use linear layouts to allocate with no
+ 	 * modifiers, but this is not a rule. The driver could use, for
+@@ -250,6 +251,7 @@ drm_fb_get_from_dmabuf(struct linux_dmabuf_buffer *dmabuf,
+ 				FAILURE_REASONS_DMABUF_MODIFIER_INVALID;
+ 		return NULL;
+ 	}
++#endif
+ 
+ 	/* XXX: TODO:
+ 	 *
+@@ -375,7 +377,7 @@ drm_fb_get_from_bo(struct gbm_bo *bo, struct drm_backend *backend,
+ 	fb->num_planes = 1;
+ 	fb->strides[0] = gbm_bo_get_stride(bo);
+ 	fb->handles[0] = gbm_bo_get_handle(bo).u32;
+-	fb->modifier = DRM_FORMAT_MOD_INVALID;
++	fb->modifier = DRM_FORMAT_MOD_LINEAR;
+ #endif
+ 
+ 	if (!fb->format) {
+@@ -482,7 +484,7 @@ drm_fb_compatible_with_plane(struct drm_fb *fb, struct drm_plane *plane)
+ 		 * wl_drm is being used for scanout. Mesa is the only user we
+ 		 * care in this case (even though recent versions are also using
+ 		 * dmabufs), and it should know better what works or not. */
+-		if (fb->modifier == DRM_FORMAT_MOD_INVALID)
++		if (!DRM_MOD_VALID(fb->modifier))
+ 			return true;
+ 
+ 		if (weston_drm_format_has_modifier(fmt, fb->modifier))
+diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
+index 1fcbdeb..4b5ba42 100644
+--- a/libweston/backend-drm/kms.c
++++ b/libweston/backend-drm/kms.c
+@@ -542,7 +542,7 @@ fallback:
+ 							 kplane->formats[i]);
+ 		if (!fmt)
+ 			return -1;
+-		ret = weston_drm_format_add_modifier(fmt, DRM_FORMAT_MOD_INVALID);
++		ret = weston_drm_format_add_modifier(fmt, DRM_FORMAT_MOD_LINEAR);
+ 		if (ret < 0)
+ 			return -1;
+ 	}
+diff --git a/libweston/linux-dmabuf.h b/libweston/linux-dmabuf.h
+index 7cae93c..cfbdc28 100644
+--- a/libweston/linux-dmabuf.h
++++ b/libweston/linux-dmabuf.h
+@@ -31,6 +31,10 @@
+ 
+ #define MAX_DMABUF_PLANES 4
+ 
++/* modifier is not linear or invalid */
++#define DRM_MOD_VALID(mod) \
++	((mod) != DRM_FORMAT_MOD_LINEAR && (mod) != DRM_FORMAT_MOD_INVALID)
++
+ struct linux_dmabuf_buffer;
+ typedef void (*dmabuf_user_data_destroy_func)(
+ 			struct linux_dmabuf_buffer *buffer);
+diff --git a/libweston/pixman-renderer.c b/libweston/pixman-renderer.c
+index ece4d91..b245fd6 100644
+--- a/libweston/pixman-renderer.c
++++ b/libweston/pixman-renderer.c
+@@ -701,7 +701,7 @@ pixman_renderer_prepare_dmabuf(struct linux_dmabuf_buffer *dmabuf)
+ 	total_size = lseek(attributes->fd[0], 0, SEEK_END);
+ 
+ 	for (i = 0; i < attributes->n_planes; i++) {
+-		if (attributes->modifier[i] != DRM_FORMAT_MOD_INVALID)
++		if (DRM_MOD_VALID(attributes->modifier[i]))
+ 			return false;
+ 	}
+ 
+@@ -1197,7 +1197,7 @@ populate_supported_formats(struct weston_compositor *ec,
+ 
+ 		/* Always add DRM_FORMAT_MOD_INVALID, as EGL implementations
+ 		 * support implicit modifiers. */
+-		ret = weston_drm_format_add_modifier(fmt, DRM_FORMAT_MOD_INVALID);
++		ret = weston_drm_format_add_modifier(fmt, DRM_FORMAT_MOD_LINEAR);
+ 		if (ret < 0)
+ 			goto out;
+ 	}
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index 3c60f85..f891478 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -2359,7 +2359,7 @@ import_simple_dmabuf(struct gl_renderer *gr,
+ 		attribs[atti++] = EGL_YUV_NARROW_RANGE_EXT;
+ 	}
+ 
+-	if (attributes->modifier[0] != DRM_FORMAT_MOD_INVALID) {
++	if (DRM_MOD_VALID(attributes->modifier[0])) {
+ 		if (!gr->has_dmabuf_import_modifiers)
+ 			return NULL;
+ 		has_modifier = true;
+@@ -2871,7 +2871,7 @@ gl_renderer_import_dmabuf(struct weston_compositor *ec,
+ 
+ 	for (i = 0; i < dmabuf->attributes.n_planes; i++) {
+ 		/* return if EGL doesn't support import modifiers */
+-		if (dmabuf->attributes.modifier[i] != DRM_FORMAT_MOD_INVALID)
++		if (DRM_MOD_VALID(dmabuf->attributes.modifier[i]))
+ 			if (!gr->has_dmabuf_import_modifiers)
+ 				return false;
+ 
+@@ -3016,7 +3016,7 @@ populate_supported_formats(struct weston_compositor *ec,
+ 
+ 		/* Always add DRM_FORMAT_MOD_INVALID, as EGL implementations
+ 		 * support implicit modifiers. */
+-		ret = weston_drm_format_add_modifier(fmt, DRM_FORMAT_MOD_INVALID);
++		ret = weston_drm_format_add_modifier(fmt, DRM_FORMAT_MOD_LINEAR);
+ 		if (ret < 0)
+ 			goto out;
+ 
+@@ -3027,7 +3027,7 @@ populate_supported_formats(struct weston_compositor *ec,
+ 
+ 		for (j = 0; j < num_modifiers; j++) {
+ 			/* Skip MOD_INVALID, as it has already been added. */
+-			if (modifiers[j] == DRM_FORMAT_MOD_INVALID)
++			if (!DRM_MOD_VALID(modifiers[j]))
+ 				continue;
+ 			ret = weston_drm_format_add_modifier(fmt, modifiers[j]);
+ 			if (ret < 0) {
+-- 
+2.20.1
+

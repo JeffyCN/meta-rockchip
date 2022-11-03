@@ -1,0 +1,48 @@
+From e0cbe1a1e704639c40de2c82f1547b0b5a5d4052 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 3 Oct 2022 21:03:04 +0800
+Subject: [PATCH 79/79] desktop-shell: Fix crash when hotplugging screens
+
+1/ Force allowing respawn.
+2/ Panel's output might not be available when committing.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ desktop-shell/shell.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
+index d4879b2..36a15d3 100644
+--- a/desktop-shell/shell.c
++++ b/desktop-shell/shell.c
+@@ -3064,6 +3064,10 @@ panel_committed(struct weston_surface *es, int32_t sx, int32_t sy)
+ 
+ 	view = container_of(es->views.next, struct weston_view, surface_link);
+ 
++	/* The output might be unavaiable */
++	if (!view->output)
++		return;
++
+ 	get_panel_size(shell, view, &width, &height);
+ 	switch (shell->panel_position) {
+ 	case WESTON_DESKTOP_SHELL_PANEL_POSITION_TOP:
+@@ -4370,6 +4374,8 @@ check_desktop_shell_crash_too_early(struct desktop_shell *shell)
+ 	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0)
+ 		return false;
+ 
++	/* HACK: The shell might be crashed too early when hotplugging */
++#if 0
+ 	/*
+ 	 * If the shell helper client dies before the session has been
+ 	 * up for roughly 30 seconds, better just make Weston shut down,
+@@ -4385,6 +4391,7 @@ check_desktop_shell_crash_too_early(struct desktop_shell *shell)
+ 
+ 		return true;
+ 	}
++#endif
+ 
+ 	return false;
+ }
+-- 
+2.20.1
+

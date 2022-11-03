@@ -1,0 +1,240 @@
+From 4bee4b39fde94de80077778ad25fc744bdf0aa7a Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 6 Jan 2021 04:11:48 +0800
+Subject: [PATCH 39/79] backend-drm: Support modifier
+
+Tested on rk356x with ARM AFBC modifier.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm-internal.h |  1 +
+ libweston/backend-drm/drm.c          | 84 ++++++++++++++++++++++++----
+ libweston/backend-drm/kms.c          |  6 +-
+ libweston/pixel-formats.c            |  2 +
+ 4 files changed, 80 insertions(+), 13 deletions(-)
+
+diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
+index 67e6dd2..161c1ee 100644
+--- a/libweston/backend-drm/drm-internal.h
++++ b/libweston/backend-drm/drm-internal.h
+@@ -528,6 +528,7 @@ struct drm_plane {
+ 	struct weston_drm_format_array formats;
+ 
+ 	bool can_scale;
++	bool has_modifiers;
+ };
+ 
+ struct drm_connector {
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 2b887eb..149ac01 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -1221,6 +1221,42 @@ err:
+ 	return NULL;
+ }
+ 
++static inline bool
++drm_plane_has_modifier(struct drm_plane *plane, uint32_t format)
++{
++	struct weston_drm_format *fmt;
++	const uint64_t *modifiers;
++	unsigned int num_modifiers, i;
++
++	fmt = weston_drm_format_array_find_format(&plane->formats, format);
++	if (!fmt)
++		return false;
++
++	modifiers = weston_drm_format_get_modifiers(fmt, &num_modifiers);
++	for (i = 0; i < num_modifiers; i++) {
++		if (DRM_MOD_VALID(modifiers[i]))
++			return true;
++	}
++
++	return false;
++}
++
++static inline bool
++drm_planes_have_modifier(struct drm_backend *b)
++{
++	struct drm_plane *plane;
++
++	if (!b->fb_modifiers)
++		return false;
++
++	wl_list_for_each_reverse(plane, &b->plane_list, link) {
++		if (plane->has_modifiers)
++			return true;
++	}
++
++	return false;
++}
++
+ /**
+  * Find, or create, a special-purpose plane
+  *
+@@ -1233,8 +1269,11 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
+ 			      enum wdrm_plane_type type)
+ {
+ 	struct drm_plane *plane;
++	bool prefer_modifier =
++		b->fb_modifiers && type == WDRM_PLANE_TYPE_PRIMARY;
+ 	int num_primary;
+ 
++retry:
+ 	num_primary = 0;
+ 	wl_list_for_each_reverse(plane, &b->plane_list, link) {
+ 		struct drm_output *tmp;
+@@ -1254,7 +1293,7 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
+ 		    num_primary - 1 != output->crtc->pipe)
+ 			continue;
+ 
+-		if (!plane->plane_id || plane->type != type)
++		if (!plane->plane_id)
+ 			continue;
+ 		if (!drm_plane_is_available(plane, output))
+ 			continue;
+@@ -1273,10 +1312,22 @@ drm_output_find_special_plane(struct drm_backend *b, struct drm_output *output,
+ 		if (found_elsewhere)
+ 			continue;
+ 
++		if (prefer_modifier &&
++		    !drm_plane_has_modifier(plane, output->gbm_format))
++			continue;
++
++		if (plane->type != type)
++			continue;
++
+ 		plane->possible_crtcs = (1 << output->crtc->pipe);
+ 		return plane;
+ 	}
+ 
++	if (prefer_modifier) {
++		prefer_modifier = false;
++		goto retry;
++	}
++
+ 	return NULL;
+ }
+ 
+@@ -4127,9 +4178,6 @@ drm_backend_create(struct weston_compositor *compositor,
+ 
+ 	compositor->backend = &b->base;
+ 
+-	if (parse_gbm_format(config->gbm_format, DRM_FORMAT_XRGB8888, &b->gbm_format) < 0)
+-		goto err_compositor;
+-
+ 	/* Check if we run drm-backend using weston-launch */
+ 	compositor->launcher = weston_launcher_connect(compositor, config->tty,
+ 						       seat_id, true);
+@@ -4163,15 +4211,30 @@ drm_backend_create(struct weston_compositor *compositor,
+ 		goto err_udev_dev;
+ 	}
+ 
++	wl_list_init(&b->plane_list);
++	create_sprites(b);
++
++	if (!drm_planes_have_modifier(b))
++		b->fb_modifiers = false;
++
++	b->gbm_format = DRM_FORMAT_XRGB8888;
++
++	/* HACK: The modifiers only work with xbgr8888 now */
++	if (b->fb_modifiers)
++		b->gbm_format = DRM_FORMAT_XBGR8888;
++
++	if (parse_gbm_format(config->gbm_format, b->gbm_format, &b->gbm_format) < 0)
++		goto err_sprite;
++
+ 	if (b->use_pixman) {
+ 		if (init_pixman(b) < 0) {
+ 			weston_log("failed to initialize pixman renderer\n");
+-			goto err_udev_dev;
++			goto err_sprite;
+ 		}
+ 	} else {
+ 		if (init_egl(b) < 0) {
+ 			weston_log("failed to initialize egl\n");
+-			goto err_udev_dev;
++			goto err_sprite;
+ 		}
+ 	}
+ 
+@@ -4188,7 +4251,7 @@ drm_backend_create(struct weston_compositor *compositor,
+ 	res = drmModeGetResources(b->drm.fd);
+ 	if (!res) {
+ 		weston_log("Failed to get drmModeRes\n");
+-		goto err_udev_dev;
++		goto err_sprite;
+ 	}
+ 
+ 	wl_list_init(&b->crtc_list);
+@@ -4197,9 +4260,6 @@ drm_backend_create(struct weston_compositor *compositor,
+ 		goto err_create_crtc_list;
+ 	}
+ 
+-	wl_list_init(&b->plane_list);
+-	create_sprites(b);
+-
+ 	if (udev_input_init(&b->input,
+ 			    compositor, b->udev, seat_id,
+ 			    config->configure_device) < 0) {
+@@ -4333,10 +4393,10 @@ err_drm_source:
+ 	wl_event_source_remove(b->drm_source);
+ err_udev_input:
+ 	udev_input_destroy(&b->input);
+-err_sprite:
+-	destroy_sprites(b);
+ err_create_crtc_list:
+ 	drmModeFreeResources(res);
++err_sprite:
++	destroy_sprites(b);
+ err_udev_dev:
+ 	udev_device_unref(drm_device);
+ err_udev:
+diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
+index 4443741..6596d9e 100644
+--- a/libweston/backend-drm/kms.c
++++ b/libweston/backend-drm/kms.c
+@@ -38,6 +38,7 @@
+ 
+ #include <libweston/libweston.h>
+ #include <libweston/backend-drm.h>
++#include <libweston/linux-dmabuf.h>
+ #include "shared/helpers.h"
+ #include "shared/weston-drm-fourcc.h"
+ #include "drm-internal.h"
+@@ -525,6 +526,9 @@ drm_plane_populate_formats(struct drm_plane *plane, const drmModePlane *kplane,
+ 			ret = weston_drm_format_add_modifier(fmt, mod->modifier);
+ 			if (ret < 0)
+ 				goto out;
++
++			if (DRM_MOD_VALID(mod->modifier))
++				plane->has_modifiers = true;
+ 		}
+ 
+ 		if (fmt->modifiers.size == 0)
+@@ -1583,7 +1587,7 @@ init_kms_caps(struct drm_backend *b)
+ 	weston_log("DRM: %s atomic modesetting\n",
+ 		   b->atomic_modeset ? "supports" : "does not support");
+ 
+-	if (!getenv("WESTON_DISABLE_GBM_MODIFIERS")) {
++	if (getenv("WESTON_ALLOW_GBM_MODIFIERS")) {
+ 		ret = drmGetCap(b->drm.fd, DRM_CAP_ADDFB2_MODIFIERS, &cap);
+ 		if (ret == 0)
+ 			b->fb_modifiers = cap;
+diff --git a/libweston/pixel-formats.c b/libweston/pixel-formats.c
+index 172e6cc..85fae20 100644
+--- a/libweston/pixel-formats.c
++++ b/libweston/pixel-formats.c
+@@ -220,6 +220,8 @@ static const struct pixel_format_info pixel_format_table[] = {
+ 	{
+ 		DRM_FORMAT(XBGR8888),
+ 		BITS_RGBA_FIXED(8, 8, 8, 0),
++		.depth = 24,
++		.bpp = 32,
+ 		GL_FORMAT(GL_RGBA),
+ 		GL_TYPE(GL_UNSIGNED_BYTE),
+ #if __BYTE_ORDER == __LITTLE_ENDIAN
+-- 
+2.20.1
+

@@ -1,0 +1,89 @@
+From a67fec3ec21d323b5b0a75433df393b548be5a77 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 7 Mar 2022 17:20:59 +0800
+Subject: [PATCH 58/79] backend-drm: Allow overriding plane type when using
+ atomic
+
+Set env DRM_PLANE_TYPE_<plane id> to primary|overlay|cursor.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm-internal.h |  3 +++
+ libweston/backend-drm/drm.c          |  6 ++----
+ libweston/backend-drm/kms.c          | 29 ++++++++++++++++++++++++++++
+ 3 files changed, 34 insertions(+), 4 deletions(-)
+
+diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
+index a2019ce..9543f1b 100644
+--- a/libweston/backend-drm/drm-internal.h
++++ b/libweston/backend-drm/drm-internal.h
+@@ -758,6 +758,9 @@ drm_plane_populate_formats(struct drm_plane *plane, const drmModePlane *kplane,
+ void
+ drm_property_info_free(struct drm_property_info *info, int num_props);
+ 
++enum wdrm_plane_type
++drm_plane_get_type(struct drm_plane *plane, drmModeObjectProperties *props);
++
+ extern struct drm_property_enum_info plane_type_enums[];
+ extern const struct drm_property_info plane_props[];
+ extern struct drm_property_enum_info dpms_state_enums[];
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 64d12a5..ff41669 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -1171,10 +1171,8 @@ drm_plane_create(struct drm_backend *b, const drmModePlane *kplane)
+ 
+ 	drm_property_info_populate(b, plane_props, plane->props,
+ 				   WDRM_PLANE__COUNT, props);
+-	plane->type =
+-		drm_property_get_value(&plane->props[WDRM_PLANE_TYPE],
+-				       props,
+-				       WDRM_PLANE_TYPE__COUNT);
++
++	plane->type = drm_plane_get_type(plane, props);
+ 
+ 	plane->can_scale =
+ 		drm_property_has_feature(plane->props,
+diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
+index 47ce5c5..8f3412e 100644
+--- a/libweston/backend-drm/kms.c
++++ b/libweston/backend-drm/kms.c
+@@ -457,6 +457,35 @@ drm_property_info_free(struct drm_property_info *info, int num_props)
+ 	memset(info, 0, sizeof(*info) * num_props);
+ }
+ 
++enum wdrm_plane_type
++drm_plane_get_type(struct drm_plane *plane, drmModeObjectProperties *props)
++{
++	struct drm_backend *b = plane->backend;
++	enum wdrm_plane_type type;
++	const char *env;
++	char buf[256];
++
++	type = drm_property_get_value(&plane->props[WDRM_PLANE_TYPE],
++				      props,
++				      WDRM_PLANE_TYPE__COUNT);
++	if (!b->atomic_modeset)
++		return type;
++
++	snprintf(buf, sizeof(buf), "DRM_PLANE_TYPE_%d", plane->plane_id);
++	env = getenv(buf);
++	if (!env)
++		return type;
++
++	if (!strcmp(env, "primary"))
++		return WDRM_PLANE_TYPE_PRIMARY;
++	else if (!strcmp(env, "overlay"))
++		return WDRM_PLANE_TYPE_OVERLAY;
++	else if (!strcmp(env, "cursor"))
++		return WDRM_PLANE_TYPE_CURSOR;
++
++	return type;
++}
++
+ static inline uint32_t *
+ formats_ptr(struct drm_format_modifier_blob *blob)
+ {
+-- 
+2.20.1
+
