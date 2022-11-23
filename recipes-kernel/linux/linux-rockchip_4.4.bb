@@ -6,9 +6,9 @@ require linux-rockchip.inc
 
 inherit freeze-rev local-git
 
-SRCREV = "f207a103477d8c601d89db381f07246d6942d9d0"
+SRCREV = "e7a4fc70448ca2f66b3df50cabe527916b42bdad"
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=kernel-2022_06_27; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=kernel-4.4-2022_11_23; \
 	file://${THISDIR}/files/cgroups.cfg \
 "
 
