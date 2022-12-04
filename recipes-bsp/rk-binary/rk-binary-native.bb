@@ -19,6 +19,7 @@ SRCREV_FORMAT ?= "rkbin_tools"
 S = "${WORKDIR}/git"
 
 INSANE_SKIP:${PN} = "already-stripped"
+STRIP = "echo"
 
 # The pre-built tools have different link loader, don't change them.
 UNINATIVE_LOADER := ""
