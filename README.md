@@ -78,7 +78,7 @@ You should then be able to build a image as such:
 $ bitbake core-image-minimal
 ```
 
-At the end of a successful build, you should have an .wic image in /path/to/yocto/build/tmp/deploy/\<MACHINE\>/, also with an rockchip firmware image: update.img.
+At the end of a successful build, you should have an .wic image in `/path/to/yocto/build/tmp/deploy/images/<MACHINE>/`, also with an rockchip firmware image: `update.img`.
 
 ### III. Booting your Device
 
@@ -89,17 +89,17 @@ Under Linux, you can use upgrade_tool: <http://opensource.rock-chips.com/wiki_Up
 2. If it's maskrom rockusb mode, try to enter miniloader rockusb mode:
 
 ```shell
-$ sudo upgrade_tool db \<IMAGE PATH\>/loader.bin
+$ sudo upgrade_tool db <IMAGE PATH>/loader.bin
 ```
 
 3. Flash the image (wic image or rockchip firmware image)
 
 ```shell
-$ sudo upgrade_tool wl 0 \<IMAGE PATH\>/\<IMAGE NAME\>.wic # For wic image
+$ sudo upgrade_tool wl 0 <IMAGE PATH>/<IMAGE NAME>.wic # For wic image
 ```
 
 ```shell
-$ sudo upgrade_tool uf \<IMAGE PATH\>/update.img # For rockchip firmware image
+$ sudo upgrade_tool uf <IMAGE PATH>/update.img # For rockchip firmware image
 ```
 
 ### IV. Tested Hardwares
