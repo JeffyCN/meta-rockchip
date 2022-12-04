@@ -206,6 +206,7 @@ gen_rkupdateimg() {
 		esac
 	done
 
+	PSEUDO_DISABLED=1
 	afptool -pack ./ update.raw.img
 	rkImageMaker -RK$(hexdump -s 21 -n 4 -e '4/1 "%c"' loader.bin | rev) \
 		loader.bin update.raw.img "${IMAGE_LINK_NAME}.update.img" \
