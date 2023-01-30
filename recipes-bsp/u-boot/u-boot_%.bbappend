@@ -33,8 +33,8 @@ do_configure_prepend() {
 	done
 
 	# Support python3
-	sed -i -e 's/\(open(.*[^"]\))/\1, "rb")/' -e 's/,$//' \
-		-e 's/print >> \([^,]*\), *\(.*\)$/print(\2, file=\1)/' \
+	sed -i -e 's/\(open([^,]*\))/\1, "rb")/' \
+		-e 's/print >> \([^,]*\), *\(.*\),*$/print(\2, file=\1)/' \
 		-e 's/print \(.*\)$/print(\1)/' \
 		${S}/arch/arm/mach-rockchip/make_fit_atf.py
 
