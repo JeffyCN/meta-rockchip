@@ -34,7 +34,8 @@ PACKAGES =+ " \
 	${PN}-ap6255-wifi \
 	${PN}-ap6255-bt \
 	${PN}-ap6275p-wifi \
-	${PN}-ap6275p-bt \
+	${PN}-ap6275s-wifi \
+	${PN}-ap6275-bt \
 	${PN}-ap6354-wifi \
 	${PN}-ap6354-bt \
 	${PN}-ap6356-wifi \
@@ -84,7 +85,14 @@ FILES_${PN}-ap6275p-wifi = " \
 	lib/firmware/fw_bcm43752a2_pcie_ag.bin \
 	lib/firmware/nvram_AP6275P.txt \
 "
-FILES_${PN}-ap6275p-bt = " \
+FILES_${PN}-ap6275s-wifi = " \
+	lib/firmware/fw_bcm43752a2_ag_apsta.bin \
+	lib/firmware/fw_bcm43752a2_ag_mfg.bin \
+	lib/firmware/clm_bcm43752a2_ag.blob \
+	lib/firmware/fw_bcm43752a2_ag.bin \
+	lib/firmware/nvram_ap6275s.txt \
+"
+FILES_${PN}-ap6275-bt = " \
 	lib/firmware/BCM4362A2.hcd \
 "
 
