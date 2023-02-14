@@ -1,0 +1,93 @@
+From c84f1f0f1df5be16b32eec0340e11022e228f38f Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 9 Sep 2022 16:06:58 +0800
+Subject: [PATCH 15/17] media: Support HEVC in V4L2 VDA
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/v4l2/v4l2_device.cc                         | 9 +++++++++
+ media/gpu/v4l2/v4l2_vda_helpers.cc                    | 1 +
+ media/gpu/v4l2/v4l2_video_decode_accelerator.cc       | 2 +-
+ media/gpu/v4l2/v4l2_video_decoder.cc                  | 1 +
+ media/gpu/v4l2/v4l2_video_decoder_backend_stateful.cc | 1 +
+ 5 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
+index d8e5526fe..50886548f 100644
+--- a/media/gpu/v4l2/v4l2_device.cc
++++ b/media/gpu/v4l2/v4l2_device.cc
+@@ -1599,6 +1599,8 @@ uint32_t V4L2Device::VideoCodecProfileToV4L2PixFmt(VideoCodecProfile profile,
+ 
+   if (profile >= H264PROFILE_MIN && profile <= H264PROFILE_MAX) {
+     return V4L2_PIX_FMT_H264;
++  } else if (profile >= HEVCPROFILE_MIN && profile <= HEVCPROFILE_MAX) {
++    return V4L2_PIX_FMT_HEVC;
+   } else if (profile >= VP8PROFILE_MIN && profile <= VP8PROFILE_MAX) {
+     return V4L2_PIX_FMT_VP8;
+   } else if (profile >= VP9PROFILE_MIN && profile <= VP9PROFILE_MAX) {
+@@ -1792,6 +1794,13 @@ std::vector<VideoCodecProfile> V4L2Device::V4L2PixFmtToVideoCodecProfiles(
+           H264PROFILE_HIGH,
+       };
+       break;
++    case V4L2_PIX_FMT_HEVC:
++      profiles = {
++          HEVCPROFILE_MAIN,
++          HEVCPROFILE_MAIN10,
++          HEVCPROFILE_MAIN_STILL_PICTURE,
++      };
++      break;
+     case V4L2_PIX_FMT_VP8:
+       profiles = {VP8PROFILE_ANY};
+       break;
+diff --git a/media/gpu/v4l2/v4l2_vda_helpers.cc b/media/gpu/v4l2/v4l2_vda_helpers.cc
+index baaca9c0a..71983d372 100644
+--- a/media/gpu/v4l2/v4l2_vda_helpers.cc
++++ b/media/gpu/v4l2/v4l2_vda_helpers.cc
+@@ -149,6 +149,7 @@ InputBufferFragmentSplitter::CreateFromProfile(
+     case VideoCodec::kH264:
+       return std::make_unique<
+           v4l2_vda_helpers::H264InputBufferFragmentSplitter>();
++    case VideoCodec::kHEVC:
+     case VideoCodec::kVP8:
+     case VideoCodec::kVP9:
+       // VP8/VP9 don't need any frame splitting, use the default implementation.
+diff --git a/media/gpu/v4l2/v4l2_video_decode_accelerator.cc b/media/gpu/v4l2/v4l2_video_decode_accelerator.cc
+index 05b87395f..08da713c9 100644
+--- a/media/gpu/v4l2/v4l2_video_decode_accelerator.cc
++++ b/media/gpu/v4l2/v4l2_video_decode_accelerator.cc
+@@ -87,7 +87,7 @@ bool IsVp9KSVCStream(uint32_t input_format_fourcc,
+ 
+ // static
+ const uint32_t V4L2VideoDecodeAccelerator::supported_input_fourccs_[] = {
+-    V4L2_PIX_FMT_H264, V4L2_PIX_FMT_VP8, V4L2_PIX_FMT_VP9,
++    V4L2_PIX_FMT_H264, V4L2_PIX_FMT_HEVC, V4L2_PIX_FMT_VP8, V4L2_PIX_FMT_VP9,
+ };
+ 
+ // static
+diff --git a/media/gpu/v4l2/v4l2_video_decoder.cc b/media/gpu/v4l2/v4l2_video_decoder.cc
+index f6304210c..ca84857e6 100644
+--- a/media/gpu/v4l2/v4l2_video_decoder.cc
++++ b/media/gpu/v4l2/v4l2_video_decoder.cc
+@@ -57,6 +57,7 @@ constexpr uint32_t kSupportedInputFourccs[] = {
+ #endif
+     // V4L2 stateful formats
+     V4L2_PIX_FMT_H264,
++    V4L2_PIX_FMT_HEVC,
+     V4L2_PIX_FMT_VP8,
+     V4L2_PIX_FMT_VP9,
+     V4L2_PIX_FMT_AV1,
+diff --git a/media/gpu/v4l2/v4l2_video_decoder_backend_stateful.cc b/media/gpu/v4l2/v4l2_video_decoder_backend_stateful.cc
+index a95bf0093..e9edcbef3 100644
+--- a/media/gpu/v4l2/v4l2_video_decoder_backend_stateful.cc
++++ b/media/gpu/v4l2/v4l2_video_decoder_backend_stateful.cc
+@@ -768,6 +768,7 @@ bool V4L2StatefulVideoDecoderBackend::IsSupportedProfile(
+   if (supported_profiles_.empty()) {
+     constexpr uint32_t kSupportedInputFourccs[] = {
+         V4L2_PIX_FMT_H264,
++        V4L2_PIX_FMT_HEVC,
+         V4L2_PIX_FMT_VP8,
+         V4L2_PIX_FMT_VP9,
+     };
+-- 
+2.20.1
+
