@@ -1,0 +1,461 @@
+From dc95c012fb4105e73af1edd89061c73329324226 Mon Sep 17 00:00:00 2001
+From: Maksim Sisov <msisov@igalia.com>
+Date: Wed, 31 Jul 2019 09:56:24 +0300
+Subject: [PATCH 01/17] media: gpu: v4l2: Support V4L2 VDA with libv4l2 on
+ Linux
+
+Based on:
+https://github.com/OSSystems/meta-browser/pull/263/commits/60ceb28750ee1f73c9cc2bf7e9e20e1c37a03497
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../gpu_mjpeg_decode_accelerator_factory.cc   |  3 +-
+ media/gpu/BUILD.gn                            |  1 +
+ media/gpu/args.gni                            |  3 +
+ .../gpu_video_decode_accelerator_factory.cc   |  8 +++
+ .../gpu_video_decode_accelerator_factory.h    |  2 +
+ media/gpu/v4l2/BUILD.gn                       | 43 +++++++-----
+ media/gpu/v4l2/generic_v4l2_device.cc         |  2 +-
+ media/gpu/v4l2/v4l2_device.cc                 | 70 +++++++++++++++++++
+ media/gpu/v4l2/v4l2_video_decoder.cc          |  7 ++
+ 9 files changed, 120 insertions(+), 19 deletions(-)
+
+diff --git a/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc b/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc
+index 020b12831..18feaf03b 100644
+--- a/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc
++++ b/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc
+@@ -13,7 +13,8 @@
+ #include "media/base/media_switches.h"
+ #include "media/gpu/buildflags.h"
+ 
+-#if BUILDFLAG(USE_V4L2_CODEC) && defined(ARCH_CPU_ARM_FAMILY)
++#if BUILDFLAG(USE_V4L2_CODEC) && defined(ARCH_CPU_ARM_FAMILY) && \
++    !BUILDFLAG(USE_LINUX_V4L2)
+ #define USE_V4L2_MJPEG_DECODE_ACCELERATOR
+ #endif
+ 
+diff --git a/media/gpu/BUILD.gn b/media/gpu/BUILD.gn
+index 041652bb2..1e9f945ff 100644
+--- a/media/gpu/BUILD.gn
++++ b/media/gpu/BUILD.gn
+@@ -20,6 +20,7 @@ buildflag_header("buildflags") {
+     "USE_VAAPI_IMAGE_CODECS=$use_vaapi_image_codecs",
+     "USE_V4L2_CODEC=$use_v4l2_codec",
+     "USE_LIBV4L2=$use_v4lplugin",
++    "USE_LINUX_V4L2=$use_linux_v4l2_only",
+     "USE_VAAPI_X11=$use_vaapi_x11",
+   ]
+ }
+diff --git a/media/gpu/args.gni b/media/gpu/args.gni
+index 813657af1..65fb45c1d 100644
+--- a/media/gpu/args.gni
++++ b/media/gpu/args.gni
+@@ -25,6 +25,9 @@ declare_args() {
+   # platforms which have v4l2 hardware encoder
+   use_v4l2_codec_aml = false
+ 
++  # Indicates if Video4Linux2 codec is used for linux platform.
++  use_linux_v4l2_only = false
++
+   # Indicates if VA-API-based hardware acceleration is to be used. This
+   # is typically the case on x86-based ChromeOS devices.
+   # VA-API should also be compiled by default on x11-using linux devices
+diff --git a/media/gpu/gpu_video_decode_accelerator_factory.cc b/media/gpu/gpu_video_decode_accelerator_factory.cc
+index 4fa596240..2f58f8f19 100644
+--- a/media/gpu/gpu_video_decode_accelerator_factory.cc
++++ b/media/gpu/gpu_video_decode_accelerator_factory.cc
+@@ -30,7 +30,9 @@
+ #elif BUILDFLAG(USE_V4L2_CODEC) && \
+     (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_ASH))
+ #include "media/gpu/v4l2/v4l2_device.h"
++#if !BUILDFLAG(USE_LINUX_V4L2)
+ #include "media/gpu/v4l2/v4l2_slice_video_decode_accelerator.h"
++#endif
+ #include "media/gpu/v4l2/v4l2_video_decode_accelerator.h"
+ #include "ui/gl/gl_surface_egl.h"
+ #endif
+@@ -66,10 +68,12 @@ gpu::VideoDecodeAcceleratorCapabilities GetDecoderCapabilitiesInternal(
+   GpuVideoAcceleratorUtil::InsertUniqueDecodeProfiles(
+       V4L2VideoDecodeAccelerator::GetSupportedProfiles(),
+       &capabilities.supported_profiles);
++#if !BUILDFLAG(USE_LINUX_V4L2)
+   GpuVideoAcceleratorUtil::InsertUniqueDecodeProfiles(
+       V4L2SliceVideoDecodeAccelerator::GetSupportedProfiles(),
+       &capabilities.supported_profiles);
+ #endif
++#endif
+ #elif BUILDFLAG(IS_MAC)
+   capabilities.supported_profiles =
+       VTVideoDecodeAccelerator::GetSupportedProfiles(workarounds);
+@@ -150,8 +154,10 @@ GpuVideoDecodeAcceleratorFactory::CreateVDA(
+ #elif BUILDFLAG(USE_V4L2_CODEC) && \
+     (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_ASH))
+     &GpuVideoDecodeAcceleratorFactory::CreateV4L2VDA,
++#if !BUILDFLAG(USE_LINUX_V4L2)
+     &GpuVideoDecodeAcceleratorFactory::CreateV4L2SliceVDA,
+ #endif
++#endif
+ 
+ #if BUILDFLAG(IS_MAC)
+     &GpuVideoDecodeAcceleratorFactory::CreateVTVDA,
+@@ -212,6 +218,7 @@ GpuVideoDecodeAcceleratorFactory::CreateV4L2VDA(
+   return decoder;
+ }
+ 
++#if !BUILDFLAG(USE_LINUX_V4L2)
+ std::unique_ptr<VideoDecodeAccelerator>
+ GpuVideoDecodeAcceleratorFactory::CreateV4L2SliceVDA(
+     const gpu::GpuDriverBugWorkarounds& /*workarounds*/,
+@@ -227,6 +234,7 @@ GpuVideoDecodeAcceleratorFactory::CreateV4L2SliceVDA(
+   return decoder;
+ }
+ #endif
++#endif
+ 
+ #if BUILDFLAG(IS_MAC)
+ std::unique_ptr<VideoDecodeAccelerator>
+diff --git a/media/gpu/gpu_video_decode_accelerator_factory.h b/media/gpu/gpu_video_decode_accelerator_factory.h
+index d105fe6f8..43e9d1260 100644
+--- a/media/gpu/gpu_video_decode_accelerator_factory.h
++++ b/media/gpu/gpu_video_decode_accelerator_factory.h
+@@ -105,11 +105,13 @@ class MEDIA_GPU_EXPORT GpuVideoDecodeAcceleratorFactory {
+       const gpu::GpuDriverBugWorkarounds& workarounds,
+       const gpu::GpuPreferences& gpu_preferences,
+       MediaLog* media_log) const;
++#if !BUILDFLAG(USE_LINUX_V4L2)
+   std::unique_ptr<VideoDecodeAccelerator> CreateV4L2SliceVDA(
+       const gpu::GpuDriverBugWorkarounds& workarounds,
+       const gpu::GpuPreferences& gpu_preferences,
+       MediaLog* media_log) const;
+ #endif
++#endif
+ #if BUILDFLAG(IS_MAC)
+   std::unique_ptr<VideoDecodeAccelerator> CreateVTVDA(
+       const gpu::GpuDriverBugWorkarounds& workarounds,
+diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
+index 75c124c89..a73b9fb03 100644
+--- a/media/gpu/v4l2/BUILD.gn
++++ b/media/gpu/v4l2/BUILD.gn
+@@ -27,9 +27,6 @@ source_set("v4l2") {
+     "buffer_affinity_tracker.h",
+     "generic_v4l2_device.cc",
+     "generic_v4l2_device.h",
+-    "v4l2_decode_surface.cc",
+-    "v4l2_decode_surface.h",
+-    "v4l2_decode_surface_handler.h",
+     "v4l2_device.cc",
+     "v4l2_device.h",
+     "v4l2_device_poller.cc",
+@@ -38,8 +35,6 @@ source_set("v4l2") {
+     "v4l2_framerate_control.h",
+     "v4l2_image_processor_backend.cc",
+     "v4l2_image_processor_backend.h",
+-    "v4l2_slice_video_decode_accelerator.cc",
+-    "v4l2_slice_video_decode_accelerator.h",
+     "v4l2_stateful_workaround.cc",
+     "v4l2_stateful_workaround.h",
+     "v4l2_utils.cc",
+@@ -54,22 +49,36 @@ source_set("v4l2") {
+     "v4l2_video_decoder_backend.h",
+     "v4l2_video_decoder_backend_stateful.cc",
+     "v4l2_video_decoder_backend_stateful.h",
+-    "v4l2_video_decoder_backend_stateless.cc",
+-    "v4l2_video_decoder_backend_stateless.h",
+-    "v4l2_video_decoder_delegate_h264.cc",
+-    "v4l2_video_decoder_delegate_h264.h",
+-    "v4l2_video_decoder_delegate_vp8.cc",
+-    "v4l2_video_decoder_delegate_vp8.h",
+-    "v4l2_video_decoder_delegate_vp9.cc",
+-    "v4l2_video_decoder_delegate_vp9.h",
+   ]
+ 
+-  if (is_chromeos) {
++  if (!use_linux_v4l2_only) {
+     sources += [
+-      # AV1 delegate depends on header files only in ChromeOS SDK
+-      "v4l2_video_decoder_delegate_av1.cc",
+-      "v4l2_video_decoder_delegate_av1.h",
++      "v4l2_decode_surface.cc",
++      "v4l2_decode_surface.h",
++      "v4l2_decode_surface_handler.h",
++      "v4l2_slice_video_decode_accelerator.cc",
++      "v4l2_slice_video_decode_accelerator.h",
++      "v4l2_video_decoder_backend_stateless.cc",
++      "v4l2_video_decoder_backend_stateless.h",
++      "v4l2_video_decoder_delegate_h264.cc",
++      "v4l2_video_decoder_delegate_h264.h",
++      "v4l2_video_decoder_delegate_vp8.cc",
++      "v4l2_video_decoder_delegate_vp8.h",
++      "v4l2_video_decoder_delegate_vp9.cc",
++      "v4l2_video_decoder_delegate_vp9.h",
++    ]
++
++    if (is_chromeos) {
++      sources += [
++        # AV1 delegate depends on header files only in ChromeOS SDK
++        "v4l2_video_decoder_delegate_av1.cc",
++        "v4l2_video_decoder_delegate_av1.h",
++      ]
++    }
++  }
+ 
++  if (is_chromeos) {
++    sources += [
+       # TODO(crbug.com/901264): Encoders use hack for passing offset
+       # within a DMA-buf, which is not supported upstream.
+       "v4l2_video_encode_accelerator.cc",
+diff --git a/media/gpu/v4l2/generic_v4l2_device.cc b/media/gpu/v4l2/generic_v4l2_device.cc
+index fa9a95b95..b71494c34 100644
+--- a/media/gpu/v4l2/generic_v4l2_device.cc
++++ b/media/gpu/v4l2/generic_v4l2_device.cc
+@@ -434,7 +434,7 @@ bool GenericV4L2Device::OpenDevicePath(const std::string& path, Type type) {
+     return false;
+ 
+   if (V4L2Device::UseLibV4L2()) {
+-    if (type == Type::kEncoder &&
++    if (/* type == Type::kEncoder && */
+         HANDLE_EINTR(v4l2_fd_open(device_fd_.get(), V4L2_DISABLE_CONVERSION)) !=
+             -1) {
+       DVLOGF(3) << "Using libv4l2 for " << path;
+diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
+index e6d1b1927..d8e5526fe 100644
+--- a/media/gpu/v4l2/v4l2_device.cc
++++ b/media/gpu/v4l2/v4l2_device.cc
+@@ -1019,10 +1019,12 @@ V4L2Queue::V4L2Queue(scoped_refptr<V4L2Device> dev,
+     return;
+   }
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   if (reqbufs.capabilities & V4L2_BUF_CAP_SUPPORTS_REQUESTS) {
+     supports_requests_ = true;
+     DVLOGF(4) << "Queue supports request API.";
+   }
++#endif
+ }
+ 
+ V4L2Queue::~V4L2Queue() {
+@@ -1166,9 +1168,13 @@ size_t V4L2Queue::AllocateBuffers(size_t count,
+   reqbufs.count = count;
+   reqbufs.type = type_;
+   reqbufs.memory = memory;
++#if BUILDFLAG(IS_CHROMEOS)
+   reqbufs.flags = incoherent ? V4L2_MEMORY_FLAG_NON_COHERENT : 0;
+   DVQLOGF(3) << "Requesting " << count << " buffers.";
+   DVQLOGF(3) << "Incoherent flag is " << incoherent << ".";
++#else
++  DVQLOGF(3) << "Requesting " << count << " buffers.";
++#endif
+ 
+   int ret = device_->Ioctl(VIDIOC_REQBUFS, &reqbufs);
+   if (ret) {
+@@ -1227,7 +1233,9 @@ bool V4L2Queue::DeallocateBuffers() {
+   reqbufs.count = 0;
+   reqbufs.type = type_;
+   reqbufs.memory = memory_;
++#if BUILDFLAG(IS_CHROMEOS)
+   reqbufs.flags = incoherent_ ? V4L2_MEMORY_FLAG_NON_COHERENT : 0;
++#endif
+ 
+   int ret = device_->Ioctl(VIDIOC_REQBUFS, &reqbufs);
+   if (ret) {
+@@ -1583,6 +1591,23 @@ std::string V4L2Device::GetDriverName() {
+ // static
+ uint32_t V4L2Device::VideoCodecProfileToV4L2PixFmt(VideoCodecProfile profile,
+                                                    bool slice_based) {
++#if BUILDFLAG(USE_LINUX_V4L2)
++  if (slice_based) {
++    LOG(ERROR) << "Slice not supported";
++    return 0;
++  }
++
++  if (profile >= H264PROFILE_MIN && profile <= H264PROFILE_MAX) {
++    return V4L2_PIX_FMT_H264;
++  } else if (profile >= VP8PROFILE_MIN && profile <= VP8PROFILE_MAX) {
++    return V4L2_PIX_FMT_VP8;
++  } else if (profile >= VP9PROFILE_MIN && profile <= VP9PROFILE_MAX) {
++    return V4L2_PIX_FMT_VP9;
++  } else {
++    DVLOGF(1) << "Unsupported profile: " << GetProfileName(profile);
++    return 0;
++  }
++#else
+   if (profile >= H264PROFILE_MIN && profile <= H264PROFILE_MAX) {
+     if (slice_based)
+       return V4L2_PIX_FMT_H264_SLICE;
+@@ -1607,8 +1632,10 @@ uint32_t V4L2Device::VideoCodecProfileToV4L2PixFmt(VideoCodecProfile profile,
+     DVLOGF(1) << "Unsupported profile: " << GetProfileName(profile);
+     return 0;
+   }
++#endif
+ }
+ 
++#if !BUILDFLAG(USE_LINUX_V4L2)
+ namespace {
+ 
+ VideoCodecProfile V4L2ProfileToVideoCodecProfile(VideoCodec codec,
+@@ -1667,9 +1694,11 @@ VideoCodecProfile V4L2ProfileToVideoCodecProfile(VideoCodec codec,
+ }
+ 
+ }  // namespace
++#endif
+ 
+ std::vector<VideoCodecProfile> V4L2Device::V4L2PixFmtToVideoCodecProfiles(
+     uint32_t pix_fmt) {
++#if !BUILDFLAG(USE_LINUX_V4L2)
+   auto get_supported_profiles = [this](
+                                     VideoCodec codec,
+                                     std::vector<VideoCodecProfile>* profiles) {
+@@ -1753,6 +1782,27 @@ std::vector<VideoCodecProfile> V4L2Device::V4L2PixFmtToVideoCodecProfiles(
+       VLOGF(1) << "Unhandled pixelformat " << FourccToString(pix_fmt);
+       return {};
+   }
++#else
++  std::vector<VideoCodecProfile> profiles;
++  switch (pix_fmt) {
++    case V4L2_PIX_FMT_H264:
++      profiles = {
++          H264PROFILE_BASELINE,
++          H264PROFILE_MAIN,
++          H264PROFILE_HIGH,
++      };
++      break;
++    case V4L2_PIX_FMT_VP8:
++      profiles = {VP8PROFILE_ANY};
++      break;
++    case V4L2_PIX_FMT_VP9:
++      profiles = {VP9PROFILE_PROFILE0};
++      break;
++    default:
++      VLOGF(1) << "Unhandled pixelformat " << FourccToString(pix_fmt);
++      return {};
++  }
++#endif
+ 
+   // Erase duplicated profiles.
+   std::sort(profiles.begin(), profiles.end());
+@@ -2469,10 +2519,14 @@ bool V4L2Request::ApplyCtrls(struct v4l2_ext_controls* ctrls) {
+     return false;
+   }
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   ctrls->which = V4L2_CTRL_WHICH_REQUEST_VAL;
+   ctrls->request_fd = request_fd_.get();
+ 
+   return true;
++#else
++  return false;
++#endif
+ }
+ 
+ bool V4L2Request::ApplyQueueBuffer(struct v4l2_buffer* buffer) {
+@@ -2484,10 +2538,14 @@ bool V4L2Request::ApplyQueueBuffer(struct v4l2_buffer* buffer) {
+     return false;
+   }
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   buffer->flags |= V4L2_BUF_FLAG_REQUEST_FD;
+   buffer->request_fd = request_fd_.get();
+ 
+   return true;
++#else
++  return false;
++#endif
+ }
+ 
+ bool V4L2Request::Submit() {
+@@ -2498,7 +2556,11 @@ bool V4L2Request::Submit() {
+     return false;
+   }
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   return HANDLE_EINTR(ioctl(request_fd_.get(), MEDIA_REQUEST_IOC_QUEUE)) == 0;
++#else
++  return false;
++#endif
+ }
+ 
+ bool V4L2Request::IsCompleted() {
+@@ -2541,6 +2603,7 @@ bool V4L2Request::Reset() {
+     return false;
+   }
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   // Reinit the request to make sure we can use it for a new submission.
+   if (HANDLE_EINTR(ioctl(request_fd_.get(), MEDIA_REQUEST_IOC_REINIT)) < 0) {
+     VPLOGF(1) << "Failed to reinit request.";
+@@ -2548,6 +2611,9 @@ bool V4L2Request::Reset() {
+   }
+ 
+   return true;
++#else
++  return false;
++#endif
+ }
+ 
+ V4L2RequestRefBase::V4L2RequestRefBase(V4L2RequestRefBase&& req_base) {
+@@ -2622,6 +2688,7 @@ V4L2RequestsQueue::~V4L2RequestsQueue() {
+ absl::optional<base::ScopedFD> V4L2RequestsQueue::CreateRequestFD() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   int request_fd;
+   int ret = HANDLE_EINTR(
+         ioctl(media_fd_.get(), MEDIA_IOC_REQUEST_ALLOC, &request_fd));
+@@ -2631,6 +2698,9 @@ absl::optional<base::ScopedFD> V4L2RequestsQueue::CreateRequestFD() {
+   }
+ 
+   return base::ScopedFD(request_fd);
++#else
++  return absl::nullopt;
++#endif
+ }
+ 
+ absl::optional<V4L2RequestRef> V4L2RequestsQueue::GetFreeRequest() {
+diff --git a/media/gpu/v4l2/v4l2_video_decoder.cc b/media/gpu/v4l2/v4l2_video_decoder.cc
+index 8ba46bc26..f6304210c 100644
+--- a/media/gpu/v4l2/v4l2_video_decoder.cc
++++ b/media/gpu/v4l2/v4l2_video_decoder.cc
+@@ -28,7 +28,10 @@
+ #include "media/gpu/macros.h"
+ #include "media/gpu/v4l2/v4l2_status.h"
+ #include "media/gpu/v4l2/v4l2_video_decoder_backend_stateful.h"
++
++#if !BUILDFLAG(USE_LINUX_V4L2)
+ #include "media/gpu/v4l2/v4l2_video_decoder_backend_stateless.h"
++#endif
+ 
+ namespace media {
+ 
+@@ -45,11 +48,13 @@ constexpr size_t kInputBufferMaxSizeFor4k = 4 * kInputBufferMaxSizeFor1080p;
+ 
+ // Input format V4L2 fourccs this class supports.
+ constexpr uint32_t kSupportedInputFourccs[] = {
++#if !BUILDFLAG(USE_LINUX_V4L2)
+     // V4L2 stateless formats
+     V4L2_PIX_FMT_H264_SLICE,
+     V4L2_PIX_FMT_VP8_FRAME,
+     V4L2_PIX_FMT_VP9_FRAME,
+     V4L2_PIX_FMT_AV1_FRAME,
++#endif
+     // V4L2 stateful formats
+     V4L2_PIX_FMT_H264,
+     V4L2_PIX_FMT_VP8,
+@@ -336,6 +341,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
+     backend_ = std::make_unique<V4L2StatefulVideoDecoderBackend>(
+         this, device_, profile_, color_space_, low_delay_,
+         decoder_task_runner_);
++#if !BUILDFLAG(USE_LINUX_V4L2)
+   } else {
+     DCHECK_EQ(preferred_api_and_format.first, kStateless);
+     VLOGF(1) << "Using a stateless API for profile: "
+@@ -343,6 +349,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
+              << " and fourcc: " << FourccToString(input_format_fourcc);
+     backend_ = std::make_unique<V4L2StatelessVideoDecoderBackend>(
+         this, device_, profile_, color_space_, decoder_task_runner_);
++#endif
+   }
+ 
+   if (!backend_->Initialize()) {
+-- 
+2.20.1
+

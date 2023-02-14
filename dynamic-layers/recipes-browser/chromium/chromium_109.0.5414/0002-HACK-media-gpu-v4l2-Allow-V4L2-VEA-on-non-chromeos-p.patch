@@ -1,0 +1,31 @@
+From 04b40ed582de2b118b4b025e596e1ccc6e46e9c6 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 13 Feb 2023 15:30:55 +0800
+Subject: [PATCH 02/17] HACK: media: gpu: v4l2: Allow V4L2 VEA on non-chromeos
+ platform
+
+NOTE(crbug.com/901264):
+Encoders use hack for passing offset within a DMA-buf, which is not
+supported upstream.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/v4l2/BUILD.gn | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
+index a73b9fb03..996be6e48 100644
+--- a/media/gpu/v4l2/BUILD.gn
++++ b/media/gpu/v4l2/BUILD.gn
+@@ -77,7 +77,7 @@ source_set("v4l2") {
+     }
+   }
+ 
+-  if (is_chromeos) {
++  if (true) { # if (is_chromeos) {
+     sources += [
+       # TODO(crbug.com/901264): Encoders use hack for passing offset
+       # within a DMA-buf, which is not supported upstream.
+-- 
+2.20.1
+
