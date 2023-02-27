@@ -8,6 +8,6 @@ LINUXLIBCVERSION ?= "5.10-custom%"
 require conf/machine/include/rockchip-arm64-common.inc
 
 MALI_GPU := "valhall-g610"
-MALI_VERSION := "g6p0"
+MALI_VERSION ?= "g6p0"
 
 RK_ISP_VERSION := "3.0"

@@ -7,6 +7,6 @@ require conf/machine/include/rockchip-arm64-common.inc
 KBUILD_DEFCONFIG = "px30_linux_defconfig"
 
 MALI_GPU := "bifrost-g31"
-MALI_VERSION := "g2p0"
+MALI_VERSION ?= "g2p0"
 
 RK_ISP_VERSION := "1"
