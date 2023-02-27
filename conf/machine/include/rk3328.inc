@@ -5,4 +5,4 @@ SOC_FAMILY ?= "rk3328"
 require conf/machine/include/rockchip-arm64-common.inc
 
 MALI_GPU := "utgard-450"
-MALI_VERSION := "r7p0"
+MALI_VERSION ?= "r7p0"
