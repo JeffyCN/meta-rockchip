@@ -1,0 +1,54 @@
+From ca4b14601d434ffa709664593e67987c8ac39c3c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 9 Sep 2022 16:06:58 +0800
+Subject: [PATCH 15/18] media: Support HEVC in V4L2 VDA
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/v4l2/v4l2_device.cc                   | 9 +++++++++
+ media/gpu/v4l2/v4l2_video_decode_accelerator.cc | 2 +-
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
+index 090863ce6..fc719957d 100644
+--- a/media/gpu/v4l2/v4l2_device.cc
++++ b/media/gpu/v4l2/v4l2_device.cc
+@@ -1578,6 +1578,8 @@ uint32_t V4L2Device::VideoCodecProfileToV4L2PixFmt(VideoCodecProfile profile,
+ 
+   if (profile >= H264PROFILE_MIN && profile <= H264PROFILE_MAX) {
+     return V4L2_PIX_FMT_H264;
++  } else if (profile >= HEVCPROFILE_MIN && profile <= HEVCPROFILE_MAX) {
++    return V4L2_PIX_FMT_HEVC;
+   } else if (profile >= VP8PROFILE_MIN && profile <= VP8PROFILE_MAX) {
+     return V4L2_PIX_FMT_VP8;
+   } else if (profile >= VP9PROFILE_MIN && profile <= VP9PROFILE_MAX) {
+@@ -1797,6 +1799,13 @@ std::vector<VideoCodecProfile> V4L2Device::V4L2PixFmtToVideoCodecProfiles(
+           H264PROFILE_HIGH,
+       };
+       break;
++    case V4L2_PIX_FMT_HEVC:
++      profiles = {
++          HEVCPROFILE_MAIN,
++          HEVCPROFILE_MAIN10,
++          HEVCPROFILE_MAIN_STILL_PICTURE,
++      };
++      break;
+     case V4L2_PIX_FMT_VP8:
+       profiles = {VP8PROFILE_ANY};
+       break;
+diff --git a/media/gpu/v4l2/v4l2_video_decode_accelerator.cc b/media/gpu/v4l2/v4l2_video_decode_accelerator.cc
+index a71e272e8..539908bf4 100644
+--- a/media/gpu/v4l2/v4l2_video_decode_accelerator.cc
++++ b/media/gpu/v4l2/v4l2_video_decode_accelerator.cc
+@@ -86,7 +86,7 @@ bool IsVp9KSVCStream(uint32_t input_format_fourcc,
+ 
+ // static
+ const uint32_t V4L2VideoDecodeAccelerator::supported_input_fourccs_[] = {
+-    V4L2_PIX_FMT_H264, V4L2_PIX_FMT_VP8, V4L2_PIX_FMT_VP9,
++    V4L2_PIX_FMT_H264, V4L2_PIX_FMT_HEVC, V4L2_PIX_FMT_VP8, V4L2_PIX_FMT_VP9,
+ };
+ 
+ // static
+-- 
+2.20.1
+

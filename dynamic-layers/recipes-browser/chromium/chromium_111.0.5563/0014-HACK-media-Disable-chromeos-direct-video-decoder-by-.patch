@@ -1,0 +1,30 @@
+From 5ef545e95cdf158131162e686dfdff28fbf131e2 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 16 Mar 2022 12:14:02 +0800
+Subject: [PATCH 14/18] HACK: media: Disable chromeos direct video decoder by
+ default
+
+Revisit once V4L2 video decoder is supported on linux.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/base/media_switches.cc | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/media/base/media_switches.cc b/media/base/media_switches.cc
+index c4e128757..b3f1b1069 100644
+--- a/media/base/media_switches.cc
++++ b/media/base/media_switches.cc
+@@ -1029,7 +1029,8 @@ BASE_FEATURE(kChromeOSHWVBREncoding,
+ // TODO(b/159825227): remove when the direct video decoder is fully launched.
+ BASE_FEATURE(kUseChromeOSDirectVideoDecoder,
+              "UseChromeOSDirectVideoDecoder",
+-             base::FEATURE_ENABLED_BY_DEFAULT);
++             // base::FEATURE_ENABLED_BY_DEFAULT);
++             base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+ // Limit the number of concurrent hardware decoder instances on ChromeOS.
+ BASE_FEATURE(kLimitConcurrentDecoderInstances,
+-- 
+2.20.1
+
