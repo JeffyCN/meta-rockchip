@@ -9,7 +9,9 @@ LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf0
 
 inherit freeze-rev local-git
 
-SRCREV = "54d05e00e73a91c14c86005e86fff45fa094203e"
+
+#SRCREV = "54d05e00e73a91c14c86005e86fff45fa094203e"
+SRCREV = "84cbc6e057d643c89334bb135a1af6f26adf61bb"
 SRC_URI = "git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkwifibt;"
 
 S = "${WORKDIR}/git"
@@ -31,6 +33,8 @@ PACKAGES =+ " \
 	${PN}-ap6236-bt \
 	${PN}-ap6255-wifi \
 	${PN}-ap6255-bt \
+	${PN}-ap6256-wifi \
+        ${PN}-ap6256-bt \
 	${PN}-ap6275p-wifi \
 	${PN}-ap6275s-wifi \
 	${PN}-ap6275-bt \
@@ -74,6 +78,15 @@ FILES:${PN}-ap6255-wifi = " \
 FILES:${PN}-ap6255-bt = " \
 	lib/firmware/BCM4345C0_ap.hcd \
 	lib/firmware/BCM4345C0.hcd \
+"
+
+FILES:${PN}-ap6256-wifi = " \
+        lib/firmware/fw_bcm43456c5_ag.bin \
+        lib/firmware/nvram_ap6256.txt \
+"
+
+FILES:${PN}-ap6256-bt = " \
+        lib/firmware/BCM4345C5.hcd \
 "
 
 FILES:${PN}-ap6275p-wifi = " \
