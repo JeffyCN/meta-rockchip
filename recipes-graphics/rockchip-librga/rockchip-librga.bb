@@ -9,14 +9,16 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
 DEPENDS = "libdrm"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 PV_append = "+git${SRCPV}"
 
 inherit freeze-rev local-git
 
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=linux-rga; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=linux-rga-im2d; \
 "
-SRCREV = "274b345f976a7b6b05bf74dcf8faf7b2e28b813d"
+SRCREV = "a1b05b8fcf4698176477370fd942b31d9ae66404"
 S = "${WORKDIR}/git"
 
 inherit meson pkgconfig
