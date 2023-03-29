@@ -1,0 +1,54 @@
+From 65f49acb7a50525cab0e94e14bb05f3572b7d20d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 14 Nov 2022 16:08:19 +0800
+Subject: [PATCH 80/93] gl-renderer: Check GLES3.0 for glTexImage3D
+
+For old mali, e.g. utgard.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../renderer-gl/gl-shader-config-color-transformation.c      | 5 ++++-
+ libweston/renderer-gl/meson.build                            | 4 ++++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/libweston/renderer-gl/gl-shader-config-color-transformation.c b/libweston/renderer-gl/gl-shader-config-color-transformation.c
+index 7f858dd..a001005 100644
+--- a/libweston/renderer-gl/gl-shader-config-color-transformation.c
++++ b/libweston/renderer-gl/gl-shader-config-color-transformation.c
+@@ -177,7 +177,7 @@ static bool
+ gl_3d_lut(struct gl_renderer_color_transform *gl_xform,
+ 	  struct weston_color_transform *xform)
+ {
+-
++#ifdef HAVE_GLES3
+ 	GLuint tex3d;
+ 	float *lut;
+ 	const unsigned dim_size = xform->mapping.u.lut3d.optimal_len;
+@@ -211,6 +211,9 @@ gl_3d_lut(struct gl_renderer_color_transform *gl_xform,
+ 	free(lut);
+ 
+ 	return true;
++#else
++	return false;
++#endif
+ }
+ 
+ 
+diff --git a/libweston/renderer-gl/meson.build b/libweston/renderer-gl/meson.build
+index 4d9f64d..efe0449 100644
+--- a/libweston/renderer-gl/meson.build
++++ b/libweston/renderer-gl/meson.build
+@@ -43,6 +43,10 @@ foreach name : [ 'egl', 'glesv2' ]
+ 		error('gl-renderer requires @0@ which was not found. Or, you can use \'-Drenderer-gl=false\'.'.format(name))
+ 	endif
+ 	deps_renderer_gl += d
++
++	if cc.has_function('glTexImage3D', dependencies: d)
++	config_h.set('HAVE_GLES3', 1)
++	endif
+ endforeach
+ 
+ plugin_gl = shared_library(
+-- 
+2.20.1
+

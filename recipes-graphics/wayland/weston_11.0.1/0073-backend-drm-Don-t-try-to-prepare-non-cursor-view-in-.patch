@@ -1,0 +1,56 @@
+From 5a2f8922a7fd99a74e1079c8d3a299294a55e8a3 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 30 Jun 2022 09:16:58 +0800
+Subject: [PATCH 73/93] backend-drm: Don't try to prepare non-cursor view in
+ renderer-only mode
+
+It would fail out in the later check anyway.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/state-propose.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/libweston/backend-drm/state-propose.c b/libweston/backend-drm/state-propose.c
+index 69d49bc..b2f0f53 100644
+--- a/libweston/backend-drm/state-propose.c
++++ b/libweston/backend-drm/state-propose.c
+@@ -438,6 +438,14 @@ dmabuf_feedback_maybe_update(struct drm_device *device, struct weston_view *ev,
+ 	return true;
+ }
+ 
++static struct weston_layer *
++get_view_layer(struct weston_view *view)
++{
++	if (view->parent_view)
++		return get_view_layer(view->parent_view);
++	return view->layer_link.layer;
++}
++
+ static struct drm_plane_state *
+ drm_output_find_plane_for_view(struct drm_output_state *state,
+ 			       struct weston_paint_node *pnode,
+@@ -453,6 +461,7 @@ drm_output_find_plane_for_view(struct drm_output_state *state,
+ 	struct drm_plane *plane;
+ 
+ 	struct weston_view *ev = pnode->view;
++	struct weston_layer *layer;
+ 	struct weston_buffer *buffer;
+ 	struct drm_fb *fb = NULL;
+ 
+@@ -468,6 +477,12 @@ drm_output_find_plane_for_view(struct drm_output_state *state,
+ 		return NULL;
+ 	}
+ 
++	/* only allow cursor in renderer-only mode */
++	layer = get_view_layer(ev);
++	if (mode == DRM_OUTPUT_PROPOSE_STATE_RENDERER_ONLY &&
++	    layer->position != WESTON_LAYER_POSITION_CURSOR)
++		return NULL;
++
+ 	buffer = ev->surface->buffer_ref.buffer;
+ 	if (buffer->type == WESTON_BUFFER_SOLID) {
+ 		pnode->try_view_on_plane_failure_reasons |=
+-- 
+2.20.1
+

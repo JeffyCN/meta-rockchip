@@ -1,0 +1,48 @@
+From 67d6cf6144652a8862c60135adf247fd3e1a8706 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 3 Nov 2021 17:52:51 +0800
+Subject: [PATCH 55/93] compositor: Support placing subsurface above or below
+ all siblings
+
+By passing itself as sibling in ::place_above or ::place_below.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/compositor.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index ff07e40..b76e1e9 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -5158,7 +5158,12 @@ subsurface_place_above(struct wl_client *client,
+ 	if (!sub)
+ 		return;
+ 
+-	sibling = subsurface_sibling_check(sub, surface, "place_above");
++	if (surface == sub->surface)
++		sibling = container_of(sub->parent->subsurface_list.next,
++			struct weston_subsurface, parent_link);
++	else
++		sibling = subsurface_sibling_check(sub, surface, "place_above");
++
+ 	if (!sibling)
+ 		return;
+ 
+@@ -5182,7 +5187,12 @@ subsurface_place_below(struct wl_client *client,
+ 	if (!sub)
+ 		return;
+ 
+-	sibling = subsurface_sibling_check(sub, surface, "place_below");
++	if (surface == sub->surface)
++		sibling = container_of(sub->parent->subsurface_list.prev,
++			struct weston_subsurface, parent_link);
++	else
++		sibling = subsurface_sibling_check(sub, surface, "place_below");
++
+ 	if (!sibling)
+ 		return;
+ 
+-- 
+2.20.1
+

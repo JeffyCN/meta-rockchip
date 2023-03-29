@@ -1,0 +1,32 @@
+From e8c43870376bf5fb355a4ff2b668cdd08ec1e6fe Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 18 Nov 2019 12:23:48 +0800
+Subject: [PATCH 09/93] compositor: Force applying subsurface position directly
+
+Currently the subsurface's position would only be applied when
+committing it's parent, which might not always happen.
+
+Force applying new position directly to avoid that.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/compositor.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index caec3e2..930d4f5 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -4955,6 +4955,9 @@ subsurface_set_position(struct wl_client *client,
+ 	sub->position.x = x;
+ 	sub->position.y = y;
+ 	sub->position.set = 1;
++
++	// HACK: Force applying position directly
++	weston_subsurface_parent_commit(sub, 0);
+ }
+ 
+ static struct weston_subsurface *
+-- 
+2.20.1
+

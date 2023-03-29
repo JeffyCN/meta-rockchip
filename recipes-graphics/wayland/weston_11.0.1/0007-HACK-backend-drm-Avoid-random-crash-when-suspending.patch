@@ -1,0 +1,47 @@
+From f2eb61dd039f76f7e45216968efb84c722beac32 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 2 Jul 2020 14:58:49 +0800
+Subject: [PATCH 07/93] HACK: backend-drm: Avoid random crash when suspending
+
+Skip the repaint_status check since the weston_output_finish_frame()
+could also be called when turning off dpms.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm.c | 6 ++++--
+ libweston/compositor.c      | 2 --
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 8969a76..711ed5b 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -287,8 +287,10 @@ drm_output_update_complete(struct drm_output *output, uint32_t flags,
+ 	wl_list_for_each(ps, &output->state_cur->plane_list, link)
+ 		ps->complete = true;
+ 
+-	drm_output_state_free(output->state_last);
+-	output->state_last = NULL;
++	if (output->state_last) {
++		drm_output_state_free(output->state_last);
++		output->state_last = NULL;
++	}
+ 
+ 	if (output->destroy_pending) {
+ 		output->destroy_pending = false;
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index 7b15769..e166911 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -3515,8 +3515,6 @@ weston_output_finish_frame(struct weston_output *output,
+ 	struct timespec vblank_monotonic;
+ 	int64_t msec_rel;
+ 
+-	assert(output->repaint_status == REPAINT_AWAITING_COMPLETION);
+-
+ 	/*
+ 	 * If timestamp of latest vblank is given, it must always go forwards.
+ 	 * If not given, INVALID flag must be set.
+-- 
+2.20.1
+

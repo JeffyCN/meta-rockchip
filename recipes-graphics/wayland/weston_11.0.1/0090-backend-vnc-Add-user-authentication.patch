@@ -1,0 +1,123 @@
+From 9c6d00f02a466d23765b210256f31ff0a0b92df0 Mon Sep 17 00:00:00 2001
+From: Philipp Zabel <philipp.zabel@gmail.com>
+Date: Sat, 19 Nov 2022 09:52:05 +0100
+Subject: [PATCH 90/93] backend-vnc: Add user authentication
+
+Let VNC clients authenticate using the local username and password of
+the user weston is running as. To avoid transmitting the password in
+cleartext, make TLS security mandatory.
+
+Signed-off-by: Philipp Zabel <philipp.zabel@gmail.com>
+(cherry picked from commit 133417b016c5dfbfea850ad6a2f29b1ad7162401)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-vnc/vnc.c | 60 ++++++++++++++++++++++++-------------
+ man/weston-vnc.man          |  4 +--
+ 2 files changed, 41 insertions(+), 23 deletions(-)
+
+diff --git a/libweston/backend-vnc/vnc.c b/libweston/backend-vnc/vnc.c
+index e57e377..6cb05d7 100644
+--- a/libweston/backend-vnc/vnc.c
++++ b/libweston/backend-vnc/vnc.c
+@@ -36,6 +36,7 @@
+ #include <errno.h>
+ #include <linux/input.h>
+ #include <netinet/in.h>
++#include <pwd.h>
+ #include <sys/types.h>
+ #include <sys/socket.h>
+ #include <unistd.h>
+@@ -411,6 +412,19 @@ vnc_pointer_event(struct nvnc_client *client, uint16_t x, uint16_t y,
+ 	notify_pointer_frame(peer->seat);
+ }
+ 
++static bool
++vnc_handle_auth(const char *username, const char *password, void *userdata)
++{
++	struct passwd *pw = getpwnam(username);
++
++	if (!pw || pw->pw_uid != getuid()) {
++		weston_log("VNC: wrong user '%s'\n", username);
++		return false;
++	}
++
++	return weston_authenticate_user(username, password);
++}
++
+ static void
+ vnc_client_cleanup(struct nvnc_client *client)
+ {
+@@ -997,30 +1011,34 @@ vnc_backend_create(struct weston_compositor *compositor,
+ 	nvnc_set_userdata(backend->server, backend, NULL);
+ 	nvnc_set_name(backend->server, "Weston VNC backend");
+ 
+-	if (config->server_cert || config->server_key) {
+-		if (!nvnc_has_auth()) {
+-			weston_log("Neat VNC built without TLS support\n");
+-			goto err_output;
+-		}
+-		if (!config->server_cert) {
+-			weston_log("Missing TLS certificate (--vnc-tls-cert)\n");
+-			goto err_output;
+-		}
+-		if (!config->server_key) {
+-			weston_log("Missing TLS key (--vnc-tls-key)\n");
+-			goto err_output;
+-		}
+-
+-		ret = nvnc_enable_auth(backend->server, config->server_key,
+-				       config->server_cert, NULL, NULL);
+-		if (ret) {
+-			weston_log("Failed to enable TLS support\n");
+-			goto err_output;
+-		}
++	if (!nvnc_has_auth()) {
++		weston_log("Neat VNC built without TLS support\n");
++		goto err_output;
++	}
++	if (!config->server_cert && !config->server_key) {
++		weston_log("The VNC backend requires a key and a certificate for TLS security"
++			   " (--vnc-tls-cert/--vnc-tls-key)\n");
++		goto err_output;
++	}
++	if (!config->server_cert) {
++		weston_log("Missing TLS certificate (--vnc-tls-cert)\n");
++		goto err_output;
++	}
++	if (!config->server_key) {
++		weston_log("Missing TLS key (--vnc-tls-key)\n");
++		goto err_output;
++	}
+ 
+-		weston_log("TLS support activated\n");
++	ret = nvnc_enable_auth(backend->server, config->server_key,
++			       config->server_cert, vnc_handle_auth,
++			       NULL);
++	if (ret) {
++		weston_log("Failed to enable TLS support\n");
++		goto err_output;
+ 	}
+ 
++	weston_log("TLS support activated\n");
++
+ 	ret = weston_plugin_api_register(compositor, WESTON_VNC_OUTPUT_API_NAME,
+ 					 &api, sizeof(api));
+ 	if (ret < 0) {
+diff --git a/man/weston-vnc.man b/man/weston-vnc.man
+index 582fe28..5232aac 100644
+--- a/man/weston-vnc.man
++++ b/man/weston-vnc.man
+@@ -19,8 +19,8 @@ the graphical content, depending on what is supported by the VNC client.
+ The VNC backend is not multi-seat aware, so if a second client connects to the
+ backend, the first client will be disconnected.
+ 
+-Note that authentication is not supported yet. Anyone with access to the port
+-can get control of the desktop via the VNC output.
++The VNC client has to authenticate as the user running weston. This requires a PAM configuration file
++.BR /etc/pam.d/weston-remote-access .
+ 
+ .\" ***************************************************************
+ .SH CONFIGURATION
+-- 
+2.20.1
+

@@ -1,0 +1,29 @@
+From 837406d197dd0d7607364007d37c3d3ada5938b3 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 16 Oct 2020 12:19:44 +0800
+Subject: [PATCH 34/93] touch-calibrator: Ignore verify errors
+
+Print warnings instead, this is useful when emulating a small screen.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ clients/touch-calibrator.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/clients/touch-calibrator.c b/clients/touch-calibrator.c
+index 04a966b..815b89a 100644
+--- a/clients/touch-calibrator.c
++++ b/clients/touch-calibrator.c
+@@ -854,7 +854,8 @@ calibrator_run(struct calibrator *cal)
+ 		return CAL_EXIT_ERROR;
+ 
+ 	if (verify_calibration(cal, result) < 0)
+-		return CAL_EXIT_ERROR;
++		//return CAL_EXIT_ERROR;
++		pr_ver("Ignoring verify errors.\n");
+ 
+ 	pr_ver("Calibration values:");
+ 	for (i = 0; i < 6; i++)
+-- 
+2.20.1
+

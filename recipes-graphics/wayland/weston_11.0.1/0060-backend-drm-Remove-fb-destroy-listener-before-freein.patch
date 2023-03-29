@@ -1,0 +1,29 @@
+From ec9bf7277cc8b41e6bd7cdd44da137f1372a333e Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 24 Feb 2022 09:25:54 +0800
+Subject: [PATCH 60/93] backend-drm: Remove fb destroy listener before freeing
+ it
+
+Fix use-after-free.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/fb.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libweston/backend-drm/fb.c b/libweston/backend-drm/fb.c
+index 8c4c49c..2ab168b 100644
+--- a/libweston/backend-drm/fb.c
++++ b/libweston/backend-drm/fb.c
+@@ -540,6 +540,8 @@ drm_fb_handle_buffer_destroy(struct wl_listener *listener, void *data)
+ 		drm_fb_unref(buf_fb->fb);
+ 	}
+ 
++	wl_list_remove(&listener->link);
++
+ 	free(buf_fb);
+ }
+ 
+-- 
+2.20.1
+

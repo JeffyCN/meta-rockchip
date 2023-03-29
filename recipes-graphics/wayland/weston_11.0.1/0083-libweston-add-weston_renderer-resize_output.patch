@@ -1,0 +1,261 @@
+From 388eb65d1c587ffbfe559f5eb061a5feb2ec4fe5 Mon Sep 17 00:00:00 2001
+From: Pekka Paalanen <pekka.paalanen@collabora.com>
+Date: Fri, 22 Jul 2022 11:30:04 +0300
+Subject: [PATCH 83/93] libweston: add weston_renderer::resize_output()
+
+Previously renderers were not told when the output (framebuffer they
+need to draw) size changed. Renderers just pulled that information out
+from weston_output::current_mode when they happened to need it. This
+makes some things awkward, like resizing the shadow or intermediate
+buffers. In fact, Pixman-renderer does not even support resizing its
+shadow buffer, nor does GL-renderer. DRM-backend has to destroy and
+re-create the renderer output state anyway, but rdp, x11 and wayland
+backends would be natural users of resizing API.
+
+This commit adds an API for resizing with empty implementations. Actual
+implementations will be added in following patches for each renderer
+while moving parts of resizing code from backends into the renderers.
+No-op renderer needs no implementation.
+
+Only wayland-backend has actual resizing code already, and that is made
+to call the new API. Unfortunately, Pixman and GL renderers differ: one
+does not blit them while the other does. In order to assert the
+functionality of each renderer to keep the API consistent,
+wayland-backend needs to lie to pixman-renderer. That's not new, it
+already does so in wayland_output_get_shm_buffer() where the 'pm_image'
+addresses only the interior area instead of the whole buffer.
+
+Signed-off-by: Pekka Paalanen <pekka.paalanen@collabora.com>
+(cherry picked from commit 8636422309462226436bc52f35e53e422bfd7e67)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-wayland/wayland.c | 14 ++++++++++++-
+ libweston/compositor.c              | 27 ++++++++++++++++++++++++
+ libweston/libweston-internal.h      | 32 +++++++++++++++++++++++++++++
+ libweston/noop-renderer.c           | 10 +++++++++
+ libweston/pixman-renderer.c         | 20 ++++++++++++++++++
+ libweston/renderer-gl/gl-renderer.c | 10 +++++++++
+ 6 files changed, 112 insertions(+), 1 deletion(-)
+
+diff --git a/libweston/backend-wayland/wayland.c b/libweston/backend-wayland/wayland.c
+index bb5648d..7f27264 100644
+--- a/libweston/backend-wayland/wayland.c
++++ b/libweston/backend-wayland/wayland.c
+@@ -886,6 +886,7 @@ wayland_output_resize_surface(struct wayland_output *output)
+ 	if (output->gl.egl_window) {
+ 		wl_egl_window_resize(output->gl.egl_window,
+ 				     fb_size.width, fb_size.height, 0, 0);
++		weston_renderer_resize_output(&output->base, &fb_size, &area);
+ 
+ 		/* These will need to be re-created due to the resize */
+ 		gl_renderer->output_set_border(&output->base,
+@@ -908,8 +909,19 @@ wayland_output_resize_surface(struct wayland_output *output)
+ 					       0, 0, 0, NULL);
+ 		cairo_surface_destroy(output->gl.border.bottom);
+ 		output->gl.border.bottom = NULL;
+-	}
++	} else
+ #endif
++	{
++		/*
++		 * Pixman-renderer never knows about decorations, we blit them
++		 * ourselves.
++		 */
++		struct weston_size pm_size = {
++			.width = area.width,
++			.height = area.height
++		};
++		weston_renderer_resize_output(&output->base, &pm_size, NULL);
++	}
+ 
+ 	wayland_output_destroy_shm_buffers(output);
+ }
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index 7b5c789..d40c9aa 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -9273,3 +9273,30 @@ weston_output_disable_planes_decr(struct weston_output *output)
+ 		weston_schedule_surface_protection_update(output->compositor);
+ 
+ }
++
++/** Tell the renderer that the target framebuffer size has changed
++ *
++ * \param output The output that was resized.
++ * \param fb_size The framebuffer size, including output decorations.
++ * \param area The composited area inside the framebuffer, excluding
++ * decorations. This can also be NULL, which means the whole fb_size is
++ * the composited area.
++ */
++WL_EXPORT void
++weston_renderer_resize_output(struct weston_output *output,
++			      const struct weston_size *fb_size,
++			      const struct weston_geometry *area)
++{
++	struct weston_renderer *r = output->compositor->renderer;
++	struct weston_geometry def = {
++		.x = 0,
++		.y = 0,
++		.width = fb_size->width,
++		.height = fb_size->height
++	};
++
++	if (!r->resize_output(output, fb_size, area ?: &def)) {
++		weston_log("Error: Resizing output '%s' failed.\n",
++			   output->name);
++	}
++}
+diff --git a/libweston/libweston-internal.h b/libweston/libweston-internal.h
+index 39d9e85..bcfb153 100644
+--- a/libweston/libweston-internal.h
++++ b/libweston/libweston-internal.h
+@@ -41,6 +41,7 @@
+  */
+ 
+ #include <libweston/libweston.h>
++#include <assert.h>
+ #include "color.h"
+ 
+ /* compositor <-> renderer interface */
+@@ -52,6 +53,15 @@ struct weston_renderer {
+ 			   uint32_t width, uint32_t height);
+ 	void (*repaint_output)(struct weston_output *output,
+ 			       pixman_region32_t *output_damage);
++
++	/** See weston_renderer_resize_output()
++	 *
++	 * \return True for success, false for leaving the output in a mess.
++	 */
++	bool (*resize_output)(struct weston_output *output,
++			      const struct weston_size *fb_size,
++			      const struct weston_geometry *area);
++
+ 	void (*flush_damage)(struct weston_surface *surface,
+ 			     struct weston_buffer *buffer);
+ 	void (*attach)(struct weston_surface *es, struct weston_buffer *buffer);
+@@ -74,6 +84,28 @@ struct weston_renderer {
+ 				 struct weston_buffer *buffer);
+ };
+ 
++void
++weston_renderer_resize_output(struct weston_output *output,
++			      const struct weston_size *fb_size,
++			      const struct weston_geometry *area);
++
++static inline void
++check_compositing_area(const struct weston_size *fb_size,
++		       const struct weston_geometry *area)
++{
++	assert(fb_size);
++	assert(fb_size->width > 0);
++	assert(fb_size->height > 0);
++
++	assert(area);
++	assert(area->x >= 0);
++	assert(area->width > 0);
++	assert(area->x <= fb_size->width - area->width);
++	assert(area->y >= 0);
++	assert(area->height > 0);
++	assert(area->y <= fb_size->height - area->height);
++}
++
+ /* weston_buffer */
+ 
+ void
+diff --git a/libweston/noop-renderer.c b/libweston/noop-renderer.c
+index f99a313..35f180e 100644
+--- a/libweston/noop-renderer.c
++++ b/libweston/noop-renderer.c
+@@ -51,6 +51,15 @@ noop_renderer_repaint_output(struct weston_output *output,
+ {
+ }
+ 
++static bool
++noop_renderer_resize_output(struct weston_output *output,
++			    const struct weston_size *fb_size,
++			    const struct weston_geometry *area)
++{
++	check_compositing_area(fb_size, area);
++	return true;
++}
++
+ static void
+ noop_renderer_flush_damage(struct weston_surface *surface,
+ 			   struct weston_buffer *buffer)
+@@ -124,6 +133,7 @@ noop_renderer_init(struct weston_compositor *ec)
+ 
+ 	renderer->base.read_pixels = noop_renderer_read_pixels;
+ 	renderer->base.repaint_output = noop_renderer_repaint_output;
++	renderer->base.resize_output = noop_renderer_resize_output;
+ 	renderer->base.flush_damage = noop_renderer_flush_damage;
+ 	renderer->base.attach = noop_renderer_attach;
+ 	renderer->base.destroy = noop_renderer_destroy;
+diff --git a/libweston/pixman-renderer.c b/libweston/pixman-renderer.c
+index 22edaa5..342a266 100644
+--- a/libweston/pixman-renderer.c
++++ b/libweston/pixman-renderer.c
+@@ -1194,6 +1194,25 @@ pixman_renderer_surface_copy_content(struct weston_surface *surface,
+ 	return 0;
+ }
+ 
++static bool
++pixman_renderer_resize_output(struct weston_output *output,
++			      const struct weston_size *fb_size,
++			      const struct weston_geometry *area)
++{
++	check_compositing_area(fb_size, area);
++
++	/*
++	 * Pixman-renderer does not implement output decorations blitting,
++	 * wayland-backend does it on its own.
++	 */
++	assert(area->x == 0);
++	assert(area->y == 0);
++	assert(fb_size->width == area->width);
++	assert(fb_size->height == area->height);
++
++	return true;
++}
++
+ static void
+ debug_binding(struct weston_keyboard *keyboard, const struct timespec *time,
+ 	      uint32_t key, void *data)
+@@ -1374,6 +1393,7 @@ pixman_renderer_init(struct weston_compositor *ec)
+ 	renderer->debug_color = NULL;
+ 	renderer->base.read_pixels = pixman_renderer_read_pixels;
+ 	renderer->base.repaint_output = pixman_renderer_repaint_output;
++	renderer->base.resize_output = pixman_renderer_resize_output;
+ 	renderer->base.flush_damage = pixman_renderer_flush_damage;
+ 	renderer->base.attach = pixman_renderer_attach;
+ 	renderer->base.destroy = pixman_renderer_destroy;
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index 9b63c24..28fc4ae 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -3427,6 +3427,15 @@ gl_renderer_output_set_border(struct weston_output *output,
+ 	go->border_status |= 1 << side;
+ }
+ 
++static bool
++gl_renderer_resize_output(struct weston_output *output,
++			  const struct weston_size *fb_size,
++			  const struct weston_geometry *area)
++{
++	check_compositing_area(fb_size, area);
++	return true;
++}
++
+ static int
+ gl_renderer_setup(struct weston_compositor *ec, EGLSurface egl_surface);
+ 
+@@ -3780,6 +3789,7 @@ gl_renderer_display_create(struct weston_compositor *ec,
+ 
+ 	gr->base.read_pixels = gl_renderer_read_pixels;
+ 	gr->base.repaint_output = gl_renderer_repaint_output;
++	gr->base.resize_output = gl_renderer_resize_output;
+ 	gr->base.flush_damage = gl_renderer_flush_damage;
+ 	gr->base.attach = gl_renderer_attach;
+ 	gr->base.destroy = gl_renderer_destroy;
+-- 
+2.20.1
+

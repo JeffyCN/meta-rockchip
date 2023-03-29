@@ -1,0 +1,151 @@
+From fa768720e76360248ac125ecab2efe515d573eb3 Mon Sep 17 00:00:00 2001
+From: Philipp Zabel <p.zabel@pengutronix.de>
+Date: Thu, 6 Oct 2022 12:18:04 +0200
+Subject: [PATCH 88/93] backend-vnc: enable TLS support
+
+Add TLS key and certificate parameters to enable encryption support.
+
+Signed-off-by: Philipp Zabel <p.zabel@pengutronix.de>
+(cherry picked from commit 1a027e63cb4dda7a7483034e89314bd8b064ed1b)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ compositor/main.c               |  6 ++++++
+ include/libweston/backend-vnc.h |  2 ++
+ libweston/backend-vnc/vnc.c     | 24 ++++++++++++++++++++++++
+ man/weston-vnc.man              | 33 ++++++++++++++++++++++++++++++---
+ 4 files changed, 62 insertions(+), 3 deletions(-)
+
+diff --git a/compositor/main.c b/compositor/main.c
+index e30f27e..ed5c818 100644
+--- a/compositor/main.c
++++ b/compositor/main.c
+@@ -730,6 +730,8 @@ usage(int error_code)
+ 		"  --width=WIDTH\t\tWidth of desktop\n"
+ 		"  --height=HEIGHT\tHeight of desktop\n"
+ 		"  --port=PORT\t\tThe port to listen on\n"
++		"  --vnc-tls-cert=FILE\tThe file containing the certificate for TLS encryption\n"
++		"  --vnc-tls-key=FILE\tThe file containing the private key for TLS encryption\n"
+ 		"\n");
+ #endif
+ 
+@@ -3253,6 +3255,8 @@ load_vnc_backend(struct weston_compositor *c,
+ 		{ WESTON_OPTION_INTEGER, "height", 0, &parsed_options->height },
+ 		{ WESTON_OPTION_STRING,  "address", 0, &config.bind_address },
+ 		{ WESTON_OPTION_INTEGER, "port", 0, &config.port },
++		{ WESTON_OPTION_STRING,  "vnc-tls-cert", 0, &config.server_cert },
++		{ WESTON_OPTION_STRING,  "vnc-tls-key", 0, &config.server_key },
+ 	};
+ 
+ 	parse_options(vnc_options, ARRAY_LENGTH(vnc_options), argc, argv);
+@@ -3267,6 +3271,8 @@ load_vnc_backend(struct weston_compositor *c,
+ 					     &config.base);
+ 
+ 	free(config.bind_address);
++	free(config.server_cert);
++	free(config.server_key);
+ 
+ 	return ret;
+ }
+diff --git a/include/libweston/backend-vnc.h b/include/libweston/backend-vnc.h
+index 0085df5..3495c0e 100644
+--- a/include/libweston/backend-vnc.h
++++ b/include/libweston/backend-vnc.h
+@@ -62,6 +62,8 @@ struct weston_vnc_backend_config {
+ 	char *bind_address;
+ 	int port;
+ 	int refresh_rate;
++	char *server_cert;
++	char *server_key;
+ };
+ 
+ #ifdef  __cplusplus
+diff --git a/libweston/backend-vnc/vnc.c b/libweston/backend-vnc/vnc.c
+index 190fe92..e57e377 100644
+--- a/libweston/backend-vnc/vnc.c
++++ b/libweston/backend-vnc/vnc.c
+@@ -997,6 +997,30 @@ vnc_backend_create(struct weston_compositor *compositor,
+ 	nvnc_set_userdata(backend->server, backend, NULL);
+ 	nvnc_set_name(backend->server, "Weston VNC backend");
+ 
++	if (config->server_cert || config->server_key) {
++		if (!nvnc_has_auth()) {
++			weston_log("Neat VNC built without TLS support\n");
++			goto err_output;
++		}
++		if (!config->server_cert) {
++			weston_log("Missing TLS certificate (--vnc-tls-cert)\n");
++			goto err_output;
++		}
++		if (!config->server_key) {
++			weston_log("Missing TLS key (--vnc-tls-key)\n");
++			goto err_output;
++		}
++
++		ret = nvnc_enable_auth(backend->server, config->server_key,
++				       config->server_cert, NULL, NULL);
++		if (ret) {
++			weston_log("Failed to enable TLS support\n");
++			goto err_output;
++		}
++
++		weston_log("TLS support activated\n");
++	}
++
+ 	ret = weston_plugin_api_register(compositor, WESTON_VNC_OUTPUT_API_NAME,
+ 					 &api, sizeof(api));
+ 	if (ret < 0) {
+diff --git a/man/weston-vnc.man b/man/weston-vnc.man
+index 6491097..582fe28 100644
+--- a/man/weston-vnc.man
++++ b/man/weston-vnc.man
+@@ -19,9 +19,8 @@ the graphical content, depending on what is supported by the VNC client.
+ The VNC backend is not multi-seat aware, so if a second client connects to the
+ backend, the first client will be disconnected.
+ 
+-Note that authentication and encryption are not supported yet. Anyone with
+-access to the port can get control of the desktop via the VNC output, and
+-all data is transferred in plaintext.
++Note that authentication is not supported yet. Anyone with access to the port
++can get control of the desktop via the VNC output.
+ 
+ .\" ***************************************************************
+ .SH CONFIGURATION
+@@ -50,7 +49,35 @@ The height of the framebuffer. It defaults to 480.
+ .TP
+ \fB\-\-port\fR=\fIport\fR
+ The TCP port to listen on for connections. It defaults to 5900.
++.TP
++\fB\-\-vnc\-tls\-key\fR=\fIfile\fR
++The file containing the key for doing TLS security. To have TLS security you also need
++to ship a file containing a certificate.
++.TP
++\fB\-\-vnc\-tls\-cert\fR=\fIfile\fR
++The file containing the certificate for doing TLS security. To have TLS security you also need
++to ship a key file.
++
++
++.\" ***************************************************************
++.SH Generating cryptographic material for the VNC backend
++.
++You can generate a key and certificate file to use with TLS security using typical
++.B openssl
++invocations:
+ 
++.nf
++$ openssl genrsa -out tls.key 2048
++Generating RSA private key, 2048 bit long modulus
++[...]
++$ openssl req -new -key tls.key -out tls.csr
++[...]
++$ openssl x509 -req -days 365 -signkey tls.key -in tls.csr -out tls.crt
++[...]
++.fi
++
++You will get the tls.key and tls.crt files to use with the VNC backend.
++.
+ .\" ***************************************************************
+ .SH "SEE ALSO"
+ .BR weston (1)
+-- 
+2.20.1
+

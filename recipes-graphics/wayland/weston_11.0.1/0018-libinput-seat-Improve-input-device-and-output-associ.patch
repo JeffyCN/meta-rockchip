@@ -1,0 +1,236 @@
+From 44d9f5fb566ec28497a232b882659ffefd481897 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 2 Apr 2021 09:49:09 +0800
+Subject: [PATCH 18/93] libinput-seat: Improve input device and output
+ associating
+
+An input device can associate with an output using udev rules's
+WL_OUTPUT property, for example:
+ATTRS{idVendor}=="0eef", ATTRS{idProduct}=="0001", ENV{WL_OUTPUT}="HDMI-A-1"
+
+An input device can be added into a wl_seat using udev rules's WL_SEAT
+property, for example:
+ATTRS{idVendor}=="0eef", ATTRS{idProduct}=="0001", ENV{WL_SEAT}="seat1"
+
+An output can associate with a wl_seat using seat entry in weston.ini's
+output section, for example:
+[output]
+name=HDMI-A-1
+seat=seat1
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm.c |   1 +
+ libweston/libinput-seat.c   | 117 +++++++++++++++++++++++-------------
+ libweston/libinput-seat.h   |   5 +-
+ 3 files changed, 79 insertions(+), 44 deletions(-)
+
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 159abee..d366e2b 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -1679,6 +1679,7 @@ setup_output_seat_constraint(struct drm_backend *b,
+ 			return;
+ 
+ 		seat->base.output = output;
++		seat->has_output = true;
+ 
+ 		pointer = weston_seat_get_pointer(&seat->base);
+ 		if (pointer)
+diff --git a/libweston/libinput-seat.c b/libweston/libinput-seat.c
+index a9c7d6f..57ff181 100644
+--- a/libweston/libinput-seat.c
++++ b/libweston/libinput-seat.c
+@@ -89,12 +89,54 @@ output_find_by_head_name(struct weston_compositor *compositor,
+ 	return NULL;
+ }
+ 
++static void
++udev_seat_update_output(struct udev_seat *seat)
++{
++	struct weston_compositor *c = seat->base.compositor;
++	struct weston_output *found, *prefered = NULL;
++	struct evdev_device *device;
++
++	if (seat->has_output) {
++		if (weston_output_valid(seat->base.output))
++			prefered = seat->base.output;
++		else
++			/* The seat's output been removed */
++			seat->base.output = NULL;
++	} else {
++		struct weston_output *output;
++
++		/* default assignment to an arbitrary output */
++		wl_list_for_each(output, &c->output_list, link) {
++			if (weston_output_valid(output)) {
++				prefered = output;
++				break;
++			}
++		}
++	}
++
++	wl_list_for_each(device, &seat->devices_list, link) {
++		/* If we find any input device without an associated output
++		 * or an output name to associate with, just tie it with the
++		 * output we got here - the default assignment.
++		 */
++		if (!device->output_name) {
++			evdev_device_set_output(device, prefered);
++			continue;
++		}
++
++		/* Update all devices' output associations, may they gain or
++		 * lose it.
++		 */
++		found = output_find_by_head_name(c, device->output_name);
++		evdev_device_set_output(device, found);
++	}
++}
++
+ static int
+ device_added(struct udev_input *input, struct libinput_device *libinput_device)
+ {
+ 	struct weston_compositor *c;
+ 	struct evdev_device *device;
+-	struct weston_output *output;
+ 	const char *output_name;
+ 	struct weston_seat *seat;
+ 	struct udev_seat *udev_seat;
+@@ -128,16 +170,10 @@ device_added(struct udev_input *input, struct libinput_device *libinput_device)
+ 				     &pointer->y);
+ 
+ 	output_name = libinput_device_get_output_name(libinput_device);
+-	if (output_name) {
++	if (output_name)
+ 		device->output_name = strdup(output_name);
+-		output = output_find_by_head_name(c, output_name);
+-		evdev_device_set_output(device, output);
+-	} else if (!wl_list_empty(&c->output_list)) {
+-		/* default assignment to an arbitrary output */
+-		output = container_of(c->output_list.next,
+-				      struct weston_output, link);
+-		evdev_device_set_output(device, output);
+-	}
++
++	udev_seat_update_output(udev_seat);
+ 
+ 	if (!input->suspended) {
+ 		weston_seat_repick(seat);
+@@ -403,40 +439,27 @@ udev_seat_led_update(struct weston_seat *seat_base, enum weston_led leds)
+ }
+ 
+ static void
+-udev_seat_output_changed(struct udev_seat *seat, struct weston_output *output)
++notify_output_created(struct wl_listener *listener, void *data)
+ {
+-	struct evdev_device *device;
+-	struct weston_output *found;
+-
+-	wl_list_for_each(device, &seat->devices_list, link) {
+-		/* If we find any input device without an associated output
+-		 * or an output name to associate with, just tie it with the
+-		 * output we got here - the default assignment.
+-		 */
+-		if (!device->output_name) {
+-			if (!device->output)
+-				evdev_device_set_output(device, output);
+-
+-			continue;
+-		}
+-
+-		/* Update all devices' output associations, may they gain or
+-		 * lose it.
+-		 */
+-		found = output_find_by_head_name(output->compositor,
+-						 device->output_name);
+-		evdev_device_set_output(device, found);
+-	}
++	struct udev_seat *seat = container_of(listener, struct udev_seat,
++					      output_created_listener);
++	udev_seat_update_output(seat);
+ }
+ 
+ static void
+-notify_output_create(struct wl_listener *listener, void *data)
++notify_output_moved(struct wl_listener *listener, void *data)
+ {
+ 	struct udev_seat *seat = container_of(listener, struct udev_seat,
+-					      output_create_listener);
+-	struct weston_output *output = data;
++					      output_moved_listener);
++	udev_seat_update_output(seat);
++}
+ 
+-	udev_seat_output_changed(seat, output);
++static void
++notify_output_destroyed(struct wl_listener *listener, void *data)
++{
++	struct udev_seat *seat = container_of(listener, struct udev_seat,
++					      output_destroyed_listener);
++	udev_seat_update_output(seat);
+ }
+ 
+ static void
+@@ -444,9 +467,7 @@ notify_output_heads_changed(struct wl_listener *listener, void *data)
+ {
+ 	struct udev_seat *seat = container_of(listener, struct udev_seat,
+ 					      output_heads_listener);
+-	struct weston_output *output = data;
+-
+-	udev_seat_output_changed(seat, output);
++	udev_seat_update_output(seat);
+ }
+ 
+ static struct udev_seat *
+@@ -462,9 +483,17 @@ udev_seat_create(struct udev_input *input, const char *seat_name)
+ 	weston_seat_init(&seat->base, c, seat_name);
+ 	seat->base.led_update = udev_seat_led_update;
+ 
+-	seat->output_create_listener.notify = notify_output_create;
++	seat->output_created_listener.notify = notify_output_created;
+ 	wl_signal_add(&c->output_created_signal,
+-		      &seat->output_create_listener);
++		      &seat->output_created_listener);
++
++	seat->output_destroyed_listener.notify = notify_output_destroyed;
++	wl_signal_add(&c->output_destroyed_signal,
++		      &seat->output_destroyed_listener);
++
++	seat->output_moved_listener.notify = notify_output_moved;
++	wl_signal_add(&c->output_moved_signal,
++		      &seat->output_moved_listener);
+ 
+ 	seat->output_heads_listener.notify = notify_output_heads_changed;
+ 	wl_signal_add(&c->output_heads_changed_signal,
+@@ -486,7 +515,9 @@ udev_seat_destroy(struct udev_seat *seat)
+ 
+ 	udev_seat_remove_devices(seat);
+ 	weston_seat_release(&seat->base);
+-	wl_list_remove(&seat->output_create_listener.link);
++	wl_list_remove(&seat->output_created_listener.link);
++	wl_list_remove(&seat->output_destroyed_listener.link);
++	wl_list_remove(&seat->output_moved_listener.link);
+ 	wl_list_remove(&seat->output_heads_listener.link);
+ 	free(seat);
+ }
+diff --git a/libweston/libinput-seat.h b/libweston/libinput-seat.h
+index 315980d..636636f 100644
+--- a/libweston/libinput-seat.h
++++ b/libweston/libinput-seat.h
+@@ -37,8 +37,11 @@ struct libinput_device;
+ 
+ struct udev_seat {
+ 	struct weston_seat base;
++	bool has_output;
+ 	struct wl_list devices_list;
+-	struct wl_listener output_create_listener;
++	struct wl_listener output_created_listener;
++	struct wl_listener output_destroyed_listener;
++	struct wl_listener output_moved_listener;
+ 	struct wl_listener output_heads_listener;
+ };
+ 
+-- 
+2.20.1
+

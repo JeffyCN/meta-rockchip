@@ -1,0 +1,31 @@
+From ad193916801ae06bea8f8f7b3c6a51d50aac2014 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 8 Jun 2022 09:53:19 +0800
+Subject: [PATCH 70/93] desktop-shell: Fix crash when destroying uncommited
+ surface
+
+By adding a sanity check for it's wsurface_anim_fade.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ desktop-shell/shell.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
+index 2e88b99..1da402a 100644
+--- a/desktop-shell/shell.c
++++ b/desktop-shell/shell.c
+@@ -277,7 +277,9 @@ desktop_shell_destroy_surface(struct shell_surface *shsurf)
+ 	weston_view_destroy(shsurf->view);
+ 
+ 	wl_signal_emit(&shsurf->destroy_signal, shsurf);
+-	weston_surface_unref(shsurf->wsurface_anim_fade);
++
++	if (shsurf->wsurface_anim_fade)
++		weston_surface_unref(shsurf->wsurface_anim_fade);
+ 
+ 	if (shsurf->output_destroy_listener.notify) {
+ 		wl_list_remove(&shsurf->output_destroy_listener.link);
+-- 
+2.20.1
+

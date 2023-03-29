@@ -1,0 +1,46 @@
+From 54c30d559c4b8361c9e1dd1beb06df5efe43f863 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 15 Oct 2020 12:43:00 +0800
+Subject: [PATCH 33/93] compositor: Force the first app on bottom in warm-up
+ mode
+
+When warm-up enabled, assume the first app is a launcher and put it on
+the bottom layer.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ compositor/main.c      | 3 +++
+ libweston/compositor.c | 3 +++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/compositor/main.c b/compositor/main.c
+index f151a77..6ec89f3 100644
+--- a/compositor/main.c
++++ b/compositor/main.c
+@@ -3789,6 +3789,9 @@ wet_main(int argc, char *argv[], const struct weston_testsuite_data *test_data)
+ 	if (idle_time < 0)
+ 		idle_time = 300; /* default idle timeout, in seconds */
+ 
++	if (!warm_up)
++		weston_config_section_get_bool(section, "warm-up", &warm_up, false);
++
+ 	wet.compositor->idle_time = idle_time;
+ 	wet.compositor->default_pointer_grab = NULL;
+ 	wet.compositor->exit = handle_exit;
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index fa211bd..2ea1967 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -3258,6 +3258,9 @@ weston_compositor_build_view_list(struct weston_compositor *compositor,
+ 			if (compositor->warm_up && !system_layer) {
+ 				weston_log("seeing the first app\n");
+ 				compositor->warm_up = false;
++
++				/* Assuming it's a launcher */
++				view->surface->flags |= SURFACE_STAY_ON_BOTTOM;
+ 			}
+ 
+ 			view_list_add(compositor, view, output);
+-- 
+2.20.1
+

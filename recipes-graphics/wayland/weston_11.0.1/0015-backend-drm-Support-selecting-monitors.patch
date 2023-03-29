@@ -1,0 +1,1018 @@
+From f6ba2e7f989207499222617fec10227277baaf8b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 23 Jun 2020 10:05:48 +0800
+Subject: [PATCH 15/93] backend-drm: Support selecting monitors
+
+Using these environments:
+
+WESTON_DRM_PRIMARY:
+  Specify primary connector.
+WESTON_DRM_SINGLE_HEAD:
+  Force using single connector.
+WESTON_DRM_HEAD_FALLBACK:
+  Fallback to any available connector if none matched.
+WESTON_DRM_HEAD_FALLBACK_ALL:
+  Fallback to all available connector if none matched.
+WESTON_DRM_PREFER_EXTERNAL_DUAL:
+  Prefer external connectors, and also enable internal ones.
+WESTON_DRM_PREFER_EXTERNAL:
+  Prefer external connectors, and disable internal ones if any matched.
+
+WESTON_DRM_HEAD_MODE:
+  default(match primary->internal->external)
+  primary(match primary only)
+  internal(match primary->internal)
+  external(match primary->external)
+  external-dual(match primary->external->internal)
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ compositor/main.c                    |  22 +-
+ desktop-shell/shell.c                |  26 +-
+ include/libweston/libweston.h        |   2 +
+ libweston/backend-drm/drm-internal.h |  24 ++
+ libweston/backend-drm/drm.c          | 378 ++++++++++++++++++++++++---
+ libweston/backend-drm/kms.c          |  42 ++-
+ libweston/compositor.c               |  42 ++-
+ 7 files changed, 477 insertions(+), 59 deletions(-)
+
+diff --git a/compositor/main.c b/compositor/main.c
+index 57a52b6..dcfe85b 100644
+--- a/compositor/main.c
++++ b/compositor/main.c
+@@ -2326,7 +2326,7 @@ drm_head_prepare_enable(struct wet_compositor *wet,
+ 	char *output_name = NULL;
+ 	char *mode = NULL;
+ 
+-	section = drm_config_find_controlling_output_section(wet->config, name);
++	section = head->section;
+ 	if (section) {
+ 		/* skip outputs that are explicitly off, or non-desktop and not
+ 		 * explicitly enabled. The backend turns them off automatically.
+@@ -2356,11 +2356,10 @@ static bool
+ drm_head_should_force_enable(struct wet_compositor *wet,
+ 			     struct weston_head *head)
+ {
+-	const char *name = weston_head_get_name(head);
+ 	struct weston_config_section *section;
+ 	bool force;
+ 
+-	section = drm_config_find_controlling_output_section(wet->config, name);
++	section = head->section;
+ 	if (!section)
+ 		return false;
+ 
+@@ -2551,6 +2550,21 @@ drm_head_disable(struct weston_head *head)
+ 		wet_output_destroy(output);
+ }
+ 
++static bool
++drm_head_update_output_section(struct weston_head *head)
++{
++	struct weston_compositor *compositor = head->compositor;
++	struct wet_compositor *wet = to_wet_compositor(compositor);
++	const char *name = weston_head_get_name(head);
++
++	if (head->section)
++		return true;
++
++	head->section =
++		drm_config_find_controlling_output_section(wet->config, name);
++	return !!head->section;
++}
++
+ static void
+ drm_heads_changed(struct wl_listener *listener, void *arg)
+ {
+@@ -2566,6 +2580,8 @@ drm_heads_changed(struct wl_listener *listener, void *arg)
+ 	 * output.
+ 	 */
+ 	while ((head = weston_compositor_iterate_heads(compositor, head))) {
++		drm_head_update_output_section(head);
++
+ 		connected = weston_head_is_connected(head);
+ 		enabled = weston_head_is_enabled(head);
+ 		changed = weston_head_is_device_changed(head);
+diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
+index 79e20ad..89ea491 100644
+--- a/desktop-shell/shell.c
++++ b/desktop-shell/shell.c
+@@ -3550,6 +3550,9 @@ shell_fade_done_for_output(struct weston_view_animation *animation, void *data)
+ 	struct shell_output *shell_output = data;
+ 	struct desktop_shell *shell = shell_output->shell;
+ 
++	if (!shell_output->fade.curtain)
++		return;
++
+ 	shell_output->fade.animation = NULL;
+ 	switch (shell_output->fade.type) {
+ 	case FADE_IN:
+@@ -4334,8 +4337,12 @@ shell_output_destroy(struct shell_output *shell_output)
+ 		shell_output->fade.animation = NULL;
+ 	}
+ 
+-	if (shell_output->fade.curtain)
+-		weston_curtain_destroy(shell_output->fade.curtain);
++	if (shell_output->fade.curtain) {
++		struct weston_curtain *curtain = shell_output->fade.curtain;
++
++		shell_output->fade.curtain = NULL;
++		weston_curtain_destroy(curtain);
++	}
+ 
+ 	if (shell_output->fade.startup_timer)
+ 		wl_event_source_remove(shell_output->fade.startup_timer);
+@@ -4438,12 +4445,25 @@ handle_output_move_layer(struct desktop_shell *shell,
+ static void
+ handle_output_move(struct wl_listener *listener, void *data)
+ {
++	struct weston_output *output = data;
++	struct weston_compositor *compositor = output->compositor;
+ 	struct desktop_shell *shell;
+ 
+ 	shell = container_of(listener, struct desktop_shell,
+ 			     output_move_listener);
+ 
+-	shell_for_each_layer(shell, handle_output_move_layer, data);
++	if (shell->lock_surface)
++		shell->lock_surface->committed(shell->lock_surface, 0, 0);
++
++	/* Only move normal layers for non-default output */
++	if (output != get_default_output(compositor)) {
++		shell_for_each_layer(shell, handle_output_move_layer, data);
++		return;
++	}
++
++	handle_output_move_layer(shell, &shell->lock_layer, data);
++	handle_output_move_layer(shell, &shell->background_layer, data);
++	handle_output_move_layer(shell, &shell->panel_layer, data);
+ }
+ 
+ static void
+diff --git a/include/libweston/libweston.h b/include/libweston/libweston.h
+index 984d5f3..d35963f 100644
+--- a/include/libweston/libweston.h
++++ b/include/libweston/libweston.h
+@@ -399,6 +399,8 @@ struct weston_head {
+ 
+ 	/** Opaque pointer used by backends to identify heads as theirs */
+ 	const void *backend_id;
++
++	struct weston_config_section *section; /**< config section **/
+ };
+ 
+ /** Output properties derived from its color characteristics and profile
+diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
+index f4b8ed8..ec8bf0e 100644
+--- a/libweston/backend-drm/drm-internal.h
++++ b/libweston/backend-drm/drm-internal.h
+@@ -110,6 +110,10 @@
+ 
+ #define MAX_CLONED_CONNECTORS 4
+ 
++/* Min duration between drm outputs update requests, to avoid glith */
++#define DRM_MIN_UPDATE_MS	1000
++
++#define DRM_RESIZE_FREEZE_MS    600
+ 
+ /**
+  * Represents the values of an enum-type KMS property
+@@ -268,6 +272,7 @@ struct drm_device {
+ 		int fd;
+ 		char *filename;
+ 		dev_t devnum;
++		char *syspath;
+ 	} drm;
+ 
+ 	/* drm_crtc::link */
+@@ -302,6 +307,10 @@ struct drm_device {
+ 	int min_height, max_height;
+ };
+ 
++struct drm_head;
++struct drm_backend;
++typedef bool (*drm_head_match_t) (struct drm_backend *, struct drm_head *);
++
+ struct drm_backend {
+ 	struct weston_backend base;
+ 	struct weston_compositor *compositor;
+@@ -327,6 +336,19 @@ struct drm_backend {
+ 	bool shutting_down;
+ 
+ 	struct weston_log_scope *debug;
++
++	struct wl_event_source *hotplug_timer;
++	bool pending_update;
++	int64_t last_update_ms;
++	int64_t last_resize_ms;
++	int64_t resize_freeze_ms;
++
++	bool single_head;
++	bool head_fallback;
++	bool head_fallback_all;
++	drm_head_match_t *head_matches;
++	struct drm_head *primary_head;
++	struct wl_listener output_create_listener;
+ };
+ 
+ struct drm_mode {
+@@ -589,6 +611,8 @@ struct drm_output {
+ 	void (*virtual_destroy)(struct weston_output *base);
+ 
+ 	submit_frame_cb virtual_submit_frame;
++
++	bool state_invalid;
+ };
+ 
+ void
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 711ed5b..f5ac1b6 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -30,6 +30,7 @@
+ #include "config.h"
+ 
+ #include <errno.h>
++#include <stdio.h>
+ #include <stdint.h>
+ #include <stdlib.h>
+ #include <ctype.h>
+@@ -47,6 +48,7 @@
+ 
+ #include <libudev.h>
+ 
++#include <libweston/config-parser.h>
+ #include <libweston/libweston.h>
+ #include <libweston/backend-drm.h>
+ #include <libweston/weston-log.h>
+@@ -68,6 +70,43 @@
+ 
+ static const char default_seat[] = "seat0";
+ 
++static inline bool
++drm_head_is_external(struct drm_head *head)
++{
++	drmModeConnector *conn = head->connector.conn;
++	switch (conn->connector_type) {
++		case DRM_MODE_CONNECTOR_LVDS:
++		case DRM_MODE_CONNECTOR_eDP:
++#ifdef DRM_MODE_CONNECTOR_DSI
++		case DRM_MODE_CONNECTOR_DSI:
++#endif
++			return false;
++		default:
++			return true;
++	}
++};
++
++static void
++drm_backend_update_outputs(struct drm_backend *b)
++{
++	struct weston_output *primary;
++
++	if (!b->primary_head)
++		return;
++
++	primary = b->primary_head->base.output;
++	if (!primary)
++		return;
++
++	wl_list_remove(&primary->link);
++	wl_list_insert(&b->compositor->output_list, &primary->link);
++
++	/* Reflow outputs */
++	weston_compositor_reflow_outputs(b->compositor);
++
++	weston_compositor_damage_all(b->compositor);
++}
++
+ static void
+ drm_backend_create_faked_zpos(struct drm_backend *b)
+ {
+@@ -464,18 +503,36 @@ drm_output_repaint(struct weston_output *output_base, pixman_region32_t *damage)
+ 	struct drm_plane_state *scanout_state;
+ 	struct drm_pending_state *pending_state;
+ 	struct drm_device *device;
++	struct drm_backend *b;
++	struct timespec now;
++	int64_t now_ms;
+ 
+ 	assert(output);
+ 	assert(!output->virtual);
+ 
+ 	device = output->device;
+ 	pending_state = device->repaint_data;
++	b = device->backend;
+ 
+ 	if (output->disable_pending || output->destroy_pending)
+ 		goto err;
+ 
+ 	assert(!output->state_last);
+ 
++	weston_compositor_read_presentation_clock(b->compositor, &now);
++	now_ms = timespec_to_msec(&now);
++	if (now_ms < b->last_resize_ms + DRM_RESIZE_FREEZE_MS) {
++		/* Resize fullscreen/maxmium views(not always success) */
++		if (now_ms < b->last_resize_ms + DRM_RESIZE_FREEZE_MS)
++			wl_signal_emit(&b->compositor->output_resized_signal,
++				       output);
++
++		weston_output_damage(output_base);
++		weston_output_finish_frame(output_base, NULL,
++					   WP_PRESENTATION_FEEDBACK_INVALID);
++		return 0;
++	}
++
+ 	/* If planes have been disabled in the core, we might not have
+ 	 * hit assign_planes at all, so might not have valid output state
+ 	 * here. */
+@@ -504,7 +561,7 @@ drm_output_repaint(struct weston_output *output_base, pixman_region32_t *damage)
+ 
+ err:
+ 	drm_output_state_free(state);
+-	return -1;
++	return 0;
+ }
+ 
+ /* Determine the type of vblank synchronization to use for the output.
+@@ -743,6 +800,7 @@ drm_output_apply_mode(struct drm_output *output)
+ 	 *      content.
+ 	 */
+ 	device->state_invalid = true;
++	output->state_invalid = true;
+ 
+ 	if (b->use_pixman) {
+ 		drm_output_fini_pixman(output);
+@@ -1322,6 +1380,7 @@ drm_output_attach_head(struct weston_output *output_base,
+ {
+ 	struct drm_backend *b = to_drm_backend(output_base->compositor);
+ 	struct drm_device *device = b->drm;
++	struct drm_output *output = to_drm_output(output_base);
+ 
+ 	if (wl_list_length(&output_base->head_list) >= MAX_CLONED_CONNECTORS)
+ 		return -1;
+@@ -1339,6 +1398,7 @@ drm_output_attach_head(struct weston_output *output_base,
+ 	 * will not clear the flag before this output is updated?
+ 	 */
+ 	device->state_invalid = true;
++	output->state_invalid = true;
+ 
+ 	weston_output_schedule_repaint(output_base);
+ 
+@@ -1351,6 +1411,7 @@ drm_output_detach_head(struct weston_output *output_base,
+ {
+ 	struct drm_backend *b = to_drm_backend(output_base->compositor);
+ 	struct drm_device *device = b->drm;
++	struct drm_output *output = to_drm_output(output_base);
+ 
+ 	if (!output_base->enabled)
+ 		return;
+@@ -1359,6 +1420,7 @@ drm_output_detach_head(struct weston_output *output_base,
+ 	 * be driven. */
+ 	/* XXX: Ideally we'd do this per-output, not globally. */
+ 	device->state_invalid = true;
++	output->state_invalid = true;
+ 
+ 	weston_output_schedule_repaint(output_base);
+ }
+@@ -1917,6 +1979,8 @@ drm_output_enable(struct weston_output *base)
+ 	output->base.switch_mode = drm_output_switch_mode;
+ 	output->base.set_gamma = drm_output_set_gamma;
+ 
++	output->state_invalid = true;
++
+ 	weston_log("Output %s (crtc %d) video modes:\n",
+ 		   output->base.name, output->crtc->crtc_id);
+ 	drm_output_print_modes(output);
+@@ -2278,8 +2342,7 @@ drm_head_create(struct drm_device *device, drmModeConnector *conn,
+ 
+ 	head->backlight = backlight_init(drm_device, conn->connector_type);
+ 
+-	if (conn->connector_type == DRM_MODE_CONNECTOR_LVDS ||
+-	    conn->connector_type == DRM_MODE_CONNECTOR_eDP)
++	if (!drm_head_is_external(head))
+ 		weston_head_set_internal(&head->base);
+ 
+ 	if (drm_head_read_current_setup(head, device) < 0) {
+@@ -2447,56 +2510,54 @@ drm_backend_add_connector(struct drm_device *device, drmModeConnector *conn,
+ 	return ret;
+ }
+ 
+-/** Find all connectors of the fd and create drm_head or drm_writeback objects
+- * (depending on the type of connector they are) for each of them
+- *
+- * These objects are added to the DRM-backend lists of heads and writebacks.
+- *
+- * @param device The DRM device structure
+- * @param drm_device udev device pointer
+- * @param resources The DRM resources, it is taken with drmModeGetResources
+- * @return 0 on success, -1 on failure
+- */
+-static int
+-drm_backend_discover_connectors(struct drm_device *device,
+-				struct udev_device *drm_device,
+-				drmModeRes *resources)
++static bool
++resources_has_connector(drmModeRes *resources, uint32_t connector_id)
+ {
+-	drmModeConnector *conn;
+-	int i, ret;
++	for (int i = 0; i < resources->count_connectors; i++) {
++		if (resources->connectors[i] == connector_id)
++			return true;
++	}
+ 
+-	device->min_width  = resources->min_width;
+-	device->max_width  = resources->max_width;
+-	device->min_height = resources->min_height;
+-	device->max_height = resources->max_height;
++	return false;
++}
+ 
+-	for (i = 0; i < resources->count_connectors; i++) {
+-		uint32_t connector_id = resources->connectors[i];
++/* based on compositor/main.c#drm_head_prepare_enable() */
++static bool
++drm_head_is_available(struct weston_head *head)
++{
++	struct weston_config_section *section;
++	char *mode = NULL;
+ 
+-		conn = drmModeGetConnector(device->drm.fd, connector_id);
+-		if (!conn)
+-			continue;
++	section = head->section;
++	if (!section)
++		return true;
+ 
+-		ret = drm_backend_add_connector(device, conn, drm_device);
+-		if (ret < 0)
+-			drmModeFreeConnector(conn);
++	/* skip outputs that are explicitly off, or non-desktop and not
++	 * explicitly enabled.
++	 */
++	weston_config_section_get_string(section, "mode", &mode, NULL);
++	if (mode && strcmp(mode, "off") == 0) {
++		free(mode);
++		return false;
+ 	}
+ 
+-	return 0;
++	if (!mode && weston_head_is_non_desktop(head))
++		return false;
++
++	free(mode);
++	return true;
+ }
+ 
+ static bool
+-resources_has_connector(drmModeRes *resources, uint32_t connector_id)
++drm_head_match_fallback(struct drm_backend *b, struct drm_head *head)
+ {
+-	for (int i = 0; i < resources->count_connectors; i++) {
+-		if (resources->connectors[i] == connector_id)
+-			return true;
+-	}
++	if (b->head_fallback_all)
++		return true;
+ 
+-	return false;
++	return b->head_fallback && !b->primary_head;
+ }
+ 
+-static void
++static int
+ drm_backend_update_connectors(struct drm_device *device,
+ 			      struct udev_device *drm_device)
+ {
+@@ -2504,17 +2565,24 @@ drm_backend_update_connectors(struct drm_device *device,
+ 	drmModeRes *resources;
+ 	drmModeConnector *conn;
+ 	struct weston_head *base, *base_next;
+-	struct drm_head *head;
++	struct drm_head *head, *old_primary_head;
+ 	struct drm_writeback *writeback, *writeback_next;
++	drm_head_match_t *match = b->head_matches;
++	struct timespec now;
+ 	uint32_t connector_id;
+ 	int i, ret;
+ 
+ 	resources = drmModeGetResources(device->drm.fd);
+ 	if (!resources) {
+ 		weston_log("drmModeGetResources failed\n");
+-		return;
++		return -1;
+ 	}
+ 
++	device->min_width  = resources->min_width;
++	device->max_width  = resources->max_width;
++	device->min_height = resources->min_height;
++	device->max_height = resources->max_height;
++
+ 	/* collect new connectors that have appeared, e.g. MST */
+ 	for (i = 0; i < resources->count_connectors; i++) {
+ 		connector_id = resources->connectors[i];
+@@ -2576,6 +2644,65 @@ drm_backend_update_connectors(struct drm_device *device,
+ 	}
+ 
+ 	drmModeFreeResources(resources);
++
++	old_primary_head = b->primary_head;
++	b->primary_head = NULL;
++
++	wl_list_for_each_safe(base, base_next,
++			      &b->compositor->head_list, compositor_link)
++		weston_head_set_connection_status(base, false);
++
++	/* Re-connect matched heads and find primary head */
++	while (*match) {
++		wl_list_for_each_safe(base, base_next,
++				      &b->compositor->head_list,
++				      compositor_link) {
++			drmModeConnector *conn;
++
++			if (!drm_head_is_available(base))
++				continue;
++
++			head = to_drm_head(base);
++			conn = head->connector.conn;
++
++			if (conn->connection != DRM_MODE_CONNECTED ||
++			    !(*match)(b, head))
++				continue;
++
++			weston_head_set_connection_status(base, true);
++
++			if (!b->primary_head) {
++				b->primary_head = head;
++
++				/* Done the single-head match */
++				if (b->single_head)
++					goto match_done;
++			}
++		}
++
++		/* Done the fallback match */
++		if (*match == drm_head_match_fallback)
++			goto match_done;
++
++		match++;
++
++		/* Try the fallback match */
++		if (!match && !b->primary_head)
++			*match = drm_head_match_fallback;
++	}
++match_done:
++
++	drm_backend_update_outputs(b);
++
++	weston_compositor_read_presentation_clock(b->compositor, &now);
++	b->last_update_ms = timespec_to_msec(&now);
++
++	/* Assume primary output's size changed */
++	if (b->primary_head && old_primary_head &&
++	    b->primary_head != old_primary_head)
++		b->last_resize_ms = b->last_update_ms;
++
++	return 0;
+ }
+ 
+ static enum wdrm_connector_property
+@@ -2666,6 +2793,50 @@ udev_event_is_conn_prop_change(struct drm_backend *b,
+ 	return 1;
+ }
+ 
++static void
++udev_hotplug_event(struct drm_device *device, struct udev_device *udev_device)
++{
++	struct drm_backend *b = device->backend;
++	struct timespec now;
++	int64_t now_ms, next_ms;
++
++	weston_compositor_read_presentation_clock(b->compositor, &now);
++	now_ms = timespec_to_msec(&now);
++
++	/* Already have a pending request */
++	if (b->pending_update)
++		return;
++
++	next_ms = b->last_update_ms + DRM_MIN_UPDATE_MS;
++	if (next_ms <= now_ms) {
++		/* Long enough to trigger a new request */
++		drm_backend_update_connectors(device, udev_device);
++	} else {
++		/* Too close to the last request, schedule a new one */
++		b->pending_update = true;
++		wl_event_source_timer_update(b->hotplug_timer,
++					     next_ms - now_ms);
++	}
++}
++
++static int
++hotplug_timer_handler(void *data)
++{
++	struct drm_device *device = data;
++	struct drm_backend *b = device->backend;
++	struct udev_device *udev_device;
++	struct udev *udev;
++
++	udev = udev_monitor_get_udev(b->udev_monitor);
++	udev_device = udev_device_new_from_syspath(udev, device->drm.syspath);
++
++	drm_backend_update_connectors(device, udev_device);
++	b->pending_update = false;
++
++	udev_device_unref(udev_device);
++	return 0;
++}
++
+ static int
+ udev_drm_event(int fd, uint32_t mask, void *data)
+ {
+@@ -2679,7 +2850,7 @@ udev_drm_event(int fd, uint32_t mask, void *data)
+ 		if (udev_event_is_conn_prop_change(b, event, &conn_id, &prop_id))
+ 			drm_backend_update_conn_props(b, conn_id, prop_id);
+ 		else
+-			drm_backend_update_connectors(b->drm, event);
++			udev_hotplug_event(b->drm, event);
+ 	}
+ 
+ 	udev_device_unref(event);
+@@ -2698,6 +2869,7 @@ drm_destroy(struct weston_compositor *ec)
+ 
+ 	udev_input_destroy(&b->input);
+ 
++	wl_event_source_remove(b->hotplug_timer);
+ 	wl_event_source_remove(b->udev_drm_source);
+ 	wl_event_source_remove(b->drm_source);
+ 
+@@ -2750,6 +2922,10 @@ session_notify(struct wl_listener *listener, void *data)
+ 		weston_compositor_wake(compositor);
+ 		weston_compositor_damage_all(compositor);
+ 		device->state_invalid = true;
++
++		wl_list_for_each(output, &compositor->output_list, link)
++			to_drm_output(output)->state_invalid = true;
++
+ 		udev_input_enable(&b->input);
+ 	} else {
+ 		weston_log("deactivating session\n");
+@@ -3106,6 +3282,14 @@ recorder_binding(struct weston_keyboard *keyboard, const struct timespec *time,
+ }
+ #endif
+ 
++static void
++output_create_notify(struct wl_listener *listener, void *data)
++{
++	struct drm_backend *b = container_of(listener, struct drm_backend,
++					     output_create_listener);
++
++	drm_backend_update_outputs(b);
++}
+ 
+ static const struct weston_drm_output_api api = {
+ 	drm_output_set_mode,
+@@ -3114,6 +3298,63 @@ static const struct weston_drm_output_api api = {
+ 	drm_output_set_max_bpc,
+ };
+ 
++enum drm_head_mode {
++	DRM_HEAD_MODE_DEFAULT,
++	DRM_HEAD_MODE_PRIMARY,
++	DRM_HEAD_MODE_INTERNAL,
++	DRM_HEAD_MODE_EXTERNAL,
++	DRM_HEAD_MODE_EXTERNAL_DUAL,
++};
++
++static bool
++drm_head_match_primary(struct drm_backend *b, struct drm_head *head)
++{
++	const char *buf = getenv("WESTON_DRM_PRIMARY");
++	return buf && !strcmp(buf, head->base.name);
++}
++
++static bool
++drm_head_match_external(struct drm_backend *b, struct drm_head *head)
++{
++	return drm_head_is_external(head);
++}
++
++static bool
++drm_head_match_internal(struct drm_backend *b, struct drm_head *head)
++{
++	return !drm_head_is_external(head);
++}
++
++#define DRM_HEAD_MAX_MATCHES 5
++static drm_head_match_t drm_head_matches[][DRM_HEAD_MAX_MATCHES] = {
++	[DRM_HEAD_MODE_DEFAULT] = {
++		drm_head_match_primary,
++		drm_head_match_internal,
++		drm_head_match_external,
++		NULL,
++	},
++	[DRM_HEAD_MODE_PRIMARY] = {
++		drm_head_match_primary,
++		NULL,
++	},
++	[DRM_HEAD_MODE_INTERNAL] = {
++		drm_head_match_primary,
++		drm_head_match_internal,
++		NULL,
++	},
++	[DRM_HEAD_MODE_EXTERNAL] = {
++		drm_head_match_primary,
++		drm_head_match_external,
++		NULL,
++	},
++	[DRM_HEAD_MODE_EXTERNAL_DUAL] = {
++		drm_head_match_primary,
++		drm_head_match_external,
++		drm_head_match_internal,
++		NULL,
++	},
++};
++
+ static struct drm_backend *
+ drm_backend_create(struct weston_compositor *compositor,
+ 		   struct weston_drm_backend_config *config)
+@@ -3125,7 +3366,9 @@ drm_backend_create(struct weston_compositor *compositor,
+ 	const char *seat_id = default_seat;
+ 	const char *session_seat;
+ 	struct weston_drm_format_array *scanout_formats;
++	enum drm_head_mode head_mode = DRM_HEAD_MODE_DEFAULT;
+ 	drmModeRes *res;
++	char *buf;
+ 	int ret;
+ 
+ 	session_seat = getenv("XDG_SEAT");
+@@ -3141,6 +3384,48 @@ drm_backend_create(struct weston_compositor *compositor,
+ 	if (b == NULL)
+ 		return NULL;
+ 
++	buf = getenv("WESTON_DRM_SINGLE_HEAD");
++	if (buf && buf[0] == '1')
++		b->single_head = true;
++
++	buf = getenv("WESTON_DRM_HEAD_FALLBACK");
++	if (buf && buf[0] == '1')
++		b->head_fallback = true;
++
++	buf = getenv("WESTON_DRM_HEAD_FALLBACK_ALL");
++	if (buf && buf[0] == '1')
++		b->head_fallback_all = true;
++
++	buf = getenv("WESTON_DRM_PREFER_EXTERNAL");
++	if (buf && buf[0] == '1') {
++		head_mode = DRM_HEAD_MODE_EXTERNAL;
++		b->head_fallback = true;
++	}
++
++	buf = getenv("WESTON_DRM_PREFER_EXTERNAL_DUAL");
++	if (buf && buf[0] == '1')
++		head_mode = DRM_HEAD_MODE_EXTERNAL_DUAL;
++
++	buf = getenv("WESTON_DRM_HEAD_MODE");
++	if (buf) {
++		if (!strcmp(buf, "primary"))
++			head_mode = DRM_HEAD_MODE_PRIMARY;
++		else if (!strcmp(buf, "internal"))
++			head_mode = DRM_HEAD_MODE_INTERNAL;
++		else if (!strcmp(buf, "external"))
++			head_mode = DRM_HEAD_MODE_EXTERNAL;
++		else if (!strcmp(buf, "external-dual"))
++			head_mode = DRM_HEAD_MODE_EXTERNAL_DUAL;
++	}
++
++	b->head_matches = drm_head_matches[head_mode];
++
++	buf = getenv("WESTON_DRM_RESIZE_FREEZE_MS");
++	if (buf)
++		b->resize_freeze_ms = atoi(buf);
++	else
++		b->resize_freeze_ms = DRM_RESIZE_FREEZE_MS;
++
+ 	device = zalloc(sizeof *device);
+ 	if (device == NULL)
+ 		return NULL;
+@@ -3241,7 +3526,7 @@ drm_backend_create(struct weston_compositor *compositor,
+ 	}
+ 
+ 	wl_list_init(&b->drm->writeback_connector_list);
+-	if (drm_backend_discover_connectors(b->drm, drm_device, res) < 0) {
++	if (drm_backend_update_connectors(b->drm, drm_device) < 0) {
+ 		weston_log("Failed to create heads for %s\n", b->drm->drm.filename);
+ 		goto err_udev_input;
+ 	}
+@@ -3280,6 +3565,10 @@ drm_backend_create(struct weston_compositor *compositor,
+ 
+ 	udev_device_unref(drm_device);
+ 
++	b->output_create_listener.notify = output_create_notify;
++	wl_signal_add(&b->compositor->output_created_signal,
++		      &b->output_create_listener);
++
+ 	weston_compositor_add_debug_binding(compositor, KEY_O,
+ 					    planes_binding, b);
+ 	weston_compositor_add_debug_binding(compositor, KEY_C,
+@@ -3339,6 +3628,9 @@ drm_backend_create(struct weston_compositor *compositor,
+ 		goto err_udev_monitor;
+ 	}
+ 
++	b->hotplug_timer =
++		wl_event_loop_add_timer(loop, hotplug_timer_handler, b->drm);
++
+ 	return b;
+ 
+ err_udev_monitor:
+diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
+index 735196b..c7dc2f8 100644
+--- a/libweston/backend-drm/kms.c
++++ b/libweston/backend-drm/kms.c
+@@ -683,6 +683,8 @@ drm_output_apply_state_legacy(struct drm_output_state *state)
+ 
+ 	scanout_state =
+ 		drm_output_state_get_existing_plane(state, scanout_plane);
++	if (!scanout_state || !scanout_state->fb)
++		return 0;
+ 
+ 	/* The legacy SetCrtc API doesn't allow us to do scaling, and the
+ 	 * legacy PageFlip API doesn't allow us to do clipping either. */
+@@ -700,7 +702,7 @@ drm_output_apply_state_legacy(struct drm_output_state *state)
+ 	assert(scanout_state->in_fence_fd == -1);
+ 
+ 	mode = to_drm_mode(output->base.current_mode);
+-	if (device->state_invalid ||
++	if (output->state_invalid ||
+ 	    !scanout_plane->state_cur->fb ||
+ 	    scanout_plane->state_cur->fb->strides[0] !=
+ 	    scanout_state->fb->strides[0]) {
+@@ -714,6 +716,8 @@ drm_output_apply_state_legacy(struct drm_output_state *state)
+ 			weston_log("set mode failed: %s\n", strerror(errno));
+ 			goto err;
+ 		}
++
++		output->state_invalid = false;
+ 	}
+ 
+ 	pinfo = scanout_state->fb->format;
+@@ -964,6 +968,11 @@ drm_output_apply_state_atomic(struct drm_output_state *state,
+ 		*flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
+ 	}
+ 
++	if (output->state_invalid) {
++		drm_debug(b, "\t\t\t[atomic] output state invalid, modeset OK\n");
++		*flags |= DRM_MODE_ATOMIC_ALLOW_MODESET;
++	}
++
+ 	if (state->dpms == WESTON_DPMS_ON) {
+ 		ret = drm_mode_ensure_blob(device, current_mode);
+ 		if (ret != 0)
+@@ -1080,6 +1089,7 @@ drm_pending_state_apply_atomic(struct drm_pending_state *pending_state,
+ 	struct drm_output_state *output_state, *tmp;
+ 	struct drm_plane *plane;
+ 	drmModeAtomicReq *req = drmModeAtomicAlloc();
++	struct timespec now;
+ 	uint32_t flags;
+ 	int ret = 0;
+ 
+@@ -1214,14 +1224,34 @@ drm_pending_state_apply_atomic(struct drm_pending_state *pending_state,
+ 		goto out;
+ 	}
+ 
++	weston_compositor_read_presentation_clock(b->compositor, &now);
++
+ 	wl_list_for_each_safe(output_state, tmp, &pending_state->output_list,
+-			      link)
++			      link) {
++		struct drm_output *output = output_state->output;
++		struct drm_plane *scanout_plane = output->scanout_plane;
++		struct drm_plane_state *scanout_state =
++			drm_output_state_get_existing_plane(output_state,
++							    scanout_plane);
++
++		/* Don't have a new state to apply */
++		if (output_state->dpms == WESTON_DPMS_ON &&
++		    (!scanout_state || !scanout_state->fb))
++			continue;
++
+ 		drm_output_assign_state(output_state, mode);
++		output->state_invalid = false;
++
++		/* Not gonna receive flip event when dpms off */
++		if (output_state->dpms != WESTON_DPMS_ON)
++			drm_output_update_complete(output,
++						   WP_PRESENTATION_FEEDBACK_KIND_HW_COMPLETION,
++						   now.tv_sec,
++						   now.tv_nsec / 1000);
++	}
+ 
+ 	device->state_invalid = false;
+ 
+-	assert(wl_list_empty(&pending_state->output_list));
+-
+ out:
+ 	drmModeAtomicFree(req);
+ 	drm_pending_state_free(pending_state);
+@@ -1321,8 +1351,6 @@ drm_pending_state_apply(struct drm_pending_state *pending_state)
+ 
+ 	device->state_invalid = false;
+ 
+-	assert(wl_list_empty(&pending_state->output_list));
+-
+ 	drm_pending_state_free(pending_state);
+ 
+ 	return 0;
+@@ -1374,8 +1402,6 @@ drm_pending_state_apply_sync(struct drm_pending_state *pending_state)
+ 
+ 	device->state_invalid = false;
+ 
+-	assert(wl_list_empty(&pending_state->output_list));
+-
+ 	drm_pending_state_free(pending_state);
+ 
+ 	return 0;
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index 9f8282b..707d1a0 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -160,6 +160,25 @@ weston_paint_node_destroy(struct weston_paint_node *pnode)
+ 	free(pnode);
+ }
+ 
++static struct weston_layer *
++get_view_layer(struct weston_view *view);
++
++static bool
++weston_compositor_is_static_layer(struct weston_layer *layer)
++{
++	if (!layer)
++		return false;
++
++	switch (layer->position) {
++	case WESTON_LAYER_POSITION_BACKGROUND:
++	case WESTON_LAYER_POSITION_UI:
++	case WESTON_LAYER_POSITION_FADE:
++		return true;
++	default:
++		return false;
++	}
++}
++
+ /** Send wl_output events for mode and scale changes
+  *
+  * \param head Send on all resources bound to this head.
+@@ -1386,6 +1405,22 @@ weston_view_assign_output(struct weston_view *ev)
+ 	uint32_t max, area, mask;
+ 	pixman_box32_t *e;
+ 
++	/* The static views should bind to the specific output */
++	if (weston_compositor_is_static_layer(get_view_layer(ev))) {
++		struct weston_view *view = ev;
++
++		while (view && !(output = view->output))
++			view = view->geometry.parent;
++
++		if (output && !output->destroying)
++			ev->output_mask |= 1u << output->id;
++		else
++			weston_view_set_output(ev, NULL);
++
++		weston_surface_assign_output(ev->surface);
++		return;
++	}
++
+ 	new_output = NULL;
+ 	max = 0;
+ 	mask = 0;
+@@ -3301,6 +3336,7 @@ weston_output_repaint(struct weston_output *output)
+ 	if (output->dirty)
+ 		weston_output_update_matrix(output);
+ 
++	output->repaint_needed = false;
+ 	r = output->repaint(output, &output_damage);
+ 
+ 	/* Clear painted primary damage */
+@@ -3309,8 +3345,9 @@ weston_output_repaint(struct weston_output *output)
+ 
+ 	pixman_region32_fini(&output_damage);
+ 
+-	output->repaint_needed = false;
+-	if (r == 0)
++	if (output->repaint_needed)
++		output->repaint_status = REPAINT_SCHEDULED;
++	else if (r == 0)
+ 		output->repaint_status = REPAINT_AWAITING_COMPLETION;
+ 
+ 	weston_compositor_repick(ec);
+@@ -6911,6 +6948,7 @@ weston_compositor_remove_output(struct weston_output *output)
+ 	 * Use view_list in case the output did not go through repaint
+ 	 * after a view came on it, lacking a paint node. Just to be sure.
+ 	 */
++	weston_compositor_build_view_list(compositor, NULL);
+ 	wl_list_for_each(view, &compositor->view_list, link) {
+ 		if (view->output_mask & (1u << output->id))
+ 			weston_view_assign_output(view);
+-- 
+2.20.1
+

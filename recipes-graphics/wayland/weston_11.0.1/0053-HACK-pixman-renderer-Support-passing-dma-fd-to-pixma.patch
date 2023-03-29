@@ -1,0 +1,116 @@
+From cd7d2c8e3f294eb6743d5d5e293df3a64459fdb0 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Sat, 9 Oct 2021 12:33:33 +0800
+Subject: [PATCH 53/93] HACK: pixman-renderer: Support passing dma fd to pixman
+
+Usage:
+pixman_image_set_destroy_function(image, NULL, (void *)(ptrdiff_t)dma_fd)
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm-internal.h |  1 +
+ libweston/backend-drm/drm.c          |  3 +++
+ libweston/backend-drm/fb.c           | 15 +++++++++++++++
+ libweston/pixman-renderer.c          |  2 ++
+ libweston/pixman-renderer.h          |  4 ++++
+ 5 files changed, 25 insertions(+)
+
+diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
+index 12ee031..f7f042d 100644
+--- a/libweston/backend-drm/drm-internal.h
++++ b/libweston/backend-drm/drm-internal.h
+@@ -404,6 +404,7 @@ struct drm_fb {
+ 	uint64_t modifier;
+ 	int width, height;
+ 	int fd;
++	int dma_fd;
+ 
+ 	uint32_t plane_mask;
+ 
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index cb0935e..5c56c18 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -1691,6 +1691,9 @@ drm_output_init_pixman(struct drm_output *output, struct drm_backend *b)
+ 						 output->dumb[i]->strides[0]);
+ 		if (!output->image[i])
+ 			goto err;
++
++		pixman_image_set_dma_fd(output->image[i],
++					output->dumb[i]->dma_fd);
+ 	}
+ 
+ 	if (pixman_renderer_output_create(&output->base, &options) < 0)
+diff --git a/libweston/backend-drm/fb.c b/libweston/backend-drm/fb.c
+index 4cb2cbe..8c4c49c 100644
+--- a/libweston/backend-drm/fb.c
++++ b/libweston/backend-drm/fb.c
+@@ -58,6 +58,9 @@ drm_fb_destroy_dumb(struct drm_fb *fb)
+ 
+ 	assert(fb->type == BUFFER_PIXMAN_DUMB);
+ 
++	if (fb->dma_fd >= 0)
++		close(fb->dma_fd);
++
+ 	if (fb->map && fb->size > 0)
+ 		munmap(fb->map, fb->size);
+ 
+@@ -121,6 +124,7 @@ drm_fb_create_dumb(struct drm_device *device, int width, int height,
+ 	struct drm_mode_create_dumb create_arg;
+ 	struct drm_mode_destroy_dumb destroy_arg;
+ 	struct drm_mode_map_dumb map_arg;
++	struct drm_prime_handle prime_arg;
+ 
+ 	fb = zalloc(sizeof *fb);
+ 	if (!fb)
+@@ -175,8 +179,19 @@ drm_fb_create_dumb(struct drm_device *device, int width, int height,
+ 	if (fb->map == MAP_FAILED)
+ 		goto err_add_fb;
+ 
++	memset(&prime_arg, 0, sizeof(prime_arg));
++	prime_arg.fd = -1;
++	prime_arg.handle = fb->handles[0];
++	ret = drmIoctl(fb->fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &prime_arg);
++	if (ret)
++		goto err_unmap_fb;
++
++	fb->dma_fd = prime_arg.fd;
++
+ 	return fb;
+ 
++err_unmap_fb:
++	munmap(fb->map, fb->size);
+ err_add_fb:
+ 	drmModeRmFB(device->drm.fd, fb->fb_id);
+ err_bo:
+diff --git a/libweston/pixman-renderer.c b/libweston/pixman-renderer.c
+index d53fe42..22edaa5 100644
+--- a/libweston/pixman-renderer.c
++++ b/libweston/pixman-renderer.c
+@@ -881,6 +881,8 @@ pixman_renderer_attach_dmabuf(struct weston_surface *es,
+ 					     data->ptr + attributes->offset[0],
+ 					     attributes->stride[0]);
+ 
++	pixman_image_set_dma_fd(ps->image, attributes->fd[0]);
++
+ 	ps->buffer_destroy_listener.notify =
+ 		buffer_state_handle_buffer_destroy;
+ 	wl_signal_add(&buffer->destroy_signal,
+diff --git a/libweston/pixman-renderer.h b/libweston/pixman-renderer.h
+index 2b81dde..bcd248f 100644
+--- a/libweston/pixman-renderer.h
++++ b/libweston/pixman-renderer.h
+@@ -29,6 +29,10 @@
+ #include "backend.h"
+ #include "libweston-internal.h"
+ 
++/* HACK: Pass dma fd to pixman through destroy data */
++#define pixman_image_set_dma_fd(image, fd) \
++	pixman_image_set_destroy_function(image, NULL, (void *)(ptrdiff_t)fd)
++
+ int
+ pixman_renderer_init(struct weston_compositor *ec);
+ 
+-- 
+2.20.1
+

@@ -1,0 +1,55 @@
+From 6321f421c4d14fae316de0f50bd41d5379a15d73 Mon Sep 17 00:00:00 2001
+From: Philipp Zabel <p.zabel@pengutronix.de>
+Date: Thu, 6 Oct 2022 16:26:58 +0200
+Subject: [PATCH 86/93] backend-vnc: implement direct key code handling
+
+Allow clients that support the QEMU Extended Key Event Message to send
+keycodes directly.
+
+Signed-off-by: Philipp Zabel <p.zabel@pengutronix.de>
+(cherry picked from commit 5cd87ff80188d3a9007a861e165626a03274ac61)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-vnc/vnc.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/libweston/backend-vnc/vnc.c b/libweston/backend-vnc/vnc.c
+index 8cfad2a..dbcb395 100644
+--- a/libweston/backend-vnc/vnc.c
++++ b/libweston/backend-vnc/vnc.c
+@@ -333,6 +333,24 @@ vnc_handle_key_event(struct nvnc_client *client, uint32_t keysym,
+ 			   STATE_UPDATE_AUTOMATIC);
+ }
+ 
++static void
++vnc_handle_key_code_event(struct nvnc_client *client, uint32_t key,
++			  bool is_pressed)
++{
++	struct vnc_peer *peer = nvnc_get_userdata(client);
++	enum wl_keyboard_key_state state;
++	struct timespec time;
++
++	weston_compositor_get_time(&time);
++
++	if (is_pressed)
++		state = WL_KEYBOARD_KEY_STATE_PRESSED;
++	else
++		state = WL_KEYBOARD_KEY_STATE_RELEASED;
++
++	notify_key(peer->seat, &time, key, state, STATE_UPDATE_AUTOMATIC);
++}
++
+ static void
+ vnc_pointer_event(struct nvnc_client *client, uint16_t x, uint16_t y,
+ 		  enum nvnc_button_mask button_mask)
+@@ -975,6 +993,7 @@ vnc_backend_create(struct weston_compositor *compositor,
+ 	nvnc_set_new_client_fn(backend->server, vnc_new_client);
+ 	nvnc_set_pointer_fn(backend->server, vnc_pointer_event);
+ 	nvnc_set_key_fn(backend->server, vnc_handle_key_event);
++	nvnc_set_key_code_fn(backend->server, vnc_handle_key_code_event);
+ 	nvnc_set_userdata(backend->server, backend, NULL);
+ 	nvnc_set_name(backend->server, "Weston VNC backend");
+ 
+-- 
+2.20.1
+

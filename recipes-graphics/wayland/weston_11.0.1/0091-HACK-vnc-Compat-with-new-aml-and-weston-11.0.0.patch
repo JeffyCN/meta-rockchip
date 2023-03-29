@@ -1,0 +1,38 @@
+From 9426c72bfe324469e7b55dc1fb8f51c734bf97c4 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 8 Dec 2022 10:10:20 +0800
+Subject: [PATCH 91/93] HACK: vnc: Compat with new aml and weston 11.0.0
+
+TODO: Remove it when upgrade to newer weston version.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-vnc/vnc.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/libweston/backend-vnc/vnc.c b/libweston/backend-vnc/vnc.c
+index 6cb05d7..4861521 100644
+--- a/libweston/backend-vnc/vnc.c
++++ b/libweston/backend-vnc/vnc.c
+@@ -42,6 +42,7 @@
+ #include <unistd.h>
+ #include <xkbcommon/xkbcommon-keysyms.h>
+ #include <xkbcommon/xkbcommon.h>
++#define AML_UNSTABLE_API 1
+ #include <aml.h>
+ #include <neatvnc.h>
+ #include <drm_fourcc.h>
+@@ -604,10 +605,6 @@ vnc_output_enable(struct weston_output *base)
+ 	struct wl_event_loop *loop;
+ 	const struct pixman_renderer_output_options options = {
+ 		.use_shadow = true,
+-		.fb_size = {
+-			.width = output->base.width,
+-			.height = output->base.height,
+-		},
+ 	};
+ 
+ 	assert(output);
+-- 
+2.20.1
+

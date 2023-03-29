@@ -1,0 +1,31 @@
+From a072d9b64f3a85f89cc18f3efd34d402157d0a1f Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 23 Nov 2022 10:21:13 +0800
+Subject: [PATCH 81/93] gl-renderer: Force using GL_TEXTURE_EXTERNAL_OES for
+ imported dma-buf
+
+Mali depends on that.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/renderer-gl/gl-renderer.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index da20a88..c6c0942 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -2647,6 +2647,10 @@ choose_texture_target(struct gl_renderer *gr,
+ {
+ 	struct dmabuf_format *tmp, *format = NULL;
+ 
++	/* HACK: Mali needs GL_TEXTURE_EXTERNAL_OES for all imported dmabuf */
++	if (gr->is_mali_egl)
++		return GL_TEXTURE_EXTERNAL_OES;
++
+ 	wl_list_for_each(tmp, &gr->dmabuf_formats, link) {
+ 		if (tmp->format == attributes->format) {
+ 			format = tmp;
+-- 
+2.20.1
+

@@ -1,0 +1,58 @@
+From c3f35ba432ef611f16f8813d8410a075af80b3cf Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 13 Jul 2021 10:56:56 +0800
+Subject: [PATCH 50/93] Support sw-cursor config
+
+Tested with:
+[core]
+sw-cursor=true
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ compositor/main.c               | 2 ++
+ include/libweston/backend-drm.h | 2 ++
+ libweston/backend-drm/drm.c     | 2 ++
+ 3 files changed, 6 insertions(+)
+
+diff --git a/compositor/main.c b/compositor/main.c
+index 6ec89f3..efd861b 100644
+--- a/compositor/main.c
++++ b/compositor/main.c
+@@ -2952,6 +2952,8 @@ load_drm_backend(struct weston_compositor *c,
+ 	                               &config.pageflip_timeout, 0);
+ 	weston_config_section_get_bool(section, "pixman-shadow",
+ 				       &config.use_pixman_shadow, true);
++	weston_config_section_get_bool(section, "sw-cursor",
++				       &config.use_sw_cursor, false);
+ 	if (without_input)
+ 		c->require_input = !without_input;
+ 
+diff --git a/include/libweston/backend-drm.h b/include/libweston/backend-drm.h
+index 071125f..a9b6ebd 100644
+--- a/include/libweston/backend-drm.h
++++ b/include/libweston/backend-drm.h
+@@ -239,6 +239,8 @@ struct weston_drm_backend_config {
+ 
+ 	/** Use shadow buffer if using Pixman-renderer. */
+ 	bool use_pixman_shadow;
++
++	bool use_sw_cursor;
+ };
+ 
+ #ifdef  __cplusplus
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 0a8b878..cb0935e 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -4423,6 +4423,8 @@ drm_backend_create(struct weston_compositor *compositor,
+ 	/* 'compute' faked zpos values in case HW doesn't expose any */
+ 	drm_backend_create_faked_zpos(b);
+ 
++	device->cursors_are_broken |= config->use_sw_cursor;
++
+ 	/* A this point we have some idea of whether or not we have a working
+ 	 * cursor plane. */
+ 	if (!device->cursors_are_broken)
+-- 
+2.20.1
+

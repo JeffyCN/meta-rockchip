@@ -1,0 +1,236 @@
+From 4a963e9120ea1e98a0a072c999c29443935a468e Mon Sep 17 00:00:00 2001
+From: Philipp Zabel <philipp.zabel@gmail.com>
+Date: Sat, 19 Nov 2022 09:52:01 +0100
+Subject: [PATCH 89/93] libweston: Add user authentication support via PAM
+
+Add user authentication support for remote backends via PAM.
+This requires a configuration file /etc/pam.d/weston.
+
+Signed-off-by: Philipp Zabel <philipp.zabel@gmail.com>
+(cherry picked from commit 0733c8f5715a06c1109d380093d4f2e040284140)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/auth.c               | 116 +++++++++++++++++++++++++++++++++
+ libweston/libweston-internal.h |   5 ++
+ libweston/meson.build          |  13 ++++
+ meson.build                    |   2 +
+ pam/meson.build                |   8 +++
+ pam/weston-remote-access       |   3 +
+ 6 files changed, 147 insertions(+)
+ create mode 100644 libweston/auth.c
+ create mode 100644 pam/meson.build
+ create mode 100644 pam/weston-remote-access
+
+diff --git a/libweston/auth.c b/libweston/auth.c
+new file mode 100644
+index 0000000..2133abb
+--- /dev/null
++++ b/libweston/auth.c
+@@ -0,0 +1,116 @@
++/*
++ * Copyright © 2022 Philipp Zabel
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining
++ * a copy of this software and associated documentation files (the
++ * "Software"), to deal in the Software without restriction, including
++ * without limitation the rights to use, copy, modify, merge, publish,
++ * distribute, sublicense, and/or sell copies of the Software, and to
++ * permit persons to whom the Software is furnished to do so, subject to
++ * the following conditions:
++ *
++ * The above copyright notice and this permission notice (including the
++ * next paragraph) shall be included in all copies or substantial
++ * portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
++ * NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
++ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
++ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
++ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ */
++
++#include "config.h"
++
++#include <shared/xalloc.h>
++#include <stdbool.h>
++#include "libweston-internal.h"
++
++#ifdef HAVE_PAM
++
++#include <security/pam_appl.h>
++#include <security/pam_misc.h>
++
++static int
++weston_pam_conv(int num_msg, const struct pam_message **msg,
++		struct pam_response **resp, void *appdata_ptr)
++{
++	const char *password = appdata_ptr;
++	struct pam_response *rsp;
++	int i;
++
++	if (!num_msg)
++		return PAM_CONV_ERR;
++
++	rsp = calloc(num_msg, sizeof(*rsp));
++	if (!rsp)
++		return PAM_CONV_ERR;
++
++	for (i = 0; i < num_msg; i++) {
++		switch (msg[i]->msg_style) {
++		case PAM_PROMPT_ECHO_OFF:
++			rsp[i].resp = strdup(password);
++			break;
++		case PAM_PROMPT_ECHO_ON:
++			break;
++		case PAM_ERROR_MSG:
++			weston_log("PAM error message: %s\n", msg[i]->msg);
++			break;
++		case PAM_TEXT_INFO:
++			weston_log("PAM info text: %s\n", msg[i]->msg);
++			break;
++		default:
++			free(rsp);
++			return PAM_CONV_ERR;
++		}
++	}
++
++	*resp = rsp;
++	return PAM_SUCCESS;
++}
++
++#endif
++
++WL_EXPORT bool
++weston_authenticate_user(const char *username, const char *password)
++{
++	bool authenticated = false;
++#ifdef HAVE_PAM
++	struct pam_conv conv = {
++		.conv = weston_pam_conv,
++		.appdata_ptr = strdup(password),
++	};
++	struct pam_handle *pam;
++	int ret;
++
++	conv.appdata_ptr = strdup(password);
++
++	ret = pam_start("weston-remote-access", username, &conv, &pam);
++	if (ret != PAM_SUCCESS) {
++		weston_log("PAM: start failed\n");
++		goto out;
++	}
++
++	ret = pam_authenticate(pam, 0);
++	if (ret != PAM_SUCCESS) {
++		weston_log("PAM: authentication failed\n");
++		goto out;
++	}
++
++	ret = pam_acct_mgmt(pam, 0);
++	if (ret != PAM_SUCCESS) {
++		weston_log("PAM: account check failed\n");
++		goto out;
++	}
++
++	authenticated = true;
++out:
++	ret = pam_end(pam, ret);
++	assert(ret == PAM_SUCCESS);
++	free(conv.appdata_ptr);
++#endif
++	return authenticated;
++}
+diff --git a/libweston/libweston-internal.h b/libweston/libweston-internal.h
+index bcfb153..ea5c478 100644
+--- a/libweston/libweston-internal.h
++++ b/libweston/libweston-internal.h
+@@ -502,4 +502,9 @@ wl_data_device_manager_init(struct wl_display *display);
+ bool
+ weston_output_set_color_outcome(struct weston_output *output);
+ 
++/* User authentication for remote backends */
++
++bool
++weston_authenticate_user(const char *username, const char *password);
++
+ #endif
+diff --git a/libweston/meson.build b/libweston/meson.build
+index 6906244..6f0b624 100644
+--- a/libweston/meson.build
++++ b/libweston/meson.build
+@@ -10,6 +10,7 @@ deps_libweston = [
+ srcs_libweston = [
+ 	git_version_h,
+ 	'animation.c',
++	'auth.c',
+ 	'bindings.c',
+ 	'clipboard.c',
+ 	'color.c',
+@@ -79,6 +80,18 @@ if dep_egl.found() and dep_gbm.found()
+ 	deps_libweston += [ dep_egl, dep_gbm ]
+ endif
+ 
++if get_option('backend-vnc')
++	dep_pam = dependency('pam', required: false)
++	if not dep_pam.found()
++		dep_pam = cc.find_library('pam')
++	endif
++	if not dep_pam.found()
++		error('VNC backend requires libpam which was not found. Or, you can use \'-Dbackend-vnc=false\'.')
++	endif
++	config_h.set('HAVE_PAM', '1')
++	deps_libweston += dep_pam
++endif
++
+ lib_weston = shared_library(
+ 	'weston-@0@'.format(libweston_major),
+ 	srcs_libweston,
+diff --git a/meson.build b/meson.build
+index e03d085..cc510f1 100644
+--- a/meson.build
++++ b/meson.build
+@@ -44,6 +44,7 @@ dir_data_pc = join_paths(dir_data, 'pkgconfig')
+ dir_lib_pc = join_paths(dir_lib, 'pkgconfig')
+ dir_man = join_paths(dir_prefix, get_option('mandir'))
+ dir_protocol_libweston = join_paths('libweston-@0@'.format(libweston_major), 'protocols')
++dir_sysconf = join_paths(dir_prefix, get_option('sysconfdir'))
+ 
+ public_inc = include_directories('include')
+ common_inc = [ include_directories('.'), public_inc ]
+@@ -191,6 +192,7 @@ subdir('wcap')
+ subdir('tests')
+ subdir('data')
+ subdir('man')
++subdir('pam')
+ 
+ configure_file(output: 'config.h', configuration: config_h)
+ 
+diff --git a/pam/meson.build b/pam/meson.build
+new file mode 100644
+index 0000000..7b7eff8
+--- /dev/null
++++ b/pam/meson.build
+@@ -0,0 +1,8 @@
++if not get_option('backend-vnc')
++	subdir_done()
++endif
++
++install_data(
++	'weston-remote-access',
++	install_dir: join_paths(dir_sysconf, 'pam.d')
++)
+diff --git a/pam/weston-remote-access b/pam/weston-remote-access
+new file mode 100644
+index 0000000..d3014dd
+--- /dev/null
++++ b/pam/weston-remote-access
+@@ -0,0 +1,3 @@
++#%PAM-1.0
++auth    include login
++account include login
+-- 
+2.20.1
+

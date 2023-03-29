@@ -1,0 +1,37 @@
+From b3522732ae3712290fff3ff664a77f465d36e85b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Sun, 20 Mar 2022 00:32:14 +0800
+Subject: [PATCH 63/93] backend-drm: Ignore case when populating drm properties
+
+For BSP kernel 4.4.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/kms.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
+index 122160c..607bf70 100644
+--- a/libweston/backend-drm/kms.c
++++ b/libweston/backend-drm/kms.c
+@@ -362,7 +362,7 @@ drm_property_info_populate(struct drm_device *device,
+ 			continue;
+ 
+ 		for (j = 0; j < num_infos; j++) {
+-			if (!strcmp(prop->name, info[j].name))
++			if (!strcasecmp(prop->name, info[j].name))
+ 				break;
+ 		}
+ 
+@@ -416,7 +416,7 @@ drm_property_info_populate(struct drm_device *device,
+ 			int l;
+ 
+ 			for (l = 0; l < prop->count_enums; l++) {
+-				if (!strcmp(prop->enums[l].name,
++				if (!strcasecmp(prop->enums[l].name,
+ 					    info[j].enum_values[k].name))
+ 					break;
+ 			}
+-- 
+2.20.1
+

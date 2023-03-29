@@ -1,0 +1,33 @@
+From a81ea0e0076cae828be254e2abaff2e01dfc9ee8 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 23 Mar 2021 03:09:33 +0800
+Subject: [PATCH 44/93] gl-renderer: Honer opaque surface's alpha channel
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/renderer-gl/gl-renderer.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index 4eedb94..51e7078 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -1142,6 +1142,7 @@ draw_paint_node(struct weston_paint_node *pnode,
+ 	if (pixman_region32_not_empty(&surface_opaque)) {
+ 		struct gl_shader_config alt = sconf;
+ 
++#if 0
+ 		if (alt.req.variant == SHADER_VARIANT_RGBA) {
+ 			/* Special case for RGBA textures with possibly
+ 			 * bad data in alpha channel: use the shader
+@@ -1150,6 +1151,7 @@ draw_paint_node(struct weston_paint_node *pnode,
+ 			 */
+ 			alt.req.variant = SHADER_VARIANT_RGBX;
+ 		}
++#endif
+ 
+ 		if (pnode->view->alpha < 1.0)
+ 			glEnable(GL_BLEND);
+-- 
+2.20.1
+

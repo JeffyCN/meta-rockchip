@@ -1,0 +1,199 @@
+From 0c6f7e758d8194f3cf5da78bc0142adfc83e2919 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 1 Sep 2020 08:51:17 +0800
+Subject: [PATCH 30/93] HACK: backend-drm: Consider linear and invalid modifier
+ are the same
+
+That is true with Rockchip BSP drivers and packages.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ clients/simple-dmabuf-egl.c         | 5 +++--
+ clients/simple-dmabuf-v4l.c         | 2 +-
+ libweston/backend-drm/drm-gbm.c     | 3 ++-
+ libweston/backend-drm/fb.c          | 6 ++++--
+ libweston/linux-dmabuf.c            | 3 +--
+ libweston/pixel-formats.c           | 2 +-
+ libweston/pixman-renderer.c         | 3 +--
+ libweston/renderer-gl/gl-renderer.c | 6 +++---
+ shared/weston-drm-fourcc.h          | 4 ++++
+ 9 files changed, 20 insertions(+), 14 deletions(-)
+
+diff --git a/clients/simple-dmabuf-egl.c b/clients/simple-dmabuf-egl.c
+index 16d47ba..a03058b 100644
+--- a/clients/simple-dmabuf-egl.c
++++ b/clients/simple-dmabuf-egl.c
+@@ -265,7 +265,8 @@ create_fbo_for_buffer(struct display *display, struct buffer *buffer)
+ 	attribs[atti++] = (int) buffer->offsets[plane_idx]; \
+ 	attribs[atti++] = EGL_DMA_BUF_PLANE ## plane_idx ## _PITCH_EXT; \
+ 	attribs[atti++] = (int) buffer->strides[plane_idx]; \
+-	if (display->egl.has_dma_buf_import_modifiers) { \
++	if (DRM_MOD_VALID(buffer->modifier) && \
++	    display->egl.has_dma_buf_import_modifiers) { \
+ 		attribs[atti++] = EGL_DMA_BUF_PLANE ## plane_idx ## _MODIFIER_LO_EXT; \
+ 		attribs[atti++] = buffer->modifier & 0xFFFFFFFF; \
+ 		attribs[atti++] = EGL_DMA_BUF_PLANE ## plane_idx ## _MODIFIER_HI_EXT; \
+@@ -1018,7 +1019,7 @@ dmabuf_modifiers(void *data, struct zwp_linux_dmabuf_v1 *zwp_linux_dmabuf,
+ 
+ 	d->format_supported = true;
+ 
+-	if (modifier != DRM_FORMAT_MOD_INVALID) {
++	if (DRM_MOD_VALID(modifier)) {
+ 		++d->modifiers_count;
+ 		d->modifiers = realloc(d->modifiers,
+ 				       d->modifiers_count * sizeof(*d->modifiers));
+diff --git a/clients/simple-dmabuf-v4l.c b/clients/simple-dmabuf-v4l.c
+index a19570f..5ac340e 100644
+--- a/clients/simple-dmabuf-v4l.c
++++ b/clients/simple-dmabuf-v4l.c
+@@ -732,7 +732,7 @@ dmabuf_modifier(void *data, struct zwp_linux_dmabuf_v1 *zwp_linux_dmabuf,
+ 	struct display *d = data;
+ 	uint64_t modifier = ((uint64_t) modifier_hi << 32 ) | modifier_lo;
+ 
+-	if (format == d->drm_format && modifier == DRM_FORMAT_MOD_LINEAR)
++	if (format == d->drm_format && !DRM_MOD_VALID(modifier))
+ 		d->requested_format_found = true;
+ }
+ 
+diff --git a/libweston/backend-drm/drm-gbm.c b/libweston/backend-drm/drm-gbm.c
+index d10cc40..f998178 100644
+--- a/libweston/backend-drm/drm-gbm.c
++++ b/libweston/backend-drm/drm-gbm.c
+@@ -206,7 +206,8 @@ create_gbm_surface(struct gbm_device *gbm, struct drm_output *output)
+ 	}
+ 
+ #ifdef HAVE_GBM_MODIFIERS
+-	if (!weston_drm_format_has_modifier(fmt, DRM_FORMAT_MOD_INVALID)) {
++	if (!weston_drm_format_has_modifier(fmt, DRM_FORMAT_MOD_INVALID) &&
++	    !weston_drm_format_has_modifier(fmt, DRM_FORMAT_MOD_LINEAR)) {
+ 		modifiers = weston_drm_format_get_modifiers(fmt, &num_modifiers);
+ 		output->gbm_surface =
+ 			gbm_surface_create_with_modifiers(gbm,
+diff --git a/libweston/backend-drm/fb.c b/libweston/backend-drm/fb.c
+index 05b4988..4cb2cbe 100644
+--- a/libweston/backend-drm/fb.c
++++ b/libweston/backend-drm/fb.c
+@@ -77,7 +77,7 @@ drm_fb_addfb(struct drm_device *device, struct drm_fb *fb)
+ 
+ 	/* If we have a modifier set, we must only use the WithModifiers
+ 	 * entrypoint; we cannot import it through legacy ioctls. */
+-	if (device->fb_modifiers && fb->modifier != DRM_FORMAT_MOD_INVALID) {
++	if (device->fb_modifiers && DRM_MOD_VALID(fb->modifier)) {
+ 		/* KMS demands that if a modifier is set, it must be the same
+ 		 * for all planes. */
+ 		for (i = 0; i < ARRAY_LENGTH(mods) && fb->handles[i]; i++)
+@@ -238,6 +238,7 @@ drm_fb_get_from_dmabuf(struct linux_dmabuf_buffer *dmabuf,
+ 		.modifier = dmabuf->attributes.modifier[0],
+ 	};
+ 
++#if 0
+ 	/* We should not import to KMS a buffer that has been allocated using no
+ 	 * modifiers. Usually drivers use linear layouts to allocate with no
+ 	 * modifiers, but this is not a rule. The driver could use, for
+@@ -251,6 +252,7 @@ drm_fb_get_from_dmabuf(struct linux_dmabuf_buffer *dmabuf,
+ 				FAILURE_REASONS_DMABUF_MODIFIER_INVALID;
+ 		return NULL;
+ 	}
++#endif
+ 
+ 	/* XXX: TODO:
+ 	 *
+@@ -489,7 +491,7 @@ drm_fb_compatible_with_plane(struct drm_fb *fb, struct drm_plane *plane)
+ 		 * wl_drm is being used for scanout. Mesa is the only user we
+ 		 * care in this case (even though recent versions are also using
+ 		 * dmabufs), and it should know better what works or not. */
+-		if (fb->modifier == DRM_FORMAT_MOD_INVALID)
++		if (!DRM_MOD_VALID(fb->modifier))
+ 			return true;
+ 
+ 		if (weston_drm_format_has_modifier(fmt, fb->modifier))
+diff --git a/libweston/linux-dmabuf.c b/libweston/linux-dmabuf.c
+index b73508e..a4dee8b 100644
+--- a/libweston/linux-dmabuf.c
++++ b/libweston/linux-dmabuf.c
+@@ -1057,8 +1057,7 @@ bind_linux_dmabuf(struct wl_client *client,
+ 								  fmt->format,
+ 								  modifier_hi,
+ 								  modifier_lo);
+-			} else if (modifiers[i] == DRM_FORMAT_MOD_LINEAR ||
+-				   modifiers[i] == DRM_FORMAT_MOD_INVALID) {
++			} else if (!DRM_MOD_VALID(modifiers[i])) {
+ 				zwp_linux_dmabuf_v1_send_format(resource,
+ 								fmt->format);
+ 			}
+diff --git a/libweston/pixel-formats.c b/libweston/pixel-formats.c
+index 7590171..10b3ed9 100644
+--- a/libweston/pixel-formats.c
++++ b/libweston/pixel-formats.c
+@@ -755,7 +755,7 @@ pixel_format_get_modifier(uint64_t modifier)
+ 		return mod_str;
+ 	}
+ 
+-	if (modifier == DRM_FORMAT_MOD_LINEAR) {
++	if (!DRM_MOD_VALID(modifier)) {
+ 		str_printf(&mod_str, "%s (0x%llx)", modifier_name,
+ 			   (unsigned long long) modifier);
+ 		free(modifier_name);
+diff --git a/libweston/pixman-renderer.c b/libweston/pixman-renderer.c
+index 5ab4b55..5609b66 100644
+--- a/libweston/pixman-renderer.c
++++ b/libweston/pixman-renderer.c
+@@ -737,8 +737,7 @@ pixman_renderer_prepare_dmabuf(struct linux_dmabuf_buffer *dmabuf)
+ 	total_size = lseek(attributes->fd[0], 0, SEEK_END);
+ 
+ 	for (i = 0; i < attributes->n_planes; i++) {
+-		if (attributes->modifier[i] != DRM_FORMAT_MOD_INVALID &&
+-		    attributes->modifier[i] != DRM_FORMAT_MOD_LINEAR)
++		if (DRM_MOD_VALID(attributes->modifier[i]))
+ 			return false;
+ 	}
+ 
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index bbd1cd4..4eedb94 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -2397,7 +2397,7 @@ import_simple_dmabuf(struct gl_renderer *gr,
+ 		attribs[atti++] = EGL_YUV_NARROW_RANGE_EXT;
+ 	}
+ 
+-	if (attributes->modifier[0] != DRM_FORMAT_MOD_INVALID) {
++	if (DRM_MOD_VALID(attributes->modifier[0])) {
+ 		if (!gr->has_dmabuf_import_modifiers)
+ 			return NULL;
+ 		has_modifier = true;
+@@ -2806,7 +2806,7 @@ gl_renderer_import_dmabuf(struct weston_compositor *ec,
+ 
+ 	for (i = 0; i < dmabuf->attributes.n_planes; i++) {
+ 		/* return if EGL doesn't support import modifiers */
+-		if (dmabuf->attributes.modifier[i] != DRM_FORMAT_MOD_INVALID)
++		if (DRM_MOD_VALID(dmabuf->attributes.modifier[i]))
+ 			if (!gr->has_dmabuf_import_modifiers)
+ 				return false;
+ 
+@@ -2970,7 +2970,7 @@ populate_supported_formats(struct weston_compositor *ec,
+ 
+ 		for (j = 0; j < num_modifiers; j++) {
+ 			/* Skip MOD_INVALID, as it has already been added. */
+-			if (modifiers[j] == DRM_FORMAT_MOD_INVALID)
++			if (!DRM_MOD_VALID(modifiers[j]))
+ 				continue;
+ 			ret = weston_drm_format_add_modifier(fmt, modifiers[j]);
+ 			if (ret < 0) {
+diff --git a/shared/weston-drm-fourcc.h b/shared/weston-drm-fourcc.h
+index 0a013f7..31d8039 100644
+--- a/shared/weston-drm-fourcc.h
++++ b/shared/weston-drm-fourcc.h
+@@ -30,6 +30,10 @@
+ 
+ #include <drm_fourcc.h>
+ 
++/* modifier is not linear or invalid */
++#define DRM_MOD_VALID(mod) \
++	((mod) != DRM_FORMAT_MOD_LINEAR && (mod) != DRM_FORMAT_MOD_INVALID)
++
+ /* The kernel header drm_fourcc.h defines the DRM formats below.  We duplicate
+  * some of the definitions here so that building Weston won't require
+  * bleeding-edge kernel headers.
+-- 
+2.20.1
+

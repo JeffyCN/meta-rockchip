@@ -1,0 +1,45 @@
+From 177aeda60a88f14b9aca1a2daad5d2e98b548553 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 6 Jan 2021 10:13:40 +0800
+Subject: [PATCH 41/93] backend-drm: Fix disabling output error when using
+ atomic
+
+Disabling output in async mode is not allow by drm driver's
+drm_atomic_crtc_check() for "requesting event but off" error.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/kms.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
+index 61dadef..3d97df2 100644
+--- a/libweston/backend-drm/kms.c
++++ b/libweston/backend-drm/kms.c
+@@ -1167,6 +1167,14 @@ drm_pending_state_apply_atomic(struct drm_pending_state *pending_state,
+ 	if (!req)
+ 		return -1;
+ 
++	wl_list_for_each(output_state, &pending_state->output_list, link) {
++		if (output_state->output->virtual)
++			continue;
++		if (output_state->dpms == WESTON_DPMS_OFF &&
++		    mode == DRM_STATE_APPLY_ASYNC)
++			mode = DRM_STATE_APPLY_SYNC;
++	}
++
+ 	switch (mode) {
+ 	case DRM_STATE_APPLY_SYNC:
+ 		flags = 0;
+@@ -1269,8 +1277,6 @@ drm_pending_state_apply_atomic(struct drm_pending_state *pending_state,
+ 	wl_list_for_each(output_state, &pending_state->output_list, link) {
+ 		if (output_state->output->virtual)
+ 			continue;
+-		if (mode == DRM_STATE_APPLY_SYNC)
+-			assert(output_state->dpms == WESTON_DPMS_OFF);
+ 		ret |= drm_output_apply_state_atomic(output_state, req, &flags);
+ 	}
+ 
+-- 
+2.20.1
+

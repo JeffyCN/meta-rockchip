@@ -1,0 +1,280 @@
+From 3f9be87339febf840cc80c8e2ebfa82ea1483100 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 7 Jul 2022 11:09:23 +0800
+Subject: [PATCH 74/93] gl-renderer: Support more SHM RGB formats
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/pixel-formats.c                    | 10 ++++++
+ libweston/renderer-gl/fragment.glsl          | 21 +++++++++--
+ libweston/renderer-gl/gl-renderer-internal.h | 11 +++++-
+ libweston/renderer-gl/gl-renderer.c          | 38 ++++++++++++++++++++
+ libweston/renderer-gl/gl-shaders.c           | 17 +++++++++
+ 5 files changed, 93 insertions(+), 4 deletions(-)
+
+diff --git a/libweston/pixel-formats.c b/libweston/pixel-formats.c
+index 0aa9457..14af000 100644
+--- a/libweston/pixel-formats.c
++++ b/libweston/pixel-formats.c
+@@ -223,6 +223,8 @@ static const struct pixel_format_info pixel_format_table[] = {
+ 		DRM_FORMAT(RGB888),
+ 		BITS_RGBA_FIXED(8, 8, 8, 0),
+ 		.bpp = 24,
++		GL_FORMAT(GL_RGB),
++		GL_TYPE(GL_UNSIGNED_BYTE),
+ 	},
+ 	{
+ 		DRM_FORMAT(BGR888),
+@@ -288,6 +290,8 @@ static const struct pixel_format_info pixel_format_table[] = {
+ 		DRM_FORMAT(RGBX8888),
+ 		BITS_RGBA_FIXED(8, 8, 8, 0),
+ 		.bpp = 32,
++		GL_FORMAT(GL_RGBA),
++		GL_TYPE(GL_UNSIGNED_BYTE),
+ #if __BYTE_ORDER == __LITTLE_ENDIAN
+ 		PIXMAN_FMT(r8g8b8x8),
+ #else
+@@ -299,6 +303,8 @@ static const struct pixel_format_info pixel_format_table[] = {
+ 		BITS_RGBA_FIXED(8, 8, 8, 8),
+ 		.bpp = 32,
+ 		.opaque_substitute = DRM_FORMAT_RGBX8888,
++		GL_FORMAT(GL_RGBA),
++		GL_TYPE(GL_UNSIGNED_BYTE),
+ #if __BYTE_ORDER == __LITTLE_ENDIAN
+ 		PIXMAN_FMT(r8g8b8a8),
+ #else
+@@ -309,6 +315,8 @@ static const struct pixel_format_info pixel_format_table[] = {
+ 		DRM_FORMAT(BGRX8888),
+ 		BITS_RGBA_FIXED(8, 8, 8, 0),
+ 		.bpp = 32,
++		GL_FORMAT(GL_RGBA),
++		GL_TYPE(GL_UNSIGNED_BYTE),
+ #if __BYTE_ORDER == __LITTLE_ENDIAN
+ 		PIXMAN_FMT(b8g8r8x8),
+ #else
+@@ -320,6 +328,8 @@ static const struct pixel_format_info pixel_format_table[] = {
+ 		BITS_RGBA_FIXED(8, 8, 8, 8),
+ 		.bpp = 32,
+ 		.opaque_substitute = DRM_FORMAT_BGRX8888,
++		GL_FORMAT(GL_RGBA),
++		GL_TYPE(GL_UNSIGNED_BYTE),
+ #if __BYTE_ORDER == __LITTLE_ENDIAN
+ 		PIXMAN_FMT(b8g8r8a8),
+ #else
+diff --git a/libweston/renderer-gl/fragment.glsl b/libweston/renderer-gl/fragment.glsl
+index 7de8d98..a950578 100644
+--- a/libweston/renderer-gl/fragment.glsl
++++ b/libweston/renderer-gl/fragment.glsl
+@@ -51,6 +51,12 @@
+ #define SHADER_COLOR_MAPPING_IDENTITY 0
+ #define SHADER_COLOR_MAPPING_3DLUT 1
+ 
++/* enum gl_shader_color_swap */
++#define SHADER_COLOR_SWAP_NONE  0
++#define SHADER_COLOR_SWAP_RGB   1
++#define SHADER_COLOR_SWAP_ALPHA 2
++#define SHADER_COLOR_SWAP_ALL   3
++
+ #if DEF_VARIANT == SHADER_VARIANT_EXTERNAL
+ #extension GL_OES_EGL_image_external : require
+ #endif
+@@ -71,6 +77,7 @@ precision HIGHPRECISION float;
+  * These undeclared identifiers will be #defined by a runtime generated code
+  * snippet.
+  */
++compile_const int c_color_swap = DEF_COLOR_SWAP;
+ compile_const int c_variant = DEF_VARIANT;
+ compile_const bool c_input_is_premult = DEF_INPUT_IS_PREMULT;
+ compile_const bool c_green_tint = DEF_GREEN_TINT;
+@@ -140,13 +147,11 @@ sample_input_texture()
+ 		return unicolor;
+ 
+ 	if (c_variant == SHADER_VARIANT_RGBA ||
++	    c_variant == SHADER_VARIANT_RGBX ||
+ 	    c_variant == SHADER_VARIANT_EXTERNAL) {
+ 		return texture2D(tex, v_texcoord);
+ 	}
+ 
+-	if (c_variant == SHADER_VARIANT_RGBX)
+-		return vec4(texture2D(tex, v_texcoord).rgb, 1.0);
+-
+ 	/* Requires conversion to RGBA */
+ 
+ 	if (c_variant == SHADER_VARIANT_Y_U_V) {
+@@ -271,6 +276,16 @@ main()
+ 	/* Electrical (non-linear) RGBA values, may be premult or not */
+ 	color = sample_input_texture();
+ 
++	if (c_color_swap == SHADER_COLOR_SWAP_RGB)
++		color.bgr = color.rgb;
++	else if (c_color_swap == SHADER_COLOR_SWAP_ALPHA)
++		color.argb = color;
++	else if (c_color_swap == SHADER_COLOR_SWAP_ALL)
++		color.abgr = color;
++
++	if (c_variant == SHADER_VARIANT_RGBX)
++		color.a = 1.0;
++
+ 	if (c_need_color_pipeline)
+ 		color = color_pipeline(color); /* Produces straight alpha */
+ 
+diff --git a/libweston/renderer-gl/gl-renderer-internal.h b/libweston/renderer-gl/gl-renderer-internal.h
+index c9d0b8a..c4c2c89 100644
+--- a/libweston/renderer-gl/gl-renderer-internal.h
++++ b/libweston/renderer-gl/gl-renderer-internal.h
+@@ -63,6 +63,13 @@ enum gl_shader_color_mapping {
+ 	SHADER_COLOR_MAPPING_3DLUT,
+ };
+ 
++enum gl_shader_color_swap {
++	SHADER_COLOR_SWAP_NONE = 0,
++	SHADER_COLOR_SWAP_RGB,
++	SHADER_COLOR_SWAP_ALPHA,
++	SHADER_COLOR_SWAP_ALL,
++};
++
+ /** GL shader requirements key
+  *
+  * This structure is used as a binary blob key for building and searching
+@@ -80,11 +87,13 @@ struct gl_shader_requirements
+ 
+ 	unsigned color_pre_curve:1; /* enum gl_shader_color_curve */
+ 	unsigned color_mapping:1; /* enum gl_shader_color_mapping */
++	unsigned color_swap:2; /* enum gl_shader_color_swap */
++
+ 	/*
+ 	 * The total size of all bitfields plus pad_bits_ must fill up exactly
+ 	 * how many bytes the compiler allocates for them together.
+ 	 */
+-	unsigned pad_bits_:24;
++	unsigned pad_bits_:22;
+ };
+ static_assert(sizeof(struct gl_shader_requirements) ==
+ 	      4 /* total bitfield size in bytes */,
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index 259b24d..da20a88 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -157,6 +157,7 @@ struct gl_buffer_state {
+ 	EGLImageKHR images[3];
+ 	int num_images;
+ 	enum gl_shader_texture_variant shader_variant;
++	enum gl_shader_color_swap color_swap;
+ 
+ 	GLuint textures[3];
+ 	int num_textures;
+@@ -965,6 +966,7 @@ gl_shader_config_set_input_textures(struct gl_shader_config *sconf,
+ 	int i;
+ 
+ 	sconf->req.variant = gb->shader_variant;
++	sconf->req.color_swap = gb->color_swap;
+ 	sconf->req.input_is_premult =
+ 		gl_shader_texture_variant_can_be_premult(gb->shader_variant);
+ 
+@@ -2078,6 +2080,7 @@ gl_renderer_attach_shm(struct weston_surface *es, struct weston_buffer *buffer)
+ 	unsigned int i;
+ 	bool using_glesv2 = gr->gl_version < gr_gl_version(3, 0);
+ 	const struct yuv_format_descriptor *yuv = NULL;
++	enum gl_shader_color_swap color_swap = SHADER_COLOR_SWAP_NONE;
+ 
+ 	/* When sampling YUV input textures and converting to RGB by hand, we
+ 	 * have to bind to each plane separately, with a different format. For
+@@ -2150,6 +2153,31 @@ gl_renderer_attach_shm(struct weston_surface *es, struct weston_buffer *buffer)
+ 
+ 		gl_format[0] = buffer->pixel_format->gl_format;
+ 		gl_pixel_type = buffer->pixel_format->gl_type;
++
++		switch (buffer->pixel_format->format) {
++		case WL_SHM_FORMAT_RGBX8888:
++			color_swap = SHADER_COLOR_SWAP_ALL;
++			gl_format[0] = GL_RGBA;
++			break;
++		case WL_SHM_FORMAT_RGBA8888:
++			color_swap = SHADER_COLOR_SWAP_ALL;
++			gl_format[0] = GL_RGBA;
++			break;
++		case WL_SHM_FORMAT_BGRX8888:
++			color_swap = SHADER_COLOR_SWAP_ALPHA;
++			gl_format[0] = GL_RGBA;
++			break;
++		case WL_SHM_FORMAT_BGRA8888:
++			color_swap = SHADER_COLOR_SWAP_ALPHA;
++			gl_format[0] = GL_RGBA;
++			break;
++		case WL_SHM_FORMAT_BGR888:
++			color_swap = SHADER_COLOR_SWAP_RGB;
++			gl_format[0] = GL_RGB;
++			break;
++		default:
++			break;
++		}
+ 	}
+ 
+ 	for (i = 0; i < ARRAY_LENGTH(gb->gl_format); i++) {
+@@ -2203,6 +2231,8 @@ gl_renderer_attach_shm(struct weston_surface *es, struct weston_buffer *buffer)
+ 	wl_list_init(&gb->destroy_listener.link);
+ 	pixman_region32_init(&gb->texture_damage);
+ 
++	gb->color_swap = color_swap;
++
+ 	gb->pitch = pitch;
+ 	gb->shader_variant = shader_variant;
+ 	ARRAY_COPY(gb->offset, offset);
+@@ -3820,6 +3850,14 @@ gl_renderer_display_create(struct weston_compositor *ec,
+ 		goto fail_with_error;
+ 	}
+ 
++	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_XBGR8888);
++	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_ABGR8888);
++	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_RGBX8888);
++	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_RGBA8888);
++	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_BGRX8888);
++	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_BGRA8888);
++	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_RGB888);
++	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_BGR888);
+ 	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_RGB565);
+ 	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_YUV420);
+ 	wl_display_add_shm_format(ec->wl_display, WL_SHM_FORMAT_YUV444);
+diff --git a/libweston/renderer-gl/gl-shaders.c b/libweston/renderer-gl/gl-shaders.c
+index 66850e7..d1895bb 100644
+--- a/libweston/renderer-gl/gl-shaders.c
++++ b/libweston/renderer-gl/gl-shaders.c
+@@ -117,6 +117,21 @@ gl_shader_color_mapping_to_string(enum gl_shader_color_mapping kind)
+ 	return "!?!?"; /* never reached */
+ }
+ 
++static const char *
++gl_shader_color_swap_to_string(enum gl_shader_color_swap kind)
++{
++	switch (kind) {
++#define CASERET(x) case x: return #x;
++	CASERET(SHADER_COLOR_SWAP_NONE)
++	CASERET(SHADER_COLOR_SWAP_RGB)
++	CASERET(SHADER_COLOR_SWAP_ALPHA)
++	CASERET(SHADER_COLOR_SWAP_ALL)
++#undef CASERET
++	}
++
++	return "!?!?"; /* never reached */
++}
++
+ static void
+ dump_program_with_line_numbers(int count, const char **sources)
+ {
+@@ -204,11 +219,13 @@ create_shader_config_string(const struct gl_shader_requirements *req)
+ 			"#define DEF_INPUT_IS_PREMULT %s\n"
+ 			"#define DEF_COLOR_PRE_CURVE %s\n"
+ 			"#define DEF_COLOR_MAPPING %s\n"
++			"#define DEF_COLOR_SWAP %s\n"
+ 			"#define DEF_VARIANT %s\n",
+ 			req->green_tint ? "true" : "false",
+ 			req->input_is_premult ? "true" : "false",
+ 			gl_shader_color_curve_to_string(req->color_pre_curve),
+ 			gl_shader_color_mapping_to_string(req->color_mapping),
++			gl_shader_color_swap_to_string(req->color_swap),
+ 			gl_shader_texture_variant_to_string(req->variant));
+ 	if (size < 0)
+ 		return NULL;
+-- 
+2.20.1
+

@@ -1,0 +1,38 @@
+From 6d9efb184ef5954542f72e8a6afffa8a46cc2d7e Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 13 Dec 2022 16:12:30 +0800
+Subject: [PATCH 93/93] vnc: Support linux-dmabuf
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-vnc/vnc.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/libweston/backend-vnc/vnc.c b/libweston/backend-vnc/vnc.c
+index ed68f45..0df3135 100644
+--- a/libweston/backend-vnc/vnc.c
++++ b/libweston/backend-vnc/vnc.c
+@@ -52,6 +52,7 @@
+ #include "shared/timespec-util.h"
+ #include <libweston/libweston.h>
+ #include <libweston/backend-vnc.h>
++#include "linux-dmabuf.h"
+ #include "pixel-formats.h"
+ #include "pixman-renderer.h"
+ 
+@@ -1053,6 +1054,12 @@ no_tls:
+ 		goto err_output;
+ 	}
+ 
++	if (compositor->renderer->import_dmabuf) {
++		if (linux_dmabuf_setup(compositor) < 0)
++			weston_log("Error: initializing dmabuf "
++				   "support failed.\n");
++	}
++
+ 	return backend;
+ 
+ err_output:
+-- 
+2.20.1
+

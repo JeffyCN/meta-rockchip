@@ -1,0 +1,69 @@
+From c26a8a44c1cbd13addfe0ece6702d0cf831c4640 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 6 Dec 2018 18:53:05 +0800
+Subject: [PATCH 10/93] HACK: gl-renderer: Workaround dmabuf import/attach for
+ old mali
+
+Tested on px3se with libmali-utgard-400-r7p0-r3p0-wayland.so, the
+mpp + waylandsink works.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/renderer-gl/gl-renderer-internal.h |  2 ++
+ libweston/renderer-gl/gl-renderer.c          | 13 ++++++++++++-
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/libweston/renderer-gl/gl-renderer-internal.h b/libweston/renderer-gl/gl-renderer-internal.h
+index aae303e..c9d0b8a 100644
+--- a/libweston/renderer-gl/gl-renderer-internal.h
++++ b/libweston/renderer-gl/gl-renderer-internal.h
+@@ -204,6 +204,8 @@ struct gl_renderer {
+ 	 */
+ 	struct wl_list shader_list;
+ 	struct weston_log_scope *shader_scope;
++
++	bool is_mali_egl;
+ };
+ 
+ static inline struct gl_renderer *
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index edb2fba..448dcbb 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -2303,6 +2303,14 @@ import_simple_dmabuf(struct gl_renderer *gr,
+ 	attribs[atti++] = EGL_IMAGE_PRESERVED_KHR;
+ 	attribs[atti++] = EGL_TRUE;
+ 
++	/* Old mali needs extra attributes */
++	if (gr->is_mali_egl) {
++		attribs[atti++] = EGL_YUV_COLOR_SPACE_HINT_EXT;
++		attribs[atti++] = EGL_ITU_REC601_EXT;
++		attribs[atti++] = EGL_SAMPLE_RANGE_HINT_EXT;
++		attribs[atti++] = EGL_YUV_NARROW_RANGE_EXT;
++	}
++
+ 	if (attributes->modifier[0] != DRM_FORMAT_MOD_INVALID) {
+ 		if (!gr->has_dmabuf_import_modifiers)
+ 			return NULL;
+@@ -2620,7 +2628,7 @@ gl_renderer_query_dmabuf_formats(struct weston_compositor *wc,
+ 
+ 	if (!gr->has_dmabuf_import_modifiers ||
+ 	    !gr->query_dmabuf_formats(gr->egl_display, 0, NULL, &num)) {
+-		num = gr->has_gl_texture_rg ? ARRAY_LENGTH(fallback_formats) : 2;
++		num = (gr->has_gl_texture_rg || gr->is_mali_egl) ? ARRAY_LENGTH(fallback_formats) : 2;
+ 		fallback = true;
+ 	}
+ 
+@@ -3230,6 +3238,9 @@ log_egl_info(struct gl_renderer *gr, EGLDisplay egldpy)
+ 	str = eglQueryString(egldpy, EGL_VENDOR);
+ 	weston_log("EGL vendor: %s\n", str ? str : "(null)");
+ 
++	if (!strcmp(str, "ARM"))
++		gr->is_mali_egl = 1;
++
+ 	str = eglQueryString(egldpy, EGL_CLIENT_APIS);
+ 	weston_log("EGL client APIs: %s\n", str ? str : "(null)");
+ 
+-- 
+2.20.1
+

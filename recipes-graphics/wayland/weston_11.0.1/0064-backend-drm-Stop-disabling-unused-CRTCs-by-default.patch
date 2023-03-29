@@ -1,0 +1,96 @@
+From 9b58d2a3e97518b9dafefa445ee691608da5e25b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 27 Apr 2022 15:17:39 +0800
+Subject: [PATCH 64/93] backend-drm: Stop disabling unused CRTCs by default
+
+So that we can launch multiple weston instances for different monitors.
+
+Set env "WESTON_DRM_MASTER" to take charge of all CRTCs again.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm-internal.h | 1 +
+ libweston/backend-drm/drm.c          | 8 ++++++++
+ libweston/backend-drm/kms.c          | 7 ++++---
+ 3 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
+index b7deeb0..46edbc6 100644
+--- a/libweston/backend-drm/drm-internal.h
++++ b/libweston/backend-drm/drm-internal.h
+@@ -356,6 +356,7 @@ struct drm_backend {
+ 	int64_t last_resize_ms;
+ 	int64_t resize_freeze_ms;
+ 
++	bool master;
+ 	bool single_head;
+ 	bool head_fallback;
+ 	bool head_fallback_all;
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 6083eb7..d8b8623 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -2326,6 +2326,10 @@ drm_output_detach_crtc(struct drm_output *output)
+ 
+ 	crtc->output = NULL;
+ 	output->crtc = NULL;
++
++	/* HACK: Do it here rather than in the kms.c for drm-master config */
++	drmModeSetCrtc(crtc->device->drm.fd,
++		       crtc->crtc_id, 0, 0, 0, NULL, 0, NULL);
+ }
+ 
+ static int
+@@ -4254,6 +4258,10 @@ drm_backend_create(struct weston_compositor *compositor,
+ 	if (b == NULL)
+ 		return NULL;
+ 
++	buf = getenv("WESTON_DRM_MASTER");
++	if (buf && buf[0] == '1')
++		b->master = true;
++
+ 	buf = getenv("WESTON_DRM_SINGLE_HEAD");
+ 	if (buf && buf[0] == '1')
+ 		b->single_head = true;
+diff --git a/libweston/backend-drm/kms.c b/libweston/backend-drm/kms.c
+index 607bf70..38ecf68 100644
+--- a/libweston/backend-drm/kms.c
++++ b/libweston/backend-drm/kms.c
+@@ -1217,7 +1217,7 @@ drm_pending_state_apply_atomic(struct drm_pending_state *pending_state,
+ 		break;
+ 	}
+ 
+-	if (device->state_invalid) {
++	if (device->state_invalid && b->master) {
+ 		struct weston_head *head_base;
+ 		struct drm_head *head;
+ 		struct drm_crtc *crtc;
+@@ -1417,7 +1417,7 @@ drm_pending_state_apply(struct drm_pending_state *pending_state)
+ 		return drm_pending_state_apply_atomic(pending_state,
+ 						      DRM_STATE_APPLY_ASYNC);
+ 
+-	if (device->state_invalid) {
++	if (device->state_invalid && b->master) {
+ 		/* If we need to reset all our state (e.g. because we've
+ 		 * just started, or just been VT-switched in), explicitly
+ 		 * disable all the CRTCs we aren't using. This also disables
+@@ -1476,6 +1476,7 @@ int
+ drm_pending_state_apply_sync(struct drm_pending_state *pending_state)
+ {
+ 	struct drm_device *device = pending_state->device;
++	struct drm_backend *b = device->backend;
+ 	struct drm_output_state *output_state, *tmp;
+ 	struct drm_crtc *crtc;
+ 	int has_error = 0;
+@@ -1484,7 +1485,7 @@ drm_pending_state_apply_sync(struct drm_pending_state *pending_state)
+ 		return drm_pending_state_apply_atomic(pending_state,
+ 						      DRM_STATE_APPLY_SYNC);
+ 
+-	if (device->state_invalid) {
++	if (device->state_invalid && b->master) {
+ 		/* If we need to reset all our state (e.g. because we've
+ 		 * just started, or just been VT-switched in), explicitly
+ 		 * disable all the CRTCs we aren't using. This also disables
+-- 
+2.20.1
+

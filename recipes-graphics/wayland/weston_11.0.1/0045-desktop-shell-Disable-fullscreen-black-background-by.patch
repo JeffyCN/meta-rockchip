@@ -1,0 +1,51 @@
+From ff8bfc70096177fb9fd7aac89eaa3180ef1f2895 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 23 Mar 2021 22:34:54 +0800
+Subject: [PATCH 45/93] desktop-shell: Disable fullscreen black background by
+ default
+
+There's a force black background for fullscreen views.
+
+Let's disable it by default, set this env to enable:
+"WESTON_FULLSCREEN_BLACK_BACKGROUND"
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ desktop-shell/shell.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
+index e48db31..fb410ba 100644
+--- a/desktop-shell/shell.c
++++ b/desktop-shell/shell.c
+@@ -1691,7 +1691,8 @@ shell_configure_fullscreen(struct shell_surface *shsurf)
+ 		return;
+ 	}
+ 
+-	shell_ensure_fullscreen_black_view(shsurf);
++	if (getenv("WESTON_FULLSCREEN_BLACK_BACKGROUND"))
++		shell_ensure_fullscreen_black_view(shsurf);
+ 
+ 	surface_subsurfaces_boundingbox(surface, &surf_x, &surf_y,
+ 	                                &surf_width, &surf_height);
+@@ -3332,7 +3333,7 @@ lower_fullscreen_layer(struct desktop_shell *shell,
+ 
+ 		/* We can have a non-fullscreen popup for a fullscreen surface
+ 		 * in the fullscreen layer. */
+-		if (weston_desktop_surface_get_fullscreen(shsurf->desktop_surface)) {
++		if (weston_desktop_surface_get_fullscreen(shsurf->desktop_surface) && shsurf->fullscreen.black_view) {
+ 			/* Hide the black view */
+ 			weston_layer_entry_remove(&shsurf->fullscreen.black_view->view->layer_link);
+ 			wl_list_init(&shsurf->fullscreen.black_view->view->layer_link.link);
+@@ -4099,7 +4100,7 @@ switcher_next(struct switcher *switcher)
+ 		view->alpha = 1.0;
+ 
+ 	shsurf = get_shell_surface(switcher->current->surface);
+-	if (shsurf && weston_desktop_surface_get_fullscreen(shsurf->desktop_surface))
++	if (shsurf && weston_desktop_surface_get_fullscreen(shsurf->desktop_surface) && shsurf->fullscreen.black_view)
+ 		shsurf->fullscreen.black_view->view->alpha = 1.0;
+ }
+ 
+-- 
+2.20.1
+

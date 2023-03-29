@@ -1,0 +1,31 @@
+From 0349d2003aa248bcfcb2b8b055f44d0b2039d011 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 31 May 2022 12:32:18 +0800
+Subject: [PATCH 67/93] desktop-shell: Fix crash when activating destroyed
+ desktop surface
+
+Tested with Qt's Windows Flags Example, by switching between Popup and
+Tool repeatedly.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ desktop-shell/shell.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
+index 0110ac2..ff85ff7 100644
+--- a/desktop-shell/shell.c
++++ b/desktop-shell/shell.c
+@@ -3390,7 +3390,8 @@ activate(struct desktop_shell *shell, struct weston_view *view,
+ 
+ 	main_surface = weston_surface_get_main_surface(es);
+ 	shsurf = get_shell_surface(main_surface);
+-	assert(shsurf);
++	if (!shsurf)
++		return;
+ 
+ 	shsurf_child = get_last_child(shsurf);
+ 	if (shsurf_child) {
+-- 
+2.20.1
+

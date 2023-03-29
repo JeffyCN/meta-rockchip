@@ -1,0 +1,172 @@
+From 5e6329e957976c9d376385c75a18e5ae7c6e365c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 7 Jul 2020 17:00:40 +0800
+Subject: [PATCH 11/93] HACK: gl-renderer: Support making hole for surface
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ include/libweston/libweston.h       |  3 ++
+ libweston/compositor.c              | 29 ++++++++++++
+ libweston/renderer-gl/gl-renderer.c | 71 +++++++++++++++++++++++++++++
+ 3 files changed, 103 insertions(+)
+
+diff --git a/include/libweston/libweston.h b/include/libweston/libweston.h
+index 89c5feb..a3a23bc 100644
+--- a/include/libweston/libweston.h
++++ b/include/libweston/libweston.h
+@@ -1715,6 +1715,9 @@ struct weston_surface {
+ 	enum weston_hdcp_protection desired_protection;
+ 	enum weston_hdcp_protection current_protection;
+ 	enum weston_surface_protection_mode protection_mode;
++
++	/* Transparent hole region(excluding it's lower subsurface area) */
++	pixman_region32_t hole;
+ };
+ 
+ struct weston_subsurface {
+diff --git a/libweston/compositor.c b/libweston/compositor.c
+index 930d4f5..f34c34c 100644
+--- a/libweston/compositor.c
++++ b/libweston/compositor.c
+@@ -608,6 +608,7 @@ weston_surface_create(struct weston_compositor *compositor)
+ 	pixman_region32_init(&surface->damage);
+ 	pixman_region32_init(&surface->opaque);
+ 	region_init_infinite(&surface->input);
++	pixman_region32_init(&surface->hole);
+ 
+ 	wl_list_init(&surface->views);
+ 	wl_list_init(&surface->paint_node_list);
+@@ -2378,6 +2379,7 @@ weston_surface_unref(struct weston_surface *surface)
+ 	pixman_region32_fini(&surface->damage);
+ 	pixman_region32_fini(&surface->opaque);
+ 	pixman_region32_fini(&surface->input);
++	pixman_region32_fini(&surface->hole);
+ 
+ 	wl_resource_for_each_safe(cb, next, &surface->frame_callback_list)
+ 		wl_resource_destroy(cb);
+@@ -3899,6 +3901,33 @@ surface_set_opaque_region(struct wl_client *client,
+ 
+ 	if (region_resource) {
+ 		region = wl_resource_get_user_data(region_resource);
++
++		/**
++		 * HACK: Make a hole for this surface
++		 * Usage:
++		 * 1/ Set the hole region
++		 *  wl_region_add(region, [hole region]);
++		 * 2/ Add a special rect to mark the region as a hole
++		 *  wl_region_add(region, -1, -1, 1, 1);
++		 *  wl_surface_set_opaque_region(surface, region);
++		 */
++		if (pixman_region32_contains_point(&region->region, -1, -1,
++						   NULL)) {
++			pixman_region32_t hole;
++
++			// Subtract the special rect
++			pixman_region32_init_rect(&hole, -1, -1, 1, 1);
++			pixman_region32_subtract(&hole, &region->region,
++						 &hole);
++
++			pixman_region32_copy(&surface->hole, &hole);
++			pixman_region32_fini(&hole);
++
++			// Trigger repaint to apply the hole
++			weston_surface_damage(surface);
++			return;
++		}
++
+ 		pixman_region32_copy(&surface->pending.opaque,
+ 				     &region->region);
+ 	} else {
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index 448dcbb..db4c7b1 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -994,6 +994,46 @@ gl_shader_config_init_for_paint_node(struct gl_shader_config *sconf,
+ 	return true;
+ }
+ 
++static void
++clear_region(struct weston_view *ev, pixman_region32_t *region)
++{
++	pixman_box32_t *rects;
++	int i, n, h = ev->output->height;
++
++	if (ev->alpha < 0.5f)
++		return;
++
++	rects = pixman_region32_rectangles(region, &n);
++	for (i = 0; i < n; i++) {
++		pixman_box32_t r = rects[i];
++		glScissor(r.x1, h - r.y2, r.x2 - r.x1, r.y2 - r.y1);
++		glEnable(GL_SCISSOR_TEST);
++		glClearColor(0, 0, 0, 0);
++		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
++		glDisable(GL_SCISSOR_TEST);
++	}
++}
++
++static void
++weston_view_to_global_region(struct weston_view *ev, pixman_region32_t *region,
++			     pixman_region32_t *global_region)
++{
++	pixman_box32_t *rects;
++	int i, n;
++	float x1, y1, x2, y2;
++
++	pixman_region32_clear(global_region);
++
++	rects = pixman_region32_rectangles(region, &n);
++	for (i = 0; i < n; i++) {
++		pixman_box32_t r = rects[i];
++		weston_view_to_global_float(ev, r.x1, r.y1, &x1, &y1);
++		weston_view_to_global_float(ev, r.x2, r.y2, &x2, &y2);
++		pixman_region32_union_rect(global_region, global_region,
++					   x1, y1, x2 - x1, y2 - y1);
++	}
++}
++
+ static void
+ draw_paint_node(struct weston_paint_node *pnode,
+ 		pixman_region32_t *damage /* in global coordinates */)
+@@ -1037,6 +1077,37 @@ draw_paint_node(struct weston_paint_node *pnode,
+ 	if (!gl_shader_config_init_for_paint_node(&sconf, pnode, filter))
+ 		goto out;
+ 
++	// HACK: Make hole for the surface(excluding it's lower subsurface area)
++	if (pixman_region32_not_empty(&pnode->surface->hole)) {
++		struct weston_subsurface *child;
++		pixman_region32_t hole, region;
++
++		pixman_region32_init(&region);
++		wl_list_for_each_reverse(child, &pnode->surface->subsurface_list,
++				 parent_link) {
++			if (child->surface == pnode->surface)
++				break;
++
++			pixman_region32_union_rect(&region, &region,
++						   child->position.x,
++						   child->position.y,
++						   child->surface->width,
++						   child->surface->height);
++		}
++
++		pixman_region32_subtract(&region, &pnode->surface->hole, &region);
++		pixman_region32_init(&hole);
++		weston_view_to_global_region(pnode->view, &region, &hole);
++
++		pixman_region32_intersect(&hole, &hole, &repaint);
++
++		weston_output_region_from_global(pnode->output, &hole);
++		clear_region(pnode->view, &hole);
++
++		pixman_region32_fini(&hole);
++		pixman_region32_fini(&region);
++	}
++
+ 	/* blended region is whole surface minus opaque region: */
+ 	pixman_region32_init_rect(&surface_blend, 0, 0,
+ 				  pnode->surface->width, pnode->surface->height);
+-- 
+2.20.1
+

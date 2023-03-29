@@ -1,0 +1,81 @@
+From b0d75fcb9d543f06bbbf67530f5e631459bf9c98 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 8 Dec 2022 10:26:26 +0800
+Subject: [PATCH 92/93] HACK: vnc: Make pam optional
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-vnc/vnc.c | 10 ++++++++++
+ libweston/meson.build       |  9 +++++----
+ 2 files changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/libweston/backend-vnc/vnc.c b/libweston/backend-vnc/vnc.c
+index 4861521..ed68f45 100644
+--- a/libweston/backend-vnc/vnc.c
++++ b/libweston/backend-vnc/vnc.c
+@@ -423,7 +423,10 @@ vnc_handle_auth(const char *username, const char *password, void *userdata)
+ 		return false;
+ 	}
+ 
++#ifdef HAVE_PAM
+ 	return weston_authenticate_user(username, password);
++#endif
++	return true;
+ }
+ 
+ static void
+@@ -1008,14 +1011,20 @@ vnc_backend_create(struct weston_compositor *compositor,
+ 	nvnc_set_userdata(backend->server, backend, NULL);
+ 	nvnc_set_name(backend->server, "Weston VNC backend");
+ 
++#ifdef HAVE_PAM
+ 	if (!nvnc_has_auth()) {
+ 		weston_log("Neat VNC built without TLS support\n");
+ 		goto err_output;
+ 	}
++#endif
++
+ 	if (!config->server_cert && !config->server_key) {
+ 		weston_log("The VNC backend requires a key and a certificate for TLS security"
+ 			   " (--vnc-tls-cert/--vnc-tls-key)\n");
++#ifdef HAVE_PAM
+ 		goto err_output;
++#endif
++		goto no_tls;
+ 	}
+ 	if (!config->server_cert) {
+ 		weston_log("Missing TLS certificate (--vnc-tls-cert)\n");
+@@ -1036,6 +1045,7 @@ vnc_backend_create(struct weston_compositor *compositor,
+ 
+ 	weston_log("TLS support activated\n");
+ 
++no_tls:
+ 	ret = weston_plugin_api_register(compositor, WESTON_VNC_OUTPUT_API_NAME,
+ 					 &api, sizeof(api));
+ 	if (ret < 0) {
+diff --git a/libweston/meson.build b/libweston/meson.build
+index 6f0b624..037a240 100644
+--- a/libweston/meson.build
++++ b/libweston/meson.build
+@@ -83,13 +83,14 @@ endif
+ if get_option('backend-vnc')
+ 	dep_pam = dependency('pam', required: false)
+ 	if not dep_pam.found()
+-		dep_pam = cc.find_library('pam')
++		dep_pam = cc.find_library('pam', required: false)
+ 	endif
+ 	if not dep_pam.found()
+-		error('VNC backend requires libpam which was not found. Or, you can use \'-Dbackend-vnc=false\'.')
++		warning('VNC backend suggests libpam which was not found. Or, you can use \'-Dbackend-vnc=false\'.')
++	else
++		config_h.set('HAVE_PAM', '1')
++		deps_libweston += dep_pam
+ 	endif
+-	config_h.set('HAVE_PAM', '1')
+-	deps_libweston += dep_pam
+ endif
+ 
+ lib_weston = shared_library(
+-- 
+2.20.1
+
