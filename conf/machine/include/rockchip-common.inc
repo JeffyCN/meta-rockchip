@@ -95,7 +95,7 @@ do_post_rootfs() {
 	for dir in vendor system;do
 		firmware_dir=${IMAGE_ROOTFS}/${dir}/etc/
 		mkdir -p ${firmware_dir}
-		ln -sf /lib/firmware ${firmware_dir}
+		ln -rsf ${IMAGE_ROOTFS}/lib/firmware ${firmware_dir}
 	done
 
 	for overlay in ${RK_OVERLAY_DIRS};do
