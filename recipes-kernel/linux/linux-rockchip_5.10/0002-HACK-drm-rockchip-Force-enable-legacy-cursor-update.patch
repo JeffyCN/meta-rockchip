@@ -1,7 +1,7 @@
-From 090375cacef9dea2116a8c4673143c1eec5c3456 Mon Sep 17 00:00:00 2001
+From 5e3250f296bf1ba877b6dc9e50c558498d5d1719 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 1 Apr 2022 21:50:28 +0800
-Subject: [PATCH 3/4] HACK: drm: rockchip: Force enable legacy-cursor-update
+Subject: [PATCH 2/3] HACK: drm: rockchip: Force enable legacy-cursor-update
 
 For async commit.
 
@@ -13,10 +13,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
-index 4e679e7e61d8..f531e2e1a90f 100644
+index 96099755633f..9c832e8e5704 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
-@@ -2146,7 +2146,7 @@ rockchip_atomic_helper_update_plane(struct drm_plane *plane,
+@@ -2237,7 +2237,7 @@ rockchip_atomic_helper_update_plane(struct drm_plane *plane,
  	plane_state->src_w = src_w;
  	plane_state->src_h = src_h;
  
@@ -26,10 +26,10 @@ index 4e679e7e61d8..f531e2e1a90f 100644
  
  	ret = drm_atomic_commit(state);
 diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-index 91e6433870a7..9f94836ac6c1 100644
+index 1b572ecc91bd..635417630d29 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-@@ -4678,7 +4678,7 @@ rockchip_atomic_helper_update_plane(struct drm_plane *plane,
+@@ -5248,7 +5248,7 @@ rockchip_atomic_helper_update_plane(struct drm_plane *plane,
  	pstate->src_w = src_w;
  	pstate->src_h = src_h;
  
