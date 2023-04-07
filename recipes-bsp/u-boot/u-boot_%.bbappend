@@ -10,7 +10,7 @@ PV = "2017.09+git${SRCPV}"
 
 LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
 
-inherit freeze-rev local-git
+inherit local-git
 
 SRCREV = "e3ca3c3805cc60cc9e2fe2a4d78694907b49ee46"
 SRCREV_rkbin = "104659686b734ab041ef958c0abece1a250f48a4"
