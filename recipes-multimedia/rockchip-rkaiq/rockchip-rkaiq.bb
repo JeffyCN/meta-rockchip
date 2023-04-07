@@ -13,9 +13,9 @@ RDEPENDS:${PN}-server = "${PN}"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-inherit freeze-rev local-git
+inherit local-git
 
-SRCREV = "${@oe.utils.version_less_or_equal('RK_ISP_VERSION', '1', '0123456789012345678901234567890123456789', '${AUTOREV}', d)}"
+SRCREV = "be96b36bab4c3533f7cd011385539b565578ab8b"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=rkaiq-2023_04_04; \
 	file://rkaiq_daemons.sh \

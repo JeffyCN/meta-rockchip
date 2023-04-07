@@ -11,7 +11,7 @@ DEPENDS = "libdrm"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-inherit freeze-rev local-git
+inherit local-git
 
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=linux-rga-im2d; \

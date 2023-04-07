@@ -12,7 +12,7 @@ DEPENDS = "coreutils-native chrpath-replacement-native libdrm"
 RDEPENDS:${PN}-tests = "${PN}"
 RDEPENDS:${PN}-server = "${PN}"
 
-inherit freeze-rev local-git
+inherit local-git
 
 SRCREV = "fafcd69874d20a7737425cc16a70619b220f8a2e"
 SRC_URI = " \

@@ -4,7 +4,7 @@
 require recipes-kernel/linux/linux-yocto.inc
 require linux-rockchip.inc
 
-inherit freeze-rev local-git
+inherit local-git
 
 SRCREV = "72de5a560a44fb81549f1da325a1b3e323a7aaf7"
 SRC_URI = " \
