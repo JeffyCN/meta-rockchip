@@ -11,7 +11,7 @@ RDEPENDS_${PN} = "bash"
 
 PV_append = "+git${SRCPV}"
 
-inherit freeze-rev local-git
+inherit local-git
 
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rknpu-fw; \
