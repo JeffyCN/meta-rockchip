@@ -10,8 +10,6 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=d749e86a105281d7a44c2328acebc4b0"
 
 PV_append = "+git${SRCPV}"
 
-inherit freeze-rev
-
 SRCREV = "b004755ccd5410f80efe31716abccd105308e226"
 SRC_URI = "git://github.com/JeffyCN/libv4l-rkmpp.git;protocol=https;branch=master"
 
