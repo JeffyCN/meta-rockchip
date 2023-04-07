@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf0
 
 RDEPENDS:${PN} = "bash"
 
-inherit freeze-rev local-git
+inherit local-git
 
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rknpu-fw; \

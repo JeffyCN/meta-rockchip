@@ -7,7 +7,7 @@ SECTION = "multimedia"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://NOTICE;md5=9645f39e9db895a4aa6e02cb57294595"
 
-inherit freeze-rev local-git
+inherit local-git
 
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=alsa-config; \
