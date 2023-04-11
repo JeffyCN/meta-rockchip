@@ -1,0 +1,100 @@
+From 9b7e490376c888bcbe6b2802673a590409d9e82a Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 19 Jan 2022 16:37:40 +0800
+Subject: [PATCH 30/41] kmssink: Support ignoring aspect ratio
+
+Set "force-aspect-ratio" property to false to ignore aspect ratio.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 18 +++++++++++++++++-
+ sys/kms/gstkmssink.h |  2 ++
+ 2 files changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 8335963..3740e57 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -106,6 +106,7 @@ enum
+   PROP_PLANE_PROPS,
+   PROP_FD,
+   PROP_SKIP_VSYNC,
++  PROP_FORCE_ASPECT_RATIO,
+   PROP_N,
+ };
+ 
+@@ -1582,7 +1583,7 @@ gst_kms_sink_calculate_display_ratio (GstKMSSink * self, GstVideoInfo * vinfo,
+   video_par_n = GST_VIDEO_INFO_PAR_N (vinfo);
+   video_par_d = GST_VIDEO_INFO_PAR_D (vinfo);
+ 
+-  if (self->can_scale) {
++  if (self->can_scale && self->keep_aspect) {
+     gst_video_calculate_device_ratio (self->hdisplay, self->vdisplay,
+         self->mm_width, self->mm_height, &dpy_par_n, &dpy_par_d);
+   } else {
+@@ -2179,6 +2180,9 @@ retry_set_plane:
+   result.x += self->render_rect.x;
+   result.y += self->render_rect.y;
+ 
++  if (self->can_scale && !self->keep_aspect)
++    result = self->render_rect;
++
+   if (crop) {
+     src.w = crop->width;
+     src.h = crop->height;
+@@ -2438,6 +2442,9 @@ gst_kms_sink_set_property (GObject * object, guint prop_id,
+     case PROP_SKIP_VSYNC:
+       sink->skip_vsync = g_value_get_boolean (value);
+       break;
++    case PROP_FORCE_ASPECT_RATIO:
++      sink->keep_aspect = g_value_get_boolean (value);
++      break;
+     default:
+       if (!gst_video_overlay_set_property (object, PROP_N, prop_id, value))
+         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+@@ -2497,6 +2504,9 @@ gst_kms_sink_get_property (GObject * object, guint prop_id,
+     case PROP_SKIP_VSYNC:
+       g_value_set_boolean (value, sink->skip_vsync);
+       break;
++    case PROP_FORCE_ASPECT_RATIO:
++      g_value_set_boolean (value, sink->keep_aspect);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -2528,6 +2538,7 @@ gst_kms_sink_init (GstKMSSink * sink)
+   sink->plane_id = -1;
+   sink->saved_zpos = -1;
+   sink->can_scale = TRUE;
++  sink->keep_aspect = TRUE;
+   gst_poll_fd_init (&sink->pollfd);
+   sink->poll = gst_poll_new (TRUE);
+   gst_video_info_init (&sink->vinfo);
+@@ -2736,6 +2747,11 @@ gst_kms_sink_class_init (GstKMSSinkClass * klass)
+       "Should be used for atomic drivers to avoid double vsync.", FALSE,
+       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT);
+ 
++  g_properties[PROP_FORCE_ASPECT_RATIO] =
++      g_param_spec_boolean ("force-aspect-ratio", "Force aspect ratio",
++      "When enabled, scaling will respect original aspect ratio", TRUE,
++      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
++
+   g_object_class_install_properties (gobject_class, PROP_N, g_properties);
+ 
+   gst_video_overlay_install_properties (gobject_class, PROP_N);
+diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
+index f221eb6..5fb712d 100644
+--- a/sys/kms/gstkmssink.h
++++ b/sys/kms/gstkmssink.h
+@@ -112,6 +112,8 @@ struct _GstKMSSink {
+ #endif
+ 
+   guintptr window_handle;
++
++  gboolean keep_aspect;
+ };
+ 
+ struct _GstKMSSinkClass {
+-- 
+2.20.1
+

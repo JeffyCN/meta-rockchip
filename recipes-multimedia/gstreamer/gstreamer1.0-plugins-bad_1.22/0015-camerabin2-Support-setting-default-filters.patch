@@ -1,0 +1,53 @@
+From c205cca1272277db9aa65413c87010629a816792 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 24 Dec 2020 10:16:44 +0800
+Subject: [PATCH 15/41] camerabin2: Support setting default filters
+
+Use env "CAMERABIN2_PREVIEW_FILTER", "CAMERABIN2_IMAGE_FILTER",
+"CAMERABIN2_VIDEO_FILTER", "CAMERABIN2_VIEWFINDER_FILTER" to set default
+filters.
+
+Tested with:
+export CAMERABIN2_VIEWFINDER_FILTER="videoflip method=clockwise"
+gst-launch-1.0 camerabin
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/camerabin2/gstcamerabin2.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/gst/camerabin2/gstcamerabin2.c b/gst/camerabin2/gstcamerabin2.c
+index 3824a4b..a34bb3e 100644
+--- a/gst/camerabin2/gstcamerabin2.c
++++ b/gst/camerabin2/gstcamerabin2.c
+@@ -1507,6 +1507,19 @@ gst_camera_bin_create_elements (GstCameraBin2 * camera)
+   gboolean profile_switched = FALSE;
+   const gchar *missing_element_name;
+   gint encbin_flags = 0;
++  const char *env;
++
++  if ((env = g_getenv ("CAMERABIN2_PREVIEW_FILTER")))
++    camera->preview_filter = gst_parse_launch (env, NULL);
++
++  if ((env = g_getenv ("CAMERABIN2_IMAGE_FILTER")))
++    camera->user_image_filter = gst_parse_launch (env, NULL);
++
++  if ((env = g_getenv ("CAMERABIN2_VIDEO_FILTER")))
++    camera->user_video_filter = gst_parse_launch (env, NULL);
++
++  if ((env = g_getenv ("CAMERABIN2_VIEWFINDER_FILTER")))
++    camera->user_viewfinder_filter = gst_parse_launch (env, NULL);
+ 
+   if (!camera->elements_created) {
+     /* Check that elements created in _init were really created */
+@@ -1885,7 +1898,6 @@ gst_camera_bin_change_state (GstElement * element, GstStateChange trans)
+   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
+   GstCameraBin2 *camera = GST_CAMERA_BIN2_CAST (element);
+ 
+-
+   switch (trans) {
+     case GST_STATE_CHANGE_NULL_TO_READY:
+       if (!gst_camera_bin_create_elements (camera)) {
+-- 
+2.20.1
+

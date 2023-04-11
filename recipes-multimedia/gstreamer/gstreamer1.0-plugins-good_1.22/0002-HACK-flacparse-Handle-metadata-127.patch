@@ -1,0 +1,33 @@
+From 8bef2bc41a8f6d1f443a76dc9fe90e5666474c08 Mon Sep 17 00:00:00 2001
+From: "james.lin" <james.lin@rock-chips.com>
+Date: Tue, 23 Jan 2018 19:19:36 +0800
+Subject: [PATCH 02/12] HACK: flacparse: Handle metadata 127
+
+Signed-off-by: james.lin <james.lin@rock-chips.com>
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/audioparsers/gstflacparse.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/gst/audioparsers/gstflacparse.c b/gst/audioparsers/gstflacparse.c
+index a53b7eb..a6fe0ee 100644
+--- a/gst/audioparsers/gstflacparse.c
++++ b/gst/audioparsers/gstflacparse.c
+@@ -1567,11 +1567,14 @@ gst_flac_parse_parse_frame (GstBaseParse * parse, GstBaseParseFrame * frame,
+     gboolean is_last = map.data[0] >> 7;
+     guint type = (map.data[0] & 0x7F);
+ 
++    /* HACK: Handle metadata 127 */
++#if 0
+     if (type == 127) {
+       GST_WARNING_OBJECT (flacparse, "Invalid metadata block type 127");
+       res = GST_BASE_PARSE_FLOW_DROPPED;
+       goto cleanup;
+     }
++#endif
+ 
+     GST_DEBUG_OBJECT (flacparse, "Handling metadata block of type %u", type);
+ 
+-- 
+2.20.1
+

@@ -1,0 +1,63 @@
+From 3a0df95c52adc1ba763c6ed2cdcf34325354c804 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 20 Jun 2019 12:43:20 +0800
+Subject: [PATCH 05/41] kmssink: Request window handle
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 13 +++++++++++++
+ sys/kms/gstkmssink.h |  2 ++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 797f57c..e20740f 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -470,11 +470,22 @@ gst_kms_sink_expose (GstVideoOverlay * overlay)
+   gst_kms_sink_show_frame (GST_VIDEO_SINK (self), NULL);
+ }
+ 
++static void
++gst_kms_sink_set_window_handle (GstVideoOverlay * overlay, guintptr handle)
++{
++  GstKMSSink *self = GST_KMS_SINK (overlay);
++
++  g_return_if_fail (self != NULL);
++
++  self->window_handle = handle;
++}
++
+ static void
+ gst_kms_sink_video_overlay_init (GstVideoOverlayInterface * iface)
+ {
+   iface->expose = gst_kms_sink_expose;
+   iface->set_render_rectangle = gst_kms_sink_set_render_rectangle;
++  iface->set_window_handle = gst_kms_sink_set_window_handle;
+ }
+ 
+ static int
+@@ -1475,6 +1486,8 @@ gst_kms_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+   }
+   GST_OBJECT_UNLOCK (self);
+ 
++  gst_video_overlay_prepare_window_handle (GST_VIDEO_OVERLAY (bsink));
++
+   GST_DEBUG_OBJECT (self, "negotiated caps = %" GST_PTR_FORMAT, caps);
+ 
+   return TRUE;
+diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
+index 317f789..a769d9b 100644
+--- a/sys/kms/gstkmssink.h
++++ b/sys/kms/gstkmssink.h
+@@ -109,6 +109,8 @@ struct _GstKMSSink {
+   GstVideoMasteringDisplayInfo hdr_minfo;
+   GstVideoContentLightLevel hdr_cll;
+ #endif
++
++  guintptr window_handle;
+ };
+ 
+ struct _GstKMSSinkClass {
+-- 
+2.20.1
+

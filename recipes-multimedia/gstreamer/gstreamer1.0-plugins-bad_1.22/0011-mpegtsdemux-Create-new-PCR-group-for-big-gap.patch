@@ -1,0 +1,52 @@
+From 379741480ceae0498d21e8eb511ff7d8e4da0f1c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 23 Oct 2020 11:11:11 +0800
+Subject: [PATCH 11/41] mpegtsdemux: Create new PCR group for big gap
+
+Currently it would try to reuse the current group and handle the gap by
+just adding 500ms to pcroffset.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/mpegtsdemux/mpegtspacketizer.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/gst/mpegtsdemux/mpegtspacketizer.c b/gst/mpegtsdemux/mpegtspacketizer.c
+index 9ee5672..8daae5e 100644
+--- a/gst/mpegtsdemux/mpegtspacketizer.c
++++ b/gst/mpegtsdemux/mpegtspacketizer.c
+@@ -1994,6 +1994,7 @@ record_pcr (MpegTSPacketizer2 * packetizer, MpegTSPCR * pcrtable,
+      *    Initialize current to that group
+      */
+     GST_DEBUG ("No current window estimator, Checking for group to use");
++create_new_group:
+     for (tmp = pcrtable->groups; tmp; tmp = tmp->next) {
+       PCROffsetGroup *group = (PCROffsetGroup *) tmp->data;
+ 
+@@ -2066,6 +2067,15 @@ record_pcr (MpegTSPacketizer2 * packetizer, MpegTSPCR * pcrtable,
+   if (G_UNLIKELY (corpcr - current->pending[current->last].pcr >
+           500 * PCR_MSECOND)) {
+     GST_DEBUG ("New PCR more than 500ms away, handling discont");
++
++#if 1
++    /**
++     * Create new discont group instead of reusing the current, otherwise
++     * it will try to handle the gap by just adding 500ms to pcroffset.
++     */
++    _close_current_group (pcrtable);
++    goto create_new_group;
++#else
+     /* Take values from current and put them in the current group (closing it) */
+     /* Create new group with pcr/offset just after the current group
+      * and mark it as a discont */
+@@ -2073,6 +2083,7 @@ record_pcr (MpegTSPacketizer2 * packetizer, MpegTSPCR * pcrtable,
+     _append_group_values (current->group, current->pending[current->last]);
+     _set_current_group (pcrtable, current->group, pcr, offset, TRUE);
+     return;
++#endif
+   }
+ 
+   if (G_UNLIKELY (corpcr == current->last_value.pcr)) {
+-- 
+2.20.1
+

@@ -1,0 +1,87 @@
+From bb1bedd21fa8e65064861b15e1395c179d3a840a Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 26 Nov 2021 17:41:47 +0800
+Subject: [PATCH 04/14] playbin2: Fix deadlock when hooking about-to-finish
+ signal
+
+The playbin2 will deactivate old group in drain_cb() for that, which
+would cause deadlock when other thread tries to notify pad-change at
+the same time.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/playback/gstplaybin2.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/gst/playback/gstplaybin2.c b/gst/playback/gstplaybin2.c
+index 4098fb9..cbd8e08 100644
+--- a/gst/playback/gstplaybin2.c
++++ b/gst/playback/gstplaybin2.c
+@@ -389,6 +389,11 @@ G_STMT_START {                                          \
+ #define GST_PLAY_BIN_SHUTDOWN_UNLOCK(bin)         \
+   GST_PLAY_BIN_DYN_UNLOCK (bin);                  \
+ 
++/* lock to protect drain callbacks */
++#define GST_PLAY_BIN_DRAIN_LOCK(bin)    g_mutex_lock (&(bin)->drain_lock)
++#define GST_PLAY_BIN_DRAIN_TRYLOCK(bin)    g_mutex_trylock (&(bin)->drain_lock)
++#define GST_PLAY_BIN_DRAIN_UNLOCK(bin)  g_mutex_unlock (&(bin)->drain_lock)
++
+ /**
+  * GstPlayBin:
+  *
+@@ -431,6 +436,9 @@ struct _GstPlayBin
+   gint shutdown;
+   gboolean async_pending;       /* async-start has been emitted */
+ 
++  /* lock protecting draining */
++  GMutex drain_lock;
++
+   GMutex elements_lock;
+   guint32 elements_cookie;
+   GList *elements;              /* factories we can use for selecting elements */
+@@ -1537,6 +1545,7 @@ gst_play_bin_init (GstPlayBin * playbin)
+ {
+   g_rec_mutex_init (&playbin->lock);
+   g_mutex_init (&playbin->dyn_lock);
++  g_mutex_init (&playbin->drain_lock);
+ 
+   /* assume we can create an input-selector */
+   playbin->have_selector = TRUE;
+@@ -1633,6 +1642,7 @@ gst_play_bin_finalize (GObject * object)
+   g_list_free_full (playbin->contexts, (GDestroyNotify) gst_context_unref);
+ 
+   g_rec_mutex_clear (&playbin->lock);
++  g_mutex_clear (&playbin->drain_lock);
+   g_mutex_clear (&playbin->dyn_lock);
+   g_mutex_clear (&playbin->elements_lock);
+ 
+@@ -3112,7 +3122,14 @@ combiner_active_pad_changed (GObject * combiner, GParamSpec * pspec,
+   GstSourceCombine *combine = NULL;
+   int i;
+ 
++  /* We got a pad-change after draining; no need to notify */
++  if (!GST_PLAY_BIN_DRAIN_TRYLOCK (playbin))
++    return;
++
+   GST_PLAY_BIN_LOCK (playbin);
++
++  GST_PLAY_BIN_DRAIN_UNLOCK (playbin);
++
+   group = get_group (playbin);
+ 
+   for (i = 0; i < PLAYBIN_STREAM_LAST; i++) {
+@@ -3929,7 +3946,11 @@ drained_cb (GstElement * decodebin, GstSourceGroup * group)
+ 
+   /* now activate the next group. If the app did not set a uri, this will
+    * fail and we can do EOS */
++
++  GST_PLAY_BIN_DRAIN_LOCK (playbin);
+   setup_next_source (playbin, GST_STATE_PAUSED);
++  GST_PLAY_BIN_DRAIN_UNLOCK (playbin);
++
+   group->pending_about_to_finish = TRUE;
+ }
+ 
+-- 
+2.20.1
+

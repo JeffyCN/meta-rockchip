@@ -1,0 +1,130 @@
+From 72365798203c974bfde948a2dcccb5c181ba9b89 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 8 Jun 2021 09:09:38 +0800
+Subject: [PATCH 23/41] waylandsink: Use create_immed to create dmabuf
+
+The async creation has lots of issues when the device overloaded.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/wayland/gstwldisplay.c     |  2 +-
+ gst-libs/gst/wayland/gstwllinuxdmabuf.c | 60 ++-----------------------
+ 2 files changed, 5 insertions(+), 57 deletions(-)
+
+diff --git a/gst-libs/gst/wayland/gstwldisplay.c b/gst-libs/gst/wayland/gstwldisplay.c
+index 1f83cb2..71a5dde 100644
+--- a/gst-libs/gst/wayland/gstwldisplay.c
++++ b/gst-libs/gst/wayland/gstwldisplay.c
+@@ -277,7 +277,7 @@ registry_handle_global (void *data, struct wl_registry *registry,
+         wl_registry_bind (registry, id, &wp_viewporter_interface, 1);
+   } else if (g_strcmp0 (interface, "zwp_linux_dmabuf_v1") == 0) {
+     priv->dmabuf =
+-        wl_registry_bind (registry, id, &zwp_linux_dmabuf_v1_interface, 1);
++        wl_registry_bind (registry, id, &zwp_linux_dmabuf_v1_interface, 2);
+     zwp_linux_dmabuf_v1_add_listener (priv->dmabuf, &dmabuf_listener, self);
+   }
+ }
+diff --git a/gst-libs/gst/wayland/gstwllinuxdmabuf.c b/gst-libs/gst/wayland/gstwllinuxdmabuf.c
+index d6ee6ec..2d5bb6b 100644
+--- a/gst-libs/gst/wayland/gstwllinuxdmabuf.c
++++ b/gst-libs/gst/wayland/gstwllinuxdmabuf.c
+@@ -46,41 +46,9 @@ gst_wl_linux_dmabuf_init_once (void)
+ 
+ typedef struct
+ {
+-  GMutex lock;
+-  GCond cond;
+   struct wl_buffer *wbuf;
+ } ConstructBufferData;
+ 
+-static void
+-create_succeeded (void *data, struct zwp_linux_buffer_params_v1 *params,
+-    struct wl_buffer *new_buffer)
+-{
+-  ConstructBufferData *d = data;
+-
+-  g_mutex_lock (&d->lock);
+-  d->wbuf = new_buffer;
+-  zwp_linux_buffer_params_v1_destroy (params);
+-  g_cond_signal (&d->cond);
+-  g_mutex_unlock (&d->lock);
+-}
+-
+-static void
+-create_failed (void *data, struct zwp_linux_buffer_params_v1 *params)
+-{
+-  ConstructBufferData *d = data;
+-
+-  g_mutex_lock (&d->lock);
+-  d->wbuf = NULL;
+-  zwp_linux_buffer_params_v1_destroy (params);
+-  g_cond_signal (&d->cond);
+-  g_mutex_unlock (&d->lock);
+-}
+-
+-static const struct zwp_linux_buffer_params_v1_listener params_listener = {
+-  create_succeeded,
+-  create_failed
+-};
+-
+ struct wl_buffer *
+ gst_wl_linux_dmabuf_construct_wl_buffer (GstBuffer * buf,
+     GstWlDisplay * display, const GstVideoInfo * info)
+@@ -90,7 +58,6 @@ gst_wl_linux_dmabuf_construct_wl_buffer (GstBuffer * buf,
+   guint i, width, height;
+   guint nplanes, flags = 0;
+   struct zwp_linux_buffer_params_v1 *params;
+-  gint64 timeout;
+   ConstructBufferData data;
+ 
+   g_return_val_if_fail (gst_wl_display_check_format_for_dmabuf (display,
+@@ -99,10 +66,6 @@ gst_wl_linux_dmabuf_construct_wl_buffer (GstBuffer * buf,
+   mem = gst_buffer_peek_memory (buf, 0);
+   format = gst_video_format_to_wl_dmabuf_format (GST_VIDEO_INFO_FORMAT (info));
+ 
+-  g_cond_init (&data.cond);
+-  g_mutex_init (&data.lock);
+-  g_mutex_lock (&data.lock);
+-
+   width = GST_VIDEO_INFO_WIDTH (info);
+   height = GST_VIDEO_INFO_HEIGHT (info);
+   nplanes = GST_VIDEO_INFO_N_PLANES (info);
+@@ -145,21 +108,10 @@ gst_wl_linux_dmabuf_construct_wl_buffer (GstBuffer * buf,
+     }
+   }
+ 
+-  /* Request buffer creation */
+-  zwp_linux_buffer_params_v1_add_listener (params, &params_listener, &data);
+-  zwp_linux_buffer_params_v1_create (params, width, height, format, flags);
+-
+-  /* Wait for the request answer */
+-  wl_display_flush (gst_wl_display_get_display (display));
+-  data.wbuf = (gpointer) 0x1;
+-  timeout = g_get_monotonic_time () + G_TIME_SPAN_SECOND;
+-  while (data.wbuf == (gpointer) 0x1) {
+-    if (!g_cond_wait_until (&data.cond, &data.lock, timeout)) {
+-      GST_ERROR_OBJECT (mem->allocator, "zwp_linux_buffer_params_v1 time out");
+-      zwp_linux_buffer_params_v1_destroy (params);
+-      data.wbuf = NULL;
+-    }
+-  }
++  data.wbuf =
++      zwp_linux_buffer_params_v1_create_immed (params, width, height, format,
++      flags);
++  zwp_linux_buffer_params_v1_destroy (params);
+ 
+ out:
+   if (!data.wbuf) {
+@@ -170,9 +122,5 @@ out:
+         data.wbuf, width, height, (char *) &format, nplanes);
+   }
+ 
+-  g_mutex_unlock (&data.lock);
+-  g_mutex_clear (&data.lock);
+-  g_cond_clear (&data.cond);
+-
+   return data.wbuf;
+ }
+-- 
+2.20.1
+

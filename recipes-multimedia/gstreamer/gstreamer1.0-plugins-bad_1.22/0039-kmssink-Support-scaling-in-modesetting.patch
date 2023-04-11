@@ -1,0 +1,134 @@
+From c9775626560c0f86f156e01a3d522769d32b5154 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 15 Sep 2022 18:01:12 +0800
+Subject: [PATCH 39/41] kmssink: Support scaling in modesetting
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 52 +++++++++++++++++++++++++++++---------------
+ 1 file changed, 34 insertions(+), 18 deletions(-)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 3bb55e6..4538459 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -539,11 +539,12 @@ drm_plane_get_type (int fd, drmModePlane * plane)
+ }
+ 
+ static drmModePlane *
+-find_plane_for_crtc (int fd, drmModeRes * res, drmModePlaneRes * pres,
++find_plane_for_crtc (GstKMSSink * self, drmModeRes * res, drmModePlaneRes * pres,
+     int crtc_id)
+ {
+   drmModePlane *plane;
+   int i, pipe, plane_type, num_primary, fallback;
++  int fd = self->fd;
+ 
+   num_primary = 0;
+   fallback = 0;
+@@ -565,7 +566,8 @@ find_plane_for_crtc (int fd, drmModeRes * res, drmModePlaneRes * pres,
+     num_primary += plane_type == DRM_PLANE_TYPE_PRIMARY;
+ 
+     /* Check unused possible planes */
+-    if (plane->possible_crtcs & (1 << pipe) && !plane->fb_id) {
++    if (plane->possible_crtcs & (1 << pipe) &&
++        (!plane->fb_id || self->modesetting_enabled)) {
+       if (pipe == num_primary - 1 && plane_type == DRM_PLANE_TYPE_PRIMARY) {
+         /* Prefer the Nth primary plane */
+         return plane;
+@@ -830,12 +832,6 @@ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo)
+ 
+   GST_INFO_OBJECT (self, "configuring mode setting");
+ 
+-  ensure_kms_allocator (self);
+-  kmsmem = (GstKMSMemory *) gst_kms_allocator_bo_alloc (self->allocator, vinfo);
+-  if (!kmsmem)
+-    goto bo_failed;
+-  fb_id = kmsmem->fb_id;
+-
+   conn = drmModeGetConnector (self->fd, self->conn_id);
+   if (!conn)
+     goto connector_failed;
+@@ -847,9 +843,25 @@ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo)
+       break;
+     }
+   }
++
++  /* Fallback to the last mode (using scale) */
++  if (!mode && self->can_scale && conn->count_modes) {
++    mode = &conn->modes[conn->count_modes - 1];
++
++    /* Hack this temp video info */
++    gst_video_info_set_format (vinfo, GST_VIDEO_INFO_FORMAT (vinfo),
++        mode->hdisplay, mode->vdisplay);
++  }
++
+   if (!mode)
+     goto mode_failed;
+ 
++  ensure_kms_allocator (self);
++  kmsmem = (GstKMSMemory *) gst_kms_allocator_bo_alloc (self->allocator, vinfo);
++  if (!kmsmem)
++    goto bo_failed;
++  fb_id = kmsmem->fb_id;
++
+   err = drmModeSetCrtc (self->fd, self->crtc_id, fb_id, 0, 0,
+       (uint32_t *) & self->conn_id, 1, mode);
+   if (err)
+@@ -1025,7 +1037,7 @@ ensure_allowed_caps (GstKMSSink * self, drmModeConnector * conn,
+ 
+       format = gst_video_format_to_string (fmt);
+ 
+-      if (mode) {
++      if (mode && !self->can_scale) {
+         caps = gst_caps_new_simple ("video/x-raw",
+             "format", G_TYPE_STRING, format,
+             "width", G_TYPE_INT, mode->hdisplay,
+@@ -1344,7 +1356,7 @@ retry_find_plane:
+     goto plane_resources_failed;
+ 
+   if (self->plane_id == -1)
+-    plane = find_plane_for_crtc (self->fd, res, pres, crtc->crtc_id);
++    plane = find_plane_for_crtc (self, res, pres, crtc->crtc_id);
+   else
+     plane = drmModeGetPlane (self->fd, self->plane_id);
+   if (!plane)
+@@ -1900,7 +1912,7 @@ gst_kms_sink_sync (GstKMSSink * self)
+   } else if (self->sync_mode == GST_KMS_SYNC_VBLANK) {
+     pageflip = FALSE;
+   } else if (self->sync_mode == GST_KMS_SYNC_AUTO) {
+-    pageflip = self->modesetting_enabled;
++    pageflip = self->modesetting_enabled && self->buffer_id;
+   } else {
+     return TRUE;
+   }
+@@ -2227,15 +2239,19 @@ gst_kms_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+ 
+   GST_OBJECT_LOCK (self);
+   if (self->modesetting_enabled) {
+-    self->buffer_id = fb_id;
++    if (video_width == self->hdisplay && video_height == self->vdisplay) {
++      self->buffer_id = fb_id;
+ 
+-    if (!self->render_rect.w || !self->render_rect.h)
+-      goto sync_frame;
++      if (!self->render_rect.w || !self->render_rect.h)
++        goto sync_frame;
+ 
+-    if (!self->render_rect.x && !self->render_rect.y &&
+-        self->render_rect.w == self->hdisplay &&
+-        self->render_rect.h == self->vdisplay)
+-      goto sync_frame;
++      if (!self->render_rect.x && !self->render_rect.y &&
++          self->render_rect.w == self->hdisplay &&
++          self->render_rect.h == self->vdisplay)
++        goto sync_frame;
++    } else {
++      self->buffer_id = 0;
++    }
+   }
+ 
+   if ((crop = gst_buffer_get_video_crop_meta (buffer))) {
+-- 
+2.20.1
+

@@ -1,0 +1,252 @@
+From 695e35a6e7f238e7186d3e27d728caa1a1452e30 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 30 Mar 2021 07:08:06 +0800
+Subject: [PATCH 21/41] waylandsink: Support window fill-mode property
+
+Tested with:
+gst-launch-1.0 videotestsrc ! waylandsink fullscreen=1 fill-mode=crop
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c       | 56 ++++++++++++++++++++++++++++++
+ ext/wayland/gstwaylandsink.h       |  1 +
+ gst-libs/gst/wayland/gstwlwindow.c | 43 ++++++++++++++++++++++-
+ gst-libs/gst/wayland/gstwlwindow.h | 11 ++++++
+ 4 files changed, 110 insertions(+), 1 deletion(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 008c774..2c5b295 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -63,9 +63,12 @@ enum
+   PROP_ROTATE_METHOD,
+   PROP_LAYER,
+   PROP_ALPHA,
++  PROP_FILL_MODE,
+   PROP_LAST
+ };
+ 
++static GstWlWindowFillMode DEFAULT_FILL_MODE = GST_WL_WINDOW_FIT;
++
+ GST_DEBUG_CATEGORY (gstwayland_debug);
+ #define GST_CAT_DEFAULT gstwayland_debug
+ 
+@@ -136,6 +139,24 @@ gst_wl_window_layer_get_type (void)
+   return layer;
+ }
+ 
++#define GST_TYPE_WL_WINDOW_FILL_MODE (gst_wl_window_fill_mode_get_type ())
++static GType
++gst_wl_window_fill_mode_get_type (void)
++{
++  static GType mode = 0;
++
++  if (!mode) {
++    static const GEnumValue modes[] = {
++      {GST_WL_WINDOW_STRETCH, "Ignore aspect ratio", "stretch"},
++      {GST_WL_WINDOW_FIT, "Keep aspect ratio", "fit"},
++      {GST_WL_WINDOW_CROP, "Keep aspect ratio by expanding", "crop"},
++      {0, NULL, NULL}
++    };
++    mode = g_enum_register_static ("GstWlWindowFillMode", modes);
++  }
++  return mode;
++}
++
+ static void
+ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
+ {
+@@ -208,6 +229,15 @@ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
+           "Wayland window alpha", 0.0, 1.0, 1.0,
+           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+ 
++  if (g_getenv ("WAYLANDSINK_STRETCH"))
++    DEFAULT_FILL_MODE = GST_WL_WINDOW_STRETCH;
++
++  g_object_class_install_property (gobject_class, PROP_FILL_MODE,
++      g_param_spec_enum ("fill-mode", "Window fill mode",
++          "Wayland window fill mode",
++          GST_TYPE_WL_WINDOW_FILL_MODE, DEFAULT_FILL_MODE,
++          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
+  /**
+   * waylandsink:render-rectangle:
+   *
+@@ -228,6 +258,7 @@ gst_wayland_sink_init (GstWaylandSink * self)
+   self->window_handle = 1;
+   self->layer = GST_WL_WINDOW_LAYER_NORMAL;
+   self->alpha = 1.0;
++  self->fill_mode = DEFAULT_FILL_MODE;
+ }
+ 
+ static void
+@@ -303,6 +334,19 @@ gst_wayland_sink_set_alpha (GstWaylandSink * self, gdouble alpha)
+   g_mutex_unlock (&self->render_lock);
+ }
+ 
++static void
++gst_wayland_sink_set_fill_mode (GstWaylandSink * self,
++    GstWlWindowFillMode fill_mode)
++{
++  if (fill_mode == self->fill_mode)
++    return;
++
++  g_mutex_lock (&self->render_lock);
++  self->fill_mode = fill_mode;
++  gst_wl_window_ensure_fill_mode (self->window, fill_mode);
++  g_mutex_unlock (&self->render_lock);
++}
++
+ static void
+ gst_wayland_sink_get_property (GObject * object,
+     guint prop_id, GValue * value, GParamSpec * pspec)
+@@ -335,6 +379,11 @@ gst_wayland_sink_get_property (GObject * object,
+       g_value_set_double (value, self->alpha);
+       GST_OBJECT_UNLOCK (self);
+       break;
++    case PROP_FILL_MODE:
++      GST_OBJECT_LOCK (self);
++      g_value_set_enum (value, self->fill_mode);
++      GST_OBJECT_UNLOCK (self);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -372,6 +421,11 @@ gst_wayland_sink_set_property (GObject * object,
+       gst_wayland_sink_set_alpha (self, g_value_get_double (value));
+       GST_OBJECT_UNLOCK (self);
+       break;
++    case PROP_FILL_MODE:
++      GST_OBJECT_LOCK (self);
++      gst_wayland_sink_set_fill_mode (self, g_value_get_enum (value));
++      GST_OBJECT_UNLOCK (self);
++      break;
+     default:
+       if (!gst_video_overlay_set_property (object, PROP_LAST, prop_id, value))
+         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+@@ -857,6 +911,7 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+       gst_wl_window_set_rotate_method (self->window,
+           self->current_rotate_method);
+       gst_wl_window_ensure_alpha (self->window, self->alpha);
++      gst_wl_window_ensure_fill_mode (self->window, self->fill_mode);
+     }
+   }
+ 
+@@ -1116,6 +1171,7 @@ gst_wayland_sink_set_window_handle (GstVideoOverlay * overlay, guintptr handle)
+         gst_wl_window_set_rotate_method (self->window,
+             self->current_rotate_method);
+         gst_wl_window_ensure_alpha (self->window, self->alpha);
++        gst_wl_window_ensure_fill_mode (self->window, self->fill_mode);
+ 
+         if (self->last_buffer) {
+           /* Resend video info to force resize video surface */
+diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
+index 0339ef7..7abfea1 100644
+--- a/ext/wayland/gstwaylandsink.h
++++ b/ext/wayland/gstwaylandsink.h
+@@ -59,6 +59,7 @@ struct _GstWaylandSink
+   gboolean fullscreen;
+   GstWlWindowLayer layer;
+   gdouble alpha;
++  GstWlWindowFillMode fill_mode;
+ 
+   gchar *display_name;
+ 
+diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
+index f470338..7dc0da5 100644
+--- a/gst-libs/gst/wayland/gstwlwindow.c
++++ b/gst-libs/gst/wayland/gstwlwindow.c
+@@ -71,6 +71,8 @@ typedef struct _GstWlWindowPrivate
+   /* when this is not set both the area_surface and the video_surface are not
+    * visible and certain steps should be skipped */
+   gboolean is_area_surface_mapped;
++
++  GstWlWindowFillMode fill_mode;
+ } GstWlWindowPrivate;
+ 
+ G_DEFINE_TYPE_WITH_CODE (GstWlWindow, gst_wl_window, G_TYPE_OBJECT,
+@@ -253,6 +255,19 @@ gst_wl_window_new_internal (GstWlDisplay * display, GMutex * render_lock)
+   return self;
+ }
+ 
++void
++gst_wl_window_ensure_fill_mode (GstWlWindow * self,
++    GstWlWindowFillMode fill_mode)
++{
++  GstWlWindowPrivate *priv;
++
++  if (!self)
++    return;
++
++  priv = gst_wl_window_get_instance_private (self);
++  priv->fill_mode = fill_mode;
++}
++
+ static void
+ gst_wl_window_set_config (GstWlWindow * self, const char *config)
+ {
+@@ -510,7 +525,33 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
+ 
+   /* center the video_subsurface inside area_subsurface */
+   if (priv->video_viewport) {
+-    gst_video_center_rect (&src, &dst, &res, TRUE);
++    if (priv->fill_mode == GST_WL_WINDOW_STRETCH) {
++      res = dst;
++    } else if (priv->fill_mode == GST_WL_WINDOW_FIT) {
++      gst_video_sink_center_rect (src, dst, &res, TRUE);
++    } else if (priv->fill_mode == GST_WL_WINDOW_CROP) {
++      gdouble src_ratio, dst_ratio;
++
++      src_ratio = (gdouble) src.w / src.h;
++      dst_ratio = (gdouble) dst.w / dst.h;
++
++      if (src_ratio < dst_ratio) {
++        int h = src.w / dst_ratio;
++        src.y = (src.h - h) / 2;
++        src.h = h;
++      } else if (src_ratio > dst_ratio) {
++        int w = src.h * dst_ratio;
++        src.x = (src.w - w) / 2;
++        src.w = w;
++      }
++
++      wp_viewport_set_source (priv->video_viewport,
++          wl_fixed_from_int (src.x), wl_fixed_from_int (src.y),
++          wl_fixed_from_int (src.w), wl_fixed_from_int (src.h));
++
++      res = dst;
++    }
++
+     wp_viewport_set_destination (priv->video_viewport, res.w, res.h);
+   } else {
+     gst_video_center_rect (&src, &dst, &res, FALSE);
+diff --git a/gst-libs/gst/wayland/gstwlwindow.h b/gst-libs/gst/wayland/gstwlwindow.h
+index 2672e0f..1571ece 100644
+--- a/gst-libs/gst/wayland/gstwlwindow.h
++++ b/gst-libs/gst/wayland/gstwlwindow.h
+@@ -35,11 +35,22 @@ typedef enum
+   GST_WL_WINDOW_LAYER_BOTTOM = 2,
+ } GstWlWindowLayer;
+ 
++typedef enum
++{
++  GST_WL_WINDOW_STRETCH = 0,
++  GST_WL_WINDOW_FIT = 1,
++  GST_WL_WINDOW_CROP = 2,
++} GstWlWindowFillMode;
++
+ struct _GstWlWindow
+ {
+   GObject parent_instance;
+ };
+ 
++GST_WL_API
++void gst_wl_window_ensure_fill_mode (GstWlWindow * self,
++        GstWlWindowFillMode fill_mode);
++
+ GST_WL_API
+ void gst_wl_window_ensure_alpha (GstWlWindow * self, gdouble alpha);
+ 
+-- 
+2.20.1
+

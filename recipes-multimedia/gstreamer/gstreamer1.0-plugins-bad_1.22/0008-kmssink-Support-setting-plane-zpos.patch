@@ -1,0 +1,142 @@
+From 614634d80f4c252372c180de60f672e74e6c4756 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 15 Jun 2020 10:03:01 +0800
+Subject: [PATCH 08/41] kmssink: Support setting plane zpos
+
+Set env KMSSINK_PLANE_ZPOS to specify plane zpos.
+Set env KMSSINK_PLANE_ON_TOP to set max zpos.
+Set env KMSSINK_PLANE_ON_BOTTOM to set min zpos.
+
+Default zpos is max.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 78 ++++++++++++++++++++++++++++++++++++++++++++
+ sys/kms/gstkmssink.h |  1 +
+ 2 files changed, 79 insertions(+)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index e20740f..4df343c 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -1027,6 +1027,76 @@ gst_kms_sink_update_plane_properties (GstKMSSink * self)
+   gst_kms_sink_update_properties (&iter, self->plane_props);
+ }
+ 
++static void
++gst_kms_sink_configure_plane_zpos (GstKMSSink * self, gboolean restore)
++{
++  drmModeObjectPropertiesPtr props = NULL;
++  drmModePropertyPtr prop = NULL;
++  drmModeResPtr res = NULL;
++  guint64 min, max, zpos;
++  const gchar *buf;
++  gint i;
++
++  if (self->plane_id <= 0)
++    return;
++
++  if (drmSetClientCap (self->fd, DRM_CLIENT_CAP_ATOMIC, 1))
++    return;
++
++  res = drmModeGetResources (self->fd);
++  if (!res)
++    return;
++
++  props = drmModeObjectGetProperties (self->fd, self->plane_id,
++      DRM_MODE_OBJECT_PLANE);
++  if (!props)
++    goto out;
++
++  for (i = 0; i < props->count_props; i++) {
++    prop = drmModeGetProperty (self->fd, props->props[i]);
++    if (prop && !strcmp (prop->name, "ZPOS"))
++      break;
++    drmModeFreeProperty (prop);
++    prop = NULL;
++  }
++
++  if (!prop)
++    goto out;
++
++  min = prop->values[0];
++  max = prop->values[1];
++
++  if (restore) {
++    if (self->saved_zpos < 0)
++      goto out;
++
++    zpos = self->saved_zpos;
++  } else {
++    zpos = min + 1;
++
++    buf = g_getenv ("KMSSINK_PLANE_ZPOS");
++    if (buf)
++      zpos = atoi (buf);
++    else if (g_getenv ("KMSSINK_PLANE_ON_TOP"))
++      zpos = max;
++    else if (g_getenv ("KMSSINK_PLANE_ON_BOTTOM"))
++      zpos = min;
++  }
++
++  GST_INFO_OBJECT (self, "set plane zpos = %lu (%lu~%lu)", zpos, min, max);
++
++  if (self->saved_zpos < 0)
++    self->saved_zpos = props->prop_values[i];
++
++  drmModeObjectSetProperty (self->fd, self->plane_id,
++      DRM_MODE_OBJECT_PLANE, props->props[i], zpos);
++
++out:
++  drmModeFreeProperty (prop);
++  drmModeFreeObjectProperties (props);
++  drmModeFreeResources (res);
++}
++
+ static gboolean
+ gst_kms_sink_start (GstBaseSink * bsink)
+ {
+@@ -1111,6 +1181,8 @@ retry_find_plane:
+   self->crtc_id = crtc->crtc_id;
+   self->plane_id = plane->plane_id;
+ 
++  gst_kms_sink_configure_plane_zpos (self, FALSE);
++
+   GST_INFO_OBJECT (self, "connector id = %d / crtc id = %d / plane id = %d",
+       self->conn_id, self->crtc_id, self->plane_id);
+ 
+@@ -1246,6 +1318,11 @@ gst_kms_sink_stop (GstBaseSink * bsink)
+   if (self->allocator)
+     gst_kms_allocator_clear_cache (self->allocator);
+ 
++  if (self->saved_zpos >= 0) {
++    gst_kms_sink_configure_plane_zpos (self, TRUE);
++    self->saved_zpos = -1;
++  }
++
+   gst_buffer_replace (&self->last_buffer, NULL);
+   gst_caps_replace (&self->allowed_caps, NULL);
+   gst_object_replace ((GstObject **) & self->pool, NULL);
+@@ -2310,6 +2387,7 @@ gst_kms_sink_init (GstKMSSink * sink)
+   sink->is_internal_fd = TRUE;
+   sink->conn_id = -1;
+   sink->plane_id = -1;
++  sink->saved_zpos = -1;
+   sink->can_scale = TRUE;
+   gst_poll_fd_init (&sink->pollfd);
+   sink->poll = gst_poll_new (TRUE);
+diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
+index a769d9b..f221eb6 100644
+--- a/sys/kms/gstkmssink.h
++++ b/sys/kms/gstkmssink.h
+@@ -54,6 +54,7 @@ struct _GstKMSSink {
+   gint crtc_id;
+   gint plane_id;
+   guint pipe;
++  guint saved_zpos;
+ 
+   /* crtc data */
+   guint16 hdisplay, vdisplay;
+-- 
+2.20.1
+

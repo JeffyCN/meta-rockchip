@@ -1,0 +1,93 @@
+From 58800027696e30b40d29b7cf1304e33abe68731c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 25 Dec 2018 16:20:35 +0800
+Subject: [PATCH 07/41] waylandsink: Enable changing window handle
+
+Changing window handle is dangerous, but we need this feature for:
+https://redmine.rockchip.com.cn/issues/184629
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 22 ++++++++++++++++------
+ ext/wayland/gstwaylandsink.h |  2 ++
+ 2 files changed, 18 insertions(+), 6 deletions(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 0e6421f..5d2721c 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -718,9 +718,10 @@ render_last_buffer (GstWaylandSink * self, gboolean redraw)
+   self->callback = callback;
+   wl_callback_add_listener (callback, &frame_callback_listener, self);
+ 
+-  if (G_UNLIKELY (self->video_info_changed && !redraw)) {
++  if (G_UNLIKELY ((self->video_info_changed && !redraw) || self->resend_info)) {
+     info = &self->video_info;
+     self->video_info_changed = FALSE;
++    self->resend_info = FALSE;
+   }
+   gst_wl_window_render (self->window, wlbuffer, info);
+ }
+@@ -992,18 +993,21 @@ gst_wayland_sink_set_window_handle (GstVideoOverlay * overlay, guintptr handle)
+ 
+   g_return_if_fail (self != NULL);
+ 
+-  if (self->window != NULL) {
+-    GST_WARNING_OBJECT (self, "changing window handle is not supported");
++  if (self->window_handle == handle)
+     return;
+-  }
++
++  self->window_handle = handle;
+ 
+   g_mutex_lock (&self->render_lock);
+ 
++  if (self->window != NULL) {
++    GST_WARNING_OBJECT (self, "changing window handle is dangerous");
++    g_clear_object (&self->window);
++  }
++
+   GST_DEBUG_OBJECT (self, "Setting window handle %" GST_PTR_FORMAT,
+       (void *) handle);
+ 
+-  g_clear_object (&self->window);
+-
+   if (handle) {
+     if (G_LIKELY (gst_wayland_sink_find_display (self))) {
+       /* we cannot use our own display with an external window handle */
+@@ -1018,6 +1022,12 @@ gst_wayland_sink_set_window_handle (GstVideoOverlay * overlay, guintptr handle)
+             &self->render_lock);
+         gst_wl_window_set_rotate_method (self->window,
+             self->current_rotate_method);
++
++        if (self->last_buffer) {
++          /* Resend video info to force resize video surface */
++          self->resend_info = TRUE;
++          self->redraw_pending = FALSE;
++        }
+       }
+     } else {
+       GST_ERROR_OBJECT (self, "Failed to find display handle, "
+diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
+index 3243d8c..46b5faa 100644
+--- a/ext/wayland/gstwaylandsink.h
++++ b/ext/wayland/gstwaylandsink.h
+@@ -52,6 +52,7 @@ struct _GstWaylandSink
+   GstWlWindow *window;
+   GstBufferPool *pool;
+   gboolean use_dmabuf;
++  guintptr window_handle;
+ 
+   gboolean video_info_changed;
+   GstVideoInfo video_info;
+@@ -59,6 +60,7 @@ struct _GstWaylandSink
+ 
+   gchar *display_name;
+ 
++  gboolean resend_info;
+   gboolean redraw_pending;
+   GMutex render_lock;
+   GstBuffer *last_buffer;
+-- 
+2.20.1
+

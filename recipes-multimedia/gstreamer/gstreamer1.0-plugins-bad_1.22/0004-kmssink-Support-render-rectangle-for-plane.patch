@@ -1,0 +1,43 @@
+From 4f75a24fbec54ec7cb81ac8d2c2dcc52909660c7 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 20 Nov 2018 17:33:22 +0800
+Subject: [PATCH 04/41] kmssink: Support render rectangle for plane
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 16d4afb..797f57c 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -776,6 +776,9 @@ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo)
+   if (err)
+     goto modesetting_failed;
+ 
++  self->hdisplay = mode->hdisplay;
++  self->vdisplay = mode->vdisplay;
++
+   g_clear_pointer (&self->tmp_kmsmem, gst_memory_unref);
+   self->tmp_kmsmem = (GstMemory *) kmsmem;
+ 
+@@ -1921,7 +1924,14 @@ gst_kms_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+   GST_OBJECT_LOCK (self);
+   if (self->modesetting_enabled) {
+     self->buffer_id = fb_id;
+-    goto sync_frame;
++
++    if (!self->render_rect.w || !self->render_rect.h)
++      goto sync_frame;
++
++    if (!self->render_rect.x && !self->render_rect.y &&
++        self->render_rect.w == self->hdisplay &&
++        self->render_rect.h == self->vdisplay)
++      goto sync_frame;
+   }
+ 
+   if ((crop = gst_buffer_get_video_crop_meta (buffer))) {
+-- 
+2.20.1
+

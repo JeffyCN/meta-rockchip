@@ -1,0 +1,33 @@
+From a370969d0e8f219398224591df55f18e7b3f2406 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 15 Jul 2022 12:14:44 +0800
+Subject: [PATCH 35/41] waylandsink: Fix buffer size error when video cropped
+
+Prefer video meta's size instead of the cropped size from caps.
+
+Tested with:
+gst-launch-1.0 videotestsrc ! videocrop left=100 ! waylandsink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 183529a..a962c61 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -1040,6 +1040,10 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+   if (vmeta) {
+     gint i;
+ 
++    /* prefer the padded width/height from vmeta */
++    self->video_info.width = vmeta->width;
++    self->video_info.height = vmeta->height;
++
+     for (i = 0; i < vmeta->n_planes; i++) {
+       self->video_info.offset[i] = vmeta->offset[i];
+       self->video_info.stride[i] = vmeta->stride[i];
+-- 
+2.20.1
+

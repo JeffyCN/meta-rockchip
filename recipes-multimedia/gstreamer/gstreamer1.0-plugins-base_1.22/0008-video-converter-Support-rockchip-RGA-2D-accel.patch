@@ -1,0 +1,256 @@
+From f397165ca764cb6023e6efa88afb0df643789ea6 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 31 Oct 2019 18:45:19 +0800
+Subject: [PATCH 08/14] video-converter: Support rockchip RGA 2D accel
+
+Disabled by default, set env GST_VIDEO_CONVERT_USE_RGA=1 to enable.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/video/meson.build       |   2 +-
+ gst-libs/gst/video/video-converter.c | 180 +++++++++++++++++++++++++++
+ meson.build                          |   3 +
+ 3 files changed, 184 insertions(+), 1 deletion(-)
+
+diff --git a/gst-libs/gst/video/meson.build b/gst-libs/gst/video/meson.build
+index cc5b241..615444d 100644
+--- a/gst-libs/gst/video/meson.build
++++ b/gst-libs/gst/video/meson.build
+@@ -113,7 +113,7 @@ gstvideo_h = video_enums[1]
+ video_gen_sources = [gstvideo_h]
+ 
+ orcsrc = 'video-orc'
+-gstvideo_deps = [gst_base_dep, libm]
++gstvideo_deps = [gst_base_dep, libm, rga_dep]
+ if have_orcc
+   gstvideo_deps += [orc_dep]
+   orc_h = custom_target(orcsrc + '.h',
+diff --git a/gst-libs/gst/video/video-converter.c b/gst-libs/gst/video/video-converter.c
+index 9b77eab..c49d9a0 100644
+--- a/gst-libs/gst/video/video-converter.c
++++ b/gst-libs/gst/video/video-converter.c
+@@ -38,6 +38,11 @@
+ 
+ #include "video-orc.h"
+ 
++#ifdef HAVE_RGA
++#include <rga/rga.h>
++#include <rga/RgaApi.h>
++#endif
++
+ /**
+  * SECTION:videoconverter
+  * @title: GstVideoConverter
+@@ -2742,6 +2747,169 @@ gst_video_converter_get_config (GstVideoConverter * convert)
+   return convert->config;
+ }
+ 
++#ifdef HAVE_RGA
++static RgaSURF_FORMAT
++get_rga_format (GstVideoFormat format)
++{
++  switch (format) {
++    case GST_VIDEO_FORMAT_BGRA:
++    case GST_VIDEO_FORMAT_BGRx:
++      return RK_FORMAT_BGRA_8888;
++    case GST_VIDEO_FORMAT_RGBA:
++      return RK_FORMAT_RGBA_8888;
++    case GST_VIDEO_FORMAT_RGBx:
++      return RK_FORMAT_RGBX_8888;
++    case GST_VIDEO_FORMAT_BGR:
++      return RK_FORMAT_BGR_888;
++    case GST_VIDEO_FORMAT_RGB:
++      return RK_FORMAT_RGB_888;
++    case GST_VIDEO_FORMAT_BGR16:
++      return RK_FORMAT_RGB_565;
++    case GST_VIDEO_FORMAT_NV12:
++      return RK_FORMAT_YCbCr_420_SP;
++    case GST_VIDEO_FORMAT_NV21:
++      return RK_FORMAT_YCrCb_420_SP;
++    case GST_VIDEO_FORMAT_I420:
++      return RK_FORMAT_YCbCr_420_P;
++    case GST_VIDEO_FORMAT_YV12:
++      return RK_FORMAT_YCrCb_420_P;
++    case GST_VIDEO_FORMAT_NV16:
++      return RK_FORMAT_YCbCr_422_SP;
++    case GST_VIDEO_FORMAT_NV61:
++      return RK_FORMAT_YCrCb_422_SP;
++    case GST_VIDEO_FORMAT_Y42B:
++      return RK_FORMAT_YCbCr_422_P;
++    case GST_VIDEO_FORMAT_NV12_10LE40:
++      return RK_FORMAT_YCbCr_420_SP_10B;
++    default:
++      return RK_FORMAT_UNKNOWN;
++  }
++}
++
++static gboolean
++get_rga_info (const GstVideoFrame * frame, rga_info_t * info,
++    int x, int y, int w, int h)
++{
++  GstVideoMeta *meta = gst_buffer_get_video_meta (frame->buffer);
++  const GstVideoInfo *vinfo = &frame->info;
++  RgaSURF_FORMAT format;
++  gint hstride, vstride0, i;
++  guint8 *ptr;
++
++  memset (info, 0, sizeof (rga_info_t));
++
++  if (!meta)
++    return FALSE;
++
++  hstride = meta->stride[0];
++  vstride0 = meta->n_planes == 1 ? meta->height : meta->offset[1] / hstride;
++
++  /* RGA requires contig buffer */
++  ptr = GST_VIDEO_FRAME_PLANE_DATA (frame, 0);
++  for (i = 1; i < GST_VIDEO_FRAME_N_PLANES (frame); i++) {
++    gint size = GST_VIDEO_FRAME_PLANE_OFFSET (frame, i) -
++        GST_VIDEO_FRAME_PLANE_OFFSET (frame, i - 1);
++    gint vstride = size / meta->stride[i - 1];
++
++    ptr += size;
++    if (ptr != GST_VIDEO_FRAME_PLANE_DATA (frame, i))
++      return FALSE;
++
++    if ((meta->stride[i] != hstride && meta->stride[i] != hstride / 2) ||
++        (vstride != vstride0 && vstride != vstride0 / 2))
++      return FALSE;
++  }
++
++  format = get_rga_format (GST_VIDEO_INFO_FORMAT (vinfo));
++  switch (format) {
++    case RK_FORMAT_RGBX_8888:
++    case RK_FORMAT_RGBA_8888:
++    case RK_FORMAT_BGRA_8888:
++      hstride /= 4;
++      break;
++    case RK_FORMAT_RGB_888:
++    case RK_FORMAT_BGR_888:
++      hstride /= 3;
++      break;
++    case RK_FORMAT_RGB_565:
++      hstride /= 2;
++      break;
++    case RK_FORMAT_YCbCr_420_SP_10B:
++    case RK_FORMAT_YCbCr_422_SP:
++    case RK_FORMAT_YCrCb_422_SP:
++    case RK_FORMAT_YCbCr_422_P:
++    case RK_FORMAT_YCrCb_422_P:
++    case RK_FORMAT_YCbCr_420_SP:
++    case RK_FORMAT_YCrCb_420_SP:
++    case RK_FORMAT_YCbCr_420_P:
++    case RK_FORMAT_YCrCb_420_P:
++      /* RGA requires yuv image rect align to 2 */
++      x = (x + 1) & ~1;
++      y = (y + 1) & ~1;
++      w &= ~1;
++      h &= ~1;
++
++      if (vstride0 % 2)
++        return FALSE;
++      break;
++    default:
++      return FALSE;
++  }
++
++  info->virAddr = GST_VIDEO_FRAME_PLANE_DATA (frame, 0);
++  info->mmuFlag = 1;
++
++  rga_set_rect (&info->rect, x, y, w, h, hstride, vstride0, format);
++  return TRUE;
++}
++
++static gboolean
++video_converter_try_rga (GstVideoConverter * convert,
++    const GstVideoFrame * src, GstVideoFrame * dest)
++{
++  rga_info_t src_info = { 0 };
++  rga_info_t dst_info = { 0 };
++  static int rga_supported = 1;
++  static int rga_inited = 0;
++  const char *buf;
++
++  buf = g_getenv ("GST_VIDEO_CONVERT_USE_RGA");
++  if (!buf || strcmp (buf, "1"))
++    return FALSE;
++
++  if (!rga_supported)
++    return FALSE;
++
++  if (!rga_inited) {
++    if (c_RkRgaInit () < 0) {
++      rga_supported = 0;
++      return FALSE;
++    }
++    rga_inited = 1;
++  }
++
++  if (!get_rga_info (src, &src_info, convert->in_x, convert->in_y,
++          convert->in_width, convert->in_height)) {
++    GST_DEBUG ("unsupported src info for RGA");
++    return FALSE;
++  }
++
++  if (!get_rga_info (dest, &dst_info, convert->out_x, convert->out_y,
++          convert->out_width, convert->out_height)) {
++    GST_DEBUG ("unsupported dst info for RGA");
++    return FALSE;
++  }
++
++  if (c_RkRgaBlit (&src_info, &dst_info, NULL) < 0) {
++    GST_DEBUG ("failed to blit with RGA");
++    return FALSE;
++  }
++
++  GST_DEBUG ("converted with RGA");
++  return TRUE;
++}
++#endif
++
+ /**
+  * gst_video_converter_frame:
+  * @convert: a #GstVideoConverter
+@@ -2789,6 +2957,12 @@ gst_video_converter_frame (GstVideoConverter * convert,
+           convert->out_width == 0 || convert->out_height == 0))
+     return;
+ 
++#ifdef HAVE_RGA
++  /* Accel convert with rockchip RGA */
++  if (video_converter_try_rga (convert, src, dest))
++    return;
++#endif
++
+   convert->convert (convert, src, dest);
+ }
+ 
+@@ -7218,6 +7392,12 @@ convert_scale_planes (GstVideoConverter * convert,
+ {
+   int i, n_planes;
+ 
++#ifdef HAVE_RGA
++  /* Accel convert with rockchip RGA */
++  if (video_converter_try_rga (convert, src, dest))
++    return;
++#endif
++
+   n_planes = GST_VIDEO_FRAME_N_PLANES (dest);
+   for (i = 0; i < n_planes; i++) {
+     if (convert->fconvert[i])
+diff --git a/meson.build b/meson.build
+index 19a8347..4341e8e 100644
+--- a/meson.build
++++ b/meson.build
+@@ -305,6 +305,9 @@ if get_option('default_library') == 'static'
+   gst_plugins_base_args += ['-DGST_STATIC_COMPILATION']
+ endif
+ 
++rga_dep = dependency('librga', required: false)
++core_conf.set('HAVE_RGA', rga_dep.found())
++
+ # X11 checks are for sys/ and tests/
+ x11_dep = dependency('x11', required : get_option('x11'))
+ # GIO is used by the GIO plugin, and by the TCP, SDP, and RTSP plugins
+-- 
+2.20.1
+

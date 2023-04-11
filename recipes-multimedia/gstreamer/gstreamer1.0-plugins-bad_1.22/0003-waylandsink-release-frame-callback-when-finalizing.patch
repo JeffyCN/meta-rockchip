@@ -1,0 +1,26 @@
+From 7d5da5920ac72e3a52edebc9bb396df3981cef86 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 26 Nov 2020 11:31:58 +0800
+Subject: [PATCH 03/41] waylandsink: release frame callback when finalizing
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 2f116bf..0e6421f 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -306,6 +306,8 @@ gst_wayland_sink_finalize (GObject * object)
+ 
+   GST_DEBUG_OBJECT (self, "Finalizing the sink..");
+ 
++  if (self->callback)
++    wl_callback_destroy (self->callback);
+   if (self->last_buffer)
+     gst_buffer_unref (self->last_buffer);
+   if (self->display)
+-- 
+2.20.1
+

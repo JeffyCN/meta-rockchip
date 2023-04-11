@@ -1,0 +1,35 @@
+From a92054652c1a08522ce626c03df01194c16ecff7 Mon Sep 17 00:00:00 2001
+From: "james.lin" <james.lin@rock-chips.com>
+Date: Mon, 9 Apr 2018 15:32:21 +0800
+Subject: [PATCH 01/41] h265parser: Fix read vui error
+
+Signed-off-by: james.lin <james.lin@rock-chips.com>
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/codecparsers/gsth265parser.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/gst-libs/gst/codecparsers/gsth265parser.c b/gst-libs/gst/codecparsers/gsth265parser.c
+index d232ba9..f00be79 100644
+--- a/gst-libs/gst/codecparsers/gsth265parser.c
++++ b/gst-libs/gst/codecparsers/gsth265parser.c
+@@ -590,11 +590,11 @@ gst_h265_parse_vui_parameters (GstH265SPS * sps, NalReader * nr)
+     READ_UINT8 (nr, vui->tiles_fixed_structure_flag, 1);
+     READ_UINT8 (nr, vui->motion_vectors_over_pic_boundaries_flag, 1);
+     READ_UINT8 (nr, vui->restricted_ref_pic_lists_flag, 1);
+-    READ_UE_MAX (nr, vui->min_spatial_segmentation_idc, 4096);
+-    READ_UE_MAX (nr, vui->max_bytes_per_pic_denom, 16);
+-    READ_UE_MAX (nr, vui->max_bits_per_min_cu_denom, 16);
+-    READ_UE_MAX (nr, vui->log2_max_mv_length_horizontal, 16);
+-    READ_UE_MAX (nr, vui->log2_max_mv_length_vertical, 15);
++    READ_UE (nr, vui->min_spatial_segmentation_idc);
++    READ_UE (nr, vui->max_bytes_per_pic_denom);
++    READ_UE (nr, vui->max_bits_per_min_cu_denom);
++    READ_UE (nr, vui->log2_max_mv_length_horizontal);
++    READ_UE (nr, vui->log2_max_mv_length_vertical);
+   }
+ 
+   vui->parsed = TRUE;
+-- 
+2.20.1
+

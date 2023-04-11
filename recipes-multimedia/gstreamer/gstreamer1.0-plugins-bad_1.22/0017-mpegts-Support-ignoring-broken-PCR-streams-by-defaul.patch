@@ -1,0 +1,38 @@
+From d5903e1a87ba45e52f0e4c90f03fe8eae3a4993d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 28 Dec 2021 12:45:04 +0800
+Subject: [PATCH 17/41] mpegts: Support ignoring broken PCR streams by default
+
+By setting env 'GST_TSDEMUX_IGNORE_PCR'.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/mpegtsdemux/mpegtsbase.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/gst/mpegtsdemux/mpegtsbase.c b/gst/mpegtsdemux/mpegtsbase.c
+index f866c31..8df2221 100644
+--- a/gst/mpegtsdemux/mpegtsbase.c
++++ b/gst/mpegtsdemux/mpegtsbase.c
+@@ -59,7 +59,7 @@ static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
+     GST_STATIC_CAPS ("video/mpegts, " "systemstream = (boolean) true ")
+     );
+ 
+-#define DEFAULT_IGNORE_PCR FALSE
++static int DEFAULT_IGNORE_PCR = FALSE;
+ 
+ enum
+ {
+@@ -156,6 +156,9 @@ mpegts_base_class_init (MpegTSBaseClass * klass)
+    *
+    * Since: 1.18
+    */
++  if (g_getenv ("GST_TSDEMUX_IGNORE_PCR"))
++    DEFAULT_IGNORE_PCR = TRUE;
++
+   g_object_class_install_property (gobject_class, PROP_IGNORE_PCR,
+       g_param_spec_boolean ("ignore-pcr", "Ignore PCR stream for timing",
+           "Ignore PCR stream for timing", DEFAULT_IGNORE_PCR,
+-- 
+2.20.1
+

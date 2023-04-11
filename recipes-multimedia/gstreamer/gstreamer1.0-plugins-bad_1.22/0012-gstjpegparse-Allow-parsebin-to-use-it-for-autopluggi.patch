@@ -1,0 +1,28 @@
+From 93b48ebc2c1212892395ac06d3c37443ad5a0fe6 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 17 Nov 2020 11:51:40 +0800
+Subject: [PATCH 12/41] gstjpegparse: Allow parsebin to use it for autoplugging
+
+Increase rank.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/jpegformat/gstjpegparse.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gst/jpegformat/gstjpegparse.c b/gst/jpegformat/gstjpegparse.c
+index 81c31d7..c9a5990 100644
+--- a/gst/jpegformat/gstjpegparse.c
++++ b/gst/jpegformat/gstjpegparse.c
+@@ -106,7 +106,7 @@ static gboolean gst_jpeg_parse_stop (GstBaseParse * parse);
+ 
+ #define gst_jpeg_parse_parent_class parent_class
+ G_DEFINE_TYPE (GstJpegParse, gst_jpeg_parse, GST_TYPE_BASE_PARSE);
+-GST_ELEMENT_REGISTER_DEFINE (jpegparse, "jpegparse", GST_RANK_NONE,
++GST_ELEMENT_REGISTER_DEFINE (jpegparse, "jpegparse", GST_RANK_SECONDARY,
+     GST_TYPE_JPEG_PARSE);
+ 
+ enum GstJPEGColorspace
+-- 
+2.20.1
+

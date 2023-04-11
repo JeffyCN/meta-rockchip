@@ -1,0 +1,42 @@
+From d6867946e3c19a13cd60a26c98afe68fb24ea0cb Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 19 Jan 2021 11:16:36 +0800
+Subject: [PATCH 16/41] waylandsink: Defer prepare window when getting zero
+ window handle
+
+The window might not ready when we requesting it.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index dddfe06..7917c69 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -193,6 +193,8 @@ gst_wayland_sink_init (GstWaylandSink * self)
+ {
+   g_mutex_init (&self->display_lock);
+   g_mutex_init (&self->render_lock);
++
++  self->window_handle = 1;
+ }
+ 
+ static void
+@@ -762,6 +764,12 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+     gst_video_overlay_prepare_window_handle (GST_VIDEO_OVERLAY (self));
+     g_mutex_lock (&self->render_lock);
+ 
++    /* HACK: Defer window prepare when getting zero window handle */
++    if (!self->window_handle) {
++      GST_LOG_OBJECT (self, "buffer %p dropped (window not ready)", buffer);
++      goto done;
++    }
++
+     if (!self->window) {
+       /* if we were not provided a window, create one ourselves */
+       self->window = gst_wl_window_new_toplevel (self->display,
+-- 
+2.20.1
+

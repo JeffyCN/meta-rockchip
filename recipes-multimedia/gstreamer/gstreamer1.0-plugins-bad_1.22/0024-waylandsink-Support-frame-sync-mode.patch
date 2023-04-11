@@ -1,0 +1,76 @@
+From 3a6c0e2bfc3ae7d4259b76ba3969712bb085214e Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 8 Nov 2021 18:45:00 +0800
+Subject: [PATCH 24/41] waylandsink: Support frame-sync mode
+
+Set env "WAYLANDSINK_SYNC_FRAME" to enable frame syncing.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 9 +++++++++
+ ext/wayland/gstwaylandsink.h | 1 +
+ 2 files changed, 10 insertions(+)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 2c5b295..5e142e9 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -254,6 +254,7 @@ gst_wayland_sink_init (GstWaylandSink * self)
+ {
+   g_mutex_init (&self->display_lock);
+   g_mutex_init (&self->render_lock);
++  g_cond_init (&self->redraw_cond);
+ 
+   self->window_handle = 1;
+   self->layer = GST_WL_WINDOW_LAYER_NORMAL;
+@@ -455,6 +456,7 @@ gst_wayland_sink_finalize (GObject * object)
+ 
+   g_mutex_clear (&self->display_lock);
+   g_mutex_clear (&self->render_lock);
++  g_cond_clear (&self->redraw_cond);
+ 
+   G_OBJECT_CLASS (parent_class)->finalize (object);
+ }
+@@ -823,6 +825,7 @@ frame_redraw_callback (void *data, struct wl_callback *callback, uint32_t time)
+ 
+   g_mutex_lock (&self->render_lock);
+   self->redraw_pending = FALSE;
++  g_cond_signal (&self->redraw_cond);
+ 
+   if (self->callback) {
+     wl_callback_destroy (callback);
+@@ -858,6 +861,11 @@ render_last_buffer (GstWaylandSink * self, gboolean redraw)
+     self->resend_info = FALSE;
+   }
+   gst_wl_window_render (self->window, wlbuffer, info);
++
++  if (g_getenv ("WAYLANDSINK_SYNC_FRAME")) {
++    while (self->redraw_pending)
++      g_cond_wait (&self->redraw_cond, &self->render_lock);
++  }
+ }
+ 
+ static void
+@@ -1065,6 +1073,7 @@ render:
+ 
+   if (buffer != to_render)
+     gst_buffer_unref (to_render);
++
+   goto done;
+ 
+ no_window_size:
+diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
+index 7abfea1..6211fd6 100644
+--- a/ext/wayland/gstwaylandsink.h
++++ b/ext/wayland/gstwaylandsink.h
+@@ -66,6 +66,7 @@ struct _GstWaylandSink
+   gboolean resend_info;
+   gboolean redraw_pending;
+   GMutex render_lock;
++  GCond redraw_cond;
+   GstBuffer *last_buffer;
+ 
+   GstVideoOrientationMethod sink_rotate_method;
+-- 
+2.20.1
+

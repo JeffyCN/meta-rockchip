@@ -1,0 +1,207 @@
+From 0485939ec161e2f0069a8c356736569e887d8eab Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 15 Jun 2020 10:11:42 +0800
+Subject: [PATCH 09/41] waylandsink: Support setting toplevel window position
+
+Needs hacked wayland server, tested with:
+	waylandsink render-rectangle="<100,200,300,400>"
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/gtk/gstgtkwaylandsink.c        |  6 +++---
+ ext/wayland/gstwaylandsink.c       | 25 +++++++++++++++----------
+ ext/wayland/gstwaylandsink.h       |  2 ++
+ gst-libs/gst/wayland/gstwlwindow.c | 26 ++++++++++++++++++++------
+ gst-libs/gst/wayland/gstwlwindow.h |  5 +++--
+ 5 files changed, 43 insertions(+), 21 deletions(-)
+
+diff --git a/ext/gtk/gstgtkwaylandsink.c b/ext/gtk/gstgtkwaylandsink.c
+index e4dd06e..9030982 100644
+--- a/ext/gtk/gstgtkwaylandsink.c
++++ b/ext/gtk/gstgtkwaylandsink.c
+@@ -254,7 +254,7 @@ widget_size_allocate_cb (GtkWidget * widget, GtkAllocation * allocation,
+   GST_DEBUG_OBJECT (self, "window geometry changed to (%d, %d) %d x %d",
+       allocation->x, allocation->y, allocation->width, allocation->height);
+   gst_wl_window_set_render_rectangle (priv->wl_window, allocation->x,
+-      allocation->y, allocation->width, allocation->height);
++      allocation->y, allocation->width, allocation->height, FALSE);
+ 
+   g_mutex_unlock (&priv->render_lock);
+ 
+@@ -425,7 +425,7 @@ scrollable_window_adjustment_changed_cb (GtkAdjustment * adjustment,
+   gtk_widget_get_allocation (priv->gtk_widget, &allocation);
+   calculate_adjustment (priv->gtk_widget, &allocation);
+   gst_wl_window_set_render_rectangle (priv->wl_window, allocation.x,
+-      allocation.y, allocation.width, allocation.height);
++      allocation.y, allocation.width, allocation.height, FALSE);
+ 
+   return FALSE;
+ }
+@@ -481,7 +481,7 @@ setup_wl_window (GstGtkWaylandSink * self)
+   gtk_widget_get_allocation (priv->gtk_widget, &allocation);
+   calculate_adjustment (priv->gtk_widget, &allocation);
+   gst_wl_window_set_render_rectangle (priv->wl_window, allocation.x,
+-      allocation.y, allocation.width, allocation.height);
++      allocation.y, allocation.width, allocation.height, FALSE);
+ 
+   /* Make subsurfaces syncronous during resizes.
+    * Unfortunately GTK/GDK does not provide easier to use signals.
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 5d2721c..1870ba3 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -294,7 +294,8 @@ gst_wayland_sink_set_property (GObject * object,
+           FALSE);
+       break;
+     default:
+-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
++      if (!gst_video_overlay_set_property (object, PROP_LAST, prop_id, value))
++        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+   }
+ }
+@@ -764,7 +765,8 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+     if (!self->window) {
+       /* if we were not provided a window, create one ourselves */
+       self->window = gst_wl_window_new_toplevel (self->display,
+-          &self->video_info, self->fullscreen, &self->render_lock);
++          &self->video_info, self->fullscreen, &self->render_lock,
++          &self->render_rectangle);
+       g_signal_connect_object (self->window, "closed",
+           G_CALLBACK (on_window_closed), self, 0);
+       gst_wl_window_set_rotate_method (self->window,
+@@ -1047,16 +1049,19 @@ gst_wayland_sink_set_render_rectangle (GstVideoOverlay * overlay,
+   g_return_if_fail (self != NULL);
+ 
+   g_mutex_lock (&self->render_lock);
+-  if (!self->window) {
+-    g_mutex_unlock (&self->render_lock);
+-    GST_WARNING_OBJECT (self,
+-        "set_render_rectangle called without window, ignoring");
+-    return;
+-  }
+ 
+-  GST_DEBUG_OBJECT (self, "window geometry changed to (%d, %d) %d x %d",
++  if (self->window) {
++    GST_DEBUG_OBJECT (self, "window geometry changed to (%d, %d) %d x %d",
++        x, y, w, h);
++    gst_wl_window_set_render_rectangle (self->window, x, y, w, h, TRUE);
++  } else {
++    GST_DEBUG_OBJECT (self, "window geometry changed to (%d, %d) %d x %d",
+       x, y, w, h);
+-  gst_wl_window_set_render_rectangle (self->window, x, y, w, h);
++    self->render_rectangle.x = x;
++    self->render_rectangle.y = y;
++    self->render_rectangle.w = w;
++    self->render_rectangle.h = h;
++  }
+ 
+   g_mutex_unlock (&self->render_lock);
+ }
+diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
+index 46b5faa..d4c3764 100644
+--- a/ext/wayland/gstwaylandsink.h
++++ b/ext/wayland/gstwaylandsink.h
+@@ -70,6 +70,8 @@ struct _GstWaylandSink
+   GstVideoOrientationMethod current_rotate_method;
+ 
+   struct wl_callback *callback;
++
++  GstVideoRectangle render_rectangle;
+ };
+ 
+ struct _GstWaylandSinkClass
+diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
+index e7c429c..7080c8c 100644
+--- a/gst-libs/gst/wayland/gstwlwindow.c
++++ b/gst-libs/gst/wayland/gstwlwindow.c
+@@ -122,7 +122,7 @@ handle_xdg_toplevel_configure (void *data, struct xdg_toplevel *xdg_toplevel,
+   if (width <= 0 || height <= 0)
+     return;
+ 
+-  gst_wl_window_set_render_rectangle (self, 0, 0, width, height);
++  gst_wl_window_set_render_rectangle (self, 0, 0, width, height, FALSE);
+ }
+ 
+ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
+@@ -268,7 +268,8 @@ gst_wl_window_ensure_fullscreen (GstWlWindow * self, gboolean fullscreen)
+ 
+ GstWlWindow *
+ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
+-    gboolean fullscreen, GMutex * render_lock)
++    gboolean fullscreen, GMutex * render_lock,
++    GstVideoRectangle * render_rectangle)
+ {
+   GstWlWindow *self;
+   GstWlWindowPrivate *priv;
+@@ -329,12 +330,21 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
+   }
+ 
+   /* render_rectangle is already set via toplevel_configure in
+-   * xdg_shell fullscreen mode */
+-  if (!(xdg_wm_base && fullscreen)) {
++   * fullscreen mode */
++  if (fullscreen)
++    return self;
++
++  if (render_rectangle->w || render_rectangle->h) {
++    /* apply cached position and size */
++    GST_DEBUG ("Applying window position (%d, %d)",
++        render_rectangle->x, render_rectangle->y);
++    gst_wl_window_set_render_rectangle (self, render_rectangle->x,
++        render_rectangle->y, render_rectangle->w, render_rectangle->h, TRUE);
++  } else {
+     /* set the initial size to be the same as the reported video size */
+     gint width =
+         gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
+-    gst_wl_window_set_render_rectangle (self, 0, 0, width, info->height);
++    gst_wl_window_set_render_rectangle (self, 0, 0, width, info->height, FALSE);
+   }
+ 
+   return self;
+@@ -623,7 +633,7 @@ gst_wl_window_update_geometry (GstWlWindow * self)
+ 
+ void
+ gst_wl_window_set_render_rectangle (GstWlWindow * self, gint x, gint y,
+-    gint w, gint h)
++    gint w, gint h, gboolean with_position)
+ {
+   GstWlWindowPrivate *priv = gst_wl_window_get_instance_private (self);
+ 
+@@ -637,6 +647,10 @@ gst_wl_window_set_render_rectangle (GstWlWindow * self, gint x, gint y,
+   priv->render_rectangle.h = h;
+ 
+   gst_wl_window_update_geometry (self);
++
++  /* try to position the xdg surface with hacked wayland server API */
++  if (with_position && priv->xdg_surface)
++    xdg_surface_set_window_geometry (priv->xdg_surface, x, y, 0, 0);
+ }
+ 
+ const GstVideoRectangle *
+diff --git a/gst-libs/gst/wayland/gstwlwindow.h b/gst-libs/gst/wayland/gstwlwindow.h
+index 06c4001..2bbd643 100644
+--- a/gst-libs/gst/wayland/gstwlwindow.h
++++ b/gst-libs/gst/wayland/gstwlwindow.h
+@@ -39,7 +39,8 @@ void gst_wl_window_ensure_fullscreen (GstWlWindow * self,
+ 
+ GST_WL_API
+ GstWlWindow *gst_wl_window_new_toplevel (GstWlDisplay * display,
+-        const GstVideoInfo * info, gboolean fullscreen, GMutex * render_lock);
++        const GstVideoInfo * info, gboolean fullscreen, GMutex * render_lock,
++        GstVideoRectangle * render_rectangle);
+ 
+ GST_WL_API
+ GstWlWindow *gst_wl_window_new_in_surface (GstWlDisplay * display,
+@@ -63,7 +64,7 @@ void gst_wl_window_render (GstWlWindow * self, GstWlBuffer * buffer,
+ 
+ GST_WL_API
+ void gst_wl_window_set_render_rectangle (GstWlWindow * self, gint x, gint y,
+-        gint w, gint h);
++        gint w, gint h, gboolean with_position);
+ 
+ GST_WL_API
+ const GstVideoRectangle *gst_wl_window_get_render_rectangle (GstWlWindow * self);
+-- 
+2.20.1
+

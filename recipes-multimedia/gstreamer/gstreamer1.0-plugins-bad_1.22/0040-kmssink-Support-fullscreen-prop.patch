@@ -1,0 +1,86 @@
+From 6c78580aca94802ad395cf10410e582536b6f1c1 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 15 Sep 2022 18:18:07 +0800
+Subject: [PATCH 40/41] kmssink: Support fullscreen prop
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 21 +++++++++++++++++++++
+ sys/kms/gstkmssink.h |  1 +
+ 2 files changed, 22 insertions(+)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 4538459..48d3f5b 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -108,6 +108,7 @@ enum
+   PROP_SKIP_VSYNC,
+   PROP_FORCE_ASPECT_RATIO,
+   PROP_SYNC_MODE,
++  PROP_FULLSCREEN,
+   PROP_N,
+ };
+ 
+@@ -2288,6 +2289,15 @@ retry_set_plane:
+     src.h = video_height;
+   }
+ 
++  if (self->fullscreen) {
++    if (self->can_scale ||
++        (src.w == self->hdisplay && src.h == self->vdisplay)) {
++      result.x = result.y = 0;
++      result.w = self->hdisplay;
++      result.h = self->vdisplay;
++    }
++  }
++
+   /* handle out of screen case */
+   if ((result.x + result.w) > self->hdisplay)
+     result.w = self->hdisplay - result.x;
+@@ -2546,6 +2556,9 @@ gst_kms_sink_set_property (GObject * object, guint prop_id,
+     case PROP_SYNC_MODE:
+       sink->sync_mode = g_value_get_enum (value);
+       break;
++    case PROP_FULLSCREEN:
++			sink->fullscreen = g_value_get_boolean (value);
++      break;
+     default:
+       if (!gst_video_overlay_set_property (object, PROP_N, prop_id, value))
+         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+@@ -2611,6 +2624,9 @@ gst_kms_sink_get_property (GObject * object, guint prop_id,
+     case PROP_SYNC_MODE:
+       g_value_set_enum (value, sink->sync_mode);
+       break;
++    case PROP_FULLSCREEN:
++      g_value_set_boolean (value, sink->fullscreen);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -2885,6 +2901,11 @@ gst_kms_sink_class_init (GstKMSSinkClass * klass)
+       GST_TYPE_KMS_SYNC_MODE, DEFAULT_SYNC_MODE,
+       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+ 
++  g_properties[PROP_FULLSCREEN] =
++      g_param_spec_boolean ("fullscreen", "Fullscreen",
++      "Force showing fullscreen", FALSE,
++      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
++
+   g_object_class_install_properties (gobject_class, PROP_N, g_properties);
+ 
+   gst_video_overlay_install_properties (gobject_class, PROP_N);
+diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
+index 3e25665..d001ac8 100644
+--- a/sys/kms/gstkmssink.h
++++ b/sys/kms/gstkmssink.h
+@@ -122,6 +122,7 @@ struct _GstKMSSink {
+   guintptr window_handle;
+ 
+   gboolean keep_aspect;
++  gboolean fullscreen;
+ 
+   GstKMSSyncMode sync_mode;
+ };
+-- 
+2.20.1
+

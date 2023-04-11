@@ -1,0 +1,32 @@
+From d97aa61ead41c49f2a7916f32af5e19902957584 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Sebastian=20Dr=C3=B6ge?= <sebastian@centricular.com>
+Date: Mon, 6 Feb 2023 15:26:48 +0200
+Subject: [PATCH 41/41] av1parser: Don't consider unknown metadata OBUs a
+ bitstream error
+
+Just don't parse them.
+
+Fixes https://gitlab.freedesktop.org/gstreamer/gstreamer/-/issues/1774
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/3898>
+---
+ gst-libs/gst/codecparsers/gstav1parser.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/gst-libs/gst/codecparsers/gstav1parser.c b/gst-libs/gst/codecparsers/gstav1parser.c
+index 3e80380..a1ba0ed 100644
+--- a/gst-libs/gst/codecparsers/gstav1parser.c
++++ b/gst-libs/gst/codecparsers/gstav1parser.c
+@@ -1781,7 +1781,8 @@ gst_av1_parser_parse_metadata_obu (GstAV1Parser * parser, GstAV1OBU * obu,
+           &bit_reader, &(metadata->timecode));
+       break;
+     default:
+-      return GST_AV1_PARSER_BITSTREAM_ERROR;
++      GST_WARNING ("Unknown metadata type %u", metadata->metadata_type);
++      return GST_AV1_PARSER_OK;
+   }
+ 
+   if (retval != GST_AV1_PARSER_OK)
+-- 
+2.20.1
+

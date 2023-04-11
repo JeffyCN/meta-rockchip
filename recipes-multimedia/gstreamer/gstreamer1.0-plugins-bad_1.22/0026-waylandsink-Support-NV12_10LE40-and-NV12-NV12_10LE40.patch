@@ -1,0 +1,530 @@
+From fd062e78c69898fcf2f8dd9db39c1556692f70bf Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 12 Nov 2021 11:14:37 +0800
+Subject: [PATCH 26/41] waylandsink: Support NV12_10LE40 and
+ NV12|NV12_10LE40|NV16 (AFBC)
+
+Tested on RK356x with:
+export GST_MPP_VIDEODEC_DEFAULT_ARM_AFBC=1
+gst-play-1.0 video.mp4 --videosink=waylandsink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c            | 86 ++++++++++++++++++++++++-
+ gst-libs/gst/wayland/gstwldisplay.c     | 37 ++++++++++-
+ gst-libs/gst/wayland/gstwldisplay.h     |  6 ++
+ gst-libs/gst/wayland/gstwllinuxdmabuf.c | 26 +++++++-
+ gst-libs/gst/wayland/gstwlvideoformat.c |  1 +
+ gst-libs/gst/wayland/gstwlvideoformat.h | 44 +++++++++++++
+ gst-libs/gst/wayland/gstwlwindow.c      | 50 +++++++++++---
+ gst-libs/gst/wayland/gstwlwindow.h      |  4 ++
+ 8 files changed, 243 insertions(+), 11 deletions(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 5e142e9..b26b7ee 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -74,7 +74,7 @@ GST_DEBUG_CATEGORY (gstwayland_debug);
+ 
+ #define WL_VIDEO_FORMATS \
+     "{ BGRx, BGRA, RGBx, xBGR, xRGB, RGBA, ABGR, ARGB, RGB, BGR, " \
+-    "RGB16, BGR16, YUY2, YVYU, UYVY, AYUV, NV12, NV21, NV16, NV61, " \
++    "RGB16, BGR16, YUY2, YVYU, UYVY, AYUV, NV12, NV21, NV16, NV61, NV12_10LE40, " \
+     "YUV9, YVU9, Y41B, I420, YV12, Y42B, v308 }"
+ 
+ static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
+@@ -647,6 +647,53 @@ gst_wayland_sink_event (GstBaseSink * bsink, GstEvent * event)
+   return ret;
+ }
+ 
++static GstCaps *
++gst_wayland_sink_fixup_caps (GstWaylandSink * self, GstCaps * caps)
++{
++  GstCaps *tmp_caps = NULL;
++
++  /* HACK: Allow nv12-10le40 and arm-afbc in main caps */
++
++  if (gst_wl_display_support_nv12_10le40 (self->display)) {
++    tmp_caps = gst_caps_from_string (
++        GST_VIDEO_CAPS_MAKE_WITH_FEATURES (GST_CAPS_FEATURE_MEMORY_DMABUF,
++            "NV12_10LE40"));
++
++    /* NV15(AFBC) */
++    if (gst_wl_display_support_afbc (self->display)) {
++      gst_caps_ref (tmp_caps);
++      gst_caps_append (caps, tmp_caps);
++
++      gst_caps_set_simple (tmp_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
++    }
++
++    gst_caps_append (caps, tmp_caps);
++  }
++
++  /* NV12|NV16 (AFBC) */
++  if (gst_wl_display_support_afbc (self->display)) {
++    if (gst_wl_display_check_format_for_dmabuf (self->display,
++            GST_VIDEO_FORMAT_NV12)) {
++      tmp_caps = gst_caps_from_string (
++          GST_VIDEO_CAPS_MAKE_WITH_FEATURES (GST_CAPS_FEATURE_MEMORY_DMABUF,
++              "NV12"));
++      gst_caps_set_simple (tmp_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
++      gst_caps_append (caps, tmp_caps);
++    }
++
++    if (gst_wl_display_check_format_for_dmabuf (self->display,
++            GST_VIDEO_FORMAT_NV16)) {
++      tmp_caps = gst_caps_from_string (
++          GST_VIDEO_CAPS_MAKE_WITH_FEATURES (GST_CAPS_FEATURE_MEMORY_DMABUF,
++              "NV16"));
++      gst_caps_set_simple (tmp_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
++      gst_caps_append (caps, tmp_caps);
++    }
++  }
++
++  return caps;
++}
++
+ static GstCaps *
+ gst_wayland_sink_get_caps (GstBaseSink * bsink, GstCaps * filter)
+ {
+@@ -699,6 +746,8 @@ gst_wayland_sink_get_caps (GstBaseSink * bsink, GstCaps * filter)
+     gst_structure_take_value (gst_caps_get_structure (caps, 1), "format",
+         &dmabuf_list);
+ 
++    caps = gst_wayland_sink_fixup_caps (self, caps);
++
+     GST_DEBUG_OBJECT (self, "display caps: %" GST_PTR_FORMAT, caps);
+   }
+ 
+@@ -746,6 +795,8 @@ gst_wayland_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+   GstWaylandSink *self = GST_WAYLAND_SINK (bsink);;
+   gboolean use_dmabuf;
+   GstVideoFormat format;
++  GstStructure *s;
++  gint value;
+ 
+   GST_DEBUG_OBJECT (self, "set caps %" GST_PTR_FORMAT, caps);
+ 
+@@ -753,6 +804,15 @@ gst_wayland_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+   if (!gst_video_info_from_caps (&self->video_info, caps))
+     goto invalid_format;
+ 
++  /* parse AFBC from caps */
++  s = gst_caps_get_structure (caps, 0);
++  if (gst_structure_get_int (s, "arm-afbc", &value)) {
++    if (value)
++      GST_VIDEO_INFO_SET_AFBC (&self->video_info);
++    else
++      GST_VIDEO_INFO_UNSET_AFBC (&self->video_info);
++  }
++
+   format = GST_VIDEO_INFO_FORMAT (&self->video_info);
+   self->video_info_changed = TRUE;
+ 
+@@ -798,9 +858,17 @@ gst_wayland_sink_propose_allocation (GstBaseSink * bsink, GstQuery * query)
+   GstBufferPool *pool = NULL;
+   gboolean need_pool;
+   GstAllocator *alloc;
++  GstStructure *s;
++  gint value;
+ 
+   gst_query_parse_allocation (query, &caps, &need_pool);
+ 
++  s = gst_caps_get_structure (caps, 0);
++  if (gst_structure_get_int (s, "arm-afbc", &value) && value) {
++    GST_DEBUG_OBJECT (self, "no allocation for AFBC");
++    return FALSE;
++  }
++
+   if (need_pool)
+     pool = gst_wayland_create_pool (self, caps);
+ 
+@@ -811,6 +879,7 @@ gst_wayland_sink_propose_allocation (GstBaseSink * bsink, GstQuery * query)
+   alloc = gst_wl_shm_allocator_get ();
+   gst_query_add_allocation_param (query, alloc, NULL);
+   gst_query_add_allocation_meta (query, GST_VIDEO_META_API_TYPE, NULL);
++  gst_query_add_allocation_meta (query, GST_VIDEO_CROP_META_API_TYPE, NULL);
+   g_object_unref (alloc);
+ 
+   return TRUE;
+@@ -884,6 +953,7 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+   GstWaylandSink *self = GST_WAYLAND_SINK (vsink);
+   GstBuffer *to_render;
+   GstWlBuffer *wlbuffer;
++  GstVideoCropMeta *crop;
+   GstVideoMeta *vmeta;
+   GstVideoFormat format;
+   GstVideoInfo old_vinfo;
+@@ -923,6 +993,11 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+     }
+   }
+ 
++  crop = gst_buffer_get_video_crop_meta (buffer);
++  if (crop)
++    gst_wl_window_ensure_crop (self->window, crop->x, crop->y,
++        crop->width, crop->height);
++
+   /* drop buffers until we get a frame callback */
+   if (self->redraw_pending) {
+     GST_LOG_OBJECT (self, "buffer %" GST_PTR_FORMAT " dropped (redraw pending)",
+@@ -977,6 +1052,9 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+           &self->video_info);
+   }
+ 
++  if (!wbuf && GST_VIDEO_INFO_IS_AFBC (&self->video_info))
++    goto no_afbc;
++
+   if (!wbuf && gst_wl_display_check_format_for_shm (self->display, format)) {
+     if (gst_buffer_n_memory (buffer) == 1 && gst_is_fd_memory (mem))
+       wbuf = gst_wl_shm_memory_construct_wl_buffer (mem, self->display,
+@@ -1107,6 +1185,12 @@ no_wl_buffer:
+     ret = GST_FLOW_ERROR;
+     goto done;
+   }
++no_afbc:
++  {
++    GST_ERROR_OBJECT (self, "could not import AFBC");
++    ret = GST_FLOW_ERROR;
++    goto done;
++  }
+ activate_failed:
+   {
+     GST_ERROR_OBJECT (self, "failed to activate bufferpool.");
+diff --git a/gst-libs/gst/wayland/gstwldisplay.c b/gst-libs/gst/wayland/gstwldisplay.c
+index 71a5dde..3e11211 100644
+--- a/gst-libs/gst/wayland/gstwldisplay.c
++++ b/gst-libs/gst/wayland/gstwldisplay.c
+@@ -61,6 +61,9 @@ typedef struct _GstWlDisplayPrivate
+   GMutex buffers_mutex;
+   GHashTable *buffers;
+   gboolean shutting_down;
++
++  gboolean support_afbc;
++  gboolean support_nv12_10le40;
+ } GstWlDisplayPrivate;
+ 
+ G_DEFINE_TYPE_WITH_CODE (GstWlDisplay, gst_wl_display, G_TYPE_OBJECT,
+@@ -69,6 +72,20 @@ G_DEFINE_TYPE_WITH_CODE (GstWlDisplay, gst_wl_display, G_TYPE_OBJECT,
+         "wldisplay", 0, "wldisplay library");
+     );
+ 
++gboolean
++gst_wl_display_support_afbc (GstWlDisplay * self)
++{
++  GstWlDisplayPrivate *priv = gst_wl_display_get_instance_private (self);
++  return priv->support_afbc;
++}
++
++gboolean
++gst_wl_display_support_nv12_10le40 (GstWlDisplay * self)
++{
++  GstWlDisplayPrivate *priv = gst_wl_display_get_instance_private (self);
++  return priv->support_nv12_10le40;
++}
++
+ static void gst_wl_display_finalize (GObject * gobject);
+ 
+ static void
+@@ -187,10 +204,28 @@ dmabuf_format (void *data, struct zwp_linux_dmabuf_v1 *zwp_linux_dmabuf,
+ 
+   if (gst_wl_dmabuf_format_to_video_format (format) != GST_VIDEO_FORMAT_UNKNOWN)
+     g_array_append_val (priv->dmabuf_formats, format);
++
++  if (format == DRM_FORMAT_NV15)
++    priv->support_nv12_10le40 = TRUE;
++}
++
++static void
++dmabuf_modifier (void *data, struct zwp_linux_dmabuf_v1 *zwp_linux_dmabuf,
++    uint32_t format, uint32_t modifier_hi, uint32_t modifier_lo)
++{
++  GstWlDisplay *self = data;
++  GstWlDisplayPrivate *priv = gst_wl_display_get_instance_private (self);
++  uint64_t modifier = ((uint64_t) modifier_hi << 32) | modifier_lo;
++
++  if (modifier == DRM_AFBC_MODIFIER)
++    priv->support_afbc = TRUE;
++
++  dmabuf_format (data, zwp_linux_dmabuf, format);
+ }
+ 
+ static const struct zwp_linux_dmabuf_v1_listener dmabuf_listener = {
+   dmabuf_format,
++  dmabuf_modifier,
+ };
+ 
+ gboolean
+@@ -277,7 +312,7 @@ registry_handle_global (void *data, struct wl_registry *registry,
+         wl_registry_bind (registry, id, &wp_viewporter_interface, 1);
+   } else if (g_strcmp0 (interface, "zwp_linux_dmabuf_v1") == 0) {
+     priv->dmabuf =
+-        wl_registry_bind (registry, id, &zwp_linux_dmabuf_v1_interface, 2);
++        wl_registry_bind (registry, id, &zwp_linux_dmabuf_v1_interface, 3);
+     zwp_linux_dmabuf_v1_add_listener (priv->dmabuf, &dmabuf_listener, self);
+   }
+ }
+diff --git a/gst-libs/gst/wayland/gstwldisplay.h b/gst-libs/gst/wayland/gstwldisplay.h
+index eb07e4f..c130b79 100644
+--- a/gst-libs/gst/wayland/gstwldisplay.h
++++ b/gst-libs/gst/wayland/gstwldisplay.h
+@@ -35,6 +35,12 @@ struct _GstWlDisplay
+   GObject parent_instance;
+ };
+ 
++GST_WL_API
++gboolean gst_wl_display_support_afbc (GstWlDisplay * self);
++
++GST_WL_API
++gboolean gst_wl_display_support_nv12_10le40 (GstWlDisplay * self);
++
+ GST_WL_API
+ GstWlDisplay *gst_wl_display_new (const gchar * name, GError ** error);
+ 
+diff --git a/gst-libs/gst/wayland/gstwllinuxdmabuf.c b/gst-libs/gst/wayland/gstwllinuxdmabuf.c
+index 2d5bb6b..65b6d8f 100644
+--- a/gst-libs/gst/wayland/gstwllinuxdmabuf.c
++++ b/gst-libs/gst/wayland/gstwllinuxdmabuf.c
+@@ -57,8 +57,10 @@ gst_wl_linux_dmabuf_construct_wl_buffer (GstBuffer * buf,
+   int format;
+   guint i, width, height;
+   guint nplanes, flags = 0;
++  gfloat stride_scale = 1.0f;
+   struct zwp_linux_buffer_params_v1 *params;
+   ConstructBufferData data;
++  guint64 modifier = GST_VIDEO_INFO_IS_AFBC (info) ? DRM_AFBC_MODIFIER : 0;
+ 
+   g_return_val_if_fail (gst_wl_display_check_format_for_dmabuf (display,
+           GST_VIDEO_INFO_FORMAT (info)), NULL);
+@@ -74,6 +76,27 @@ gst_wl_linux_dmabuf_construct_wl_buffer (GstBuffer * buf,
+       G_GSSIZE_FORMAT " (%d x %d), format %s", info->size, width, height,
+       gst_wl_dmabuf_format_to_string (format));
+ 
++  if (GST_VIDEO_INFO_IS_AFBC (info)) {
++    /* Mali uses these formats instead */
++    if (format == DRM_FORMAT_NV12) {
++      format = DRM_FORMAT_YUV420_8BIT;
++      nplanes = 1;
++      stride_scale = 1.5;
++    } else if (format == DRM_FORMAT_NV15) {
++      format = DRM_FORMAT_YUV420_10BIT;
++      nplanes = 1;
++      stride_scale = 1.5;
++    } else if (format == DRM_FORMAT_NV16) {
++      format = DRM_FORMAT_YUYV;
++      nplanes = 1;
++      stride_scale = 2;
++    } else {
++      GST_ERROR_OBJECT (mem->allocator, "unsupported format for AFBC");
++      data.wbuf = NULL;
++      goto out;
++    }
++  }
++
+   /* Creation and configuration of planes  */
+   params = zwp_linux_dmabuf_v1_create_params (gst_wl_display_get_dmabuf_v1
+       (display));
+@@ -84,11 +107,12 @@ gst_wl_linux_dmabuf_construct_wl_buffer (GstBuffer * buf,
+ 
+     offset = GST_VIDEO_INFO_PLANE_OFFSET (info, i);
+     stride = GST_VIDEO_INFO_PLANE_STRIDE (info, i);
++    stride *= stride_scale;
+     if (gst_buffer_find_memory (buf, offset, 1, &mem_idx, &length, &skip)) {
+       GstMemory *m = gst_buffer_peek_memory (buf, mem_idx);
+       gint fd = gst_dmabuf_memory_get_fd (m);
+       zwp_linux_buffer_params_v1_add (params, fd, i, m->offset + skip,
+-          stride, 0, 0);
++          stride, modifier >> 32, modifier & 0xFFFFFFFF);
+     } else {
+       GST_ERROR_OBJECT (mem->allocator, "memory does not seem to contain "
+           "enough data for the specified format");
+diff --git a/gst-libs/gst/wayland/gstwlvideoformat.c b/gst-libs/gst/wayland/gstwlvideoformat.c
+index 44a9536..003daa6 100644
+--- a/gst-libs/gst/wayland/gstwlvideoformat.c
++++ b/gst-libs/gst/wayland/gstwlvideoformat.c
+@@ -71,6 +71,7 @@ static const wl_VideoFormat wl_formats[] = {
+   {WL_SHM_FORMAT_UYVY, DRM_FORMAT_UYVY, GST_VIDEO_FORMAT_UYVY},
+   {WL_SHM_FORMAT_AYUV, DRM_FORMAT_AYUV, GST_VIDEO_FORMAT_AYUV},
+   {WL_SHM_FORMAT_NV12, DRM_FORMAT_NV12, GST_VIDEO_FORMAT_NV12},
++  {-1, DRM_FORMAT_NV15, GST_VIDEO_FORMAT_NV12_10LE40},
+   {WL_SHM_FORMAT_NV21, DRM_FORMAT_NV21, GST_VIDEO_FORMAT_NV21},
+   {WL_SHM_FORMAT_NV16, DRM_FORMAT_NV16, GST_VIDEO_FORMAT_NV16},
+   {WL_SHM_FORMAT_NV61, DRM_FORMAT_NV61, GST_VIDEO_FORMAT_NV61},
+diff --git a/gst-libs/gst/wayland/gstwlvideoformat.h b/gst-libs/gst/wayland/gstwlvideoformat.h
+index bc36a08..abf579c 100644
+--- a/gst-libs/gst/wayland/gstwlvideoformat.h
++++ b/gst-libs/gst/wayland/gstwlvideoformat.h
+@@ -27,8 +27,52 @@
+ 
+ #include <gst/video/video.h>
+ 
++#include <drm_fourcc.h>
++
+ G_BEGIN_DECLS
+ 
++#ifndef DRM_FORMAT_NV15
++#define DRM_FORMAT_NV15 fourcc_code('N', 'V', '1', '5')
++#endif
++
++#ifndef DRM_FORMAT_YUV420_8BIT
++#define DRM_FORMAT_YUV420_8BIT fourcc_code('Y', 'U', '0', '8')
++#endif
++
++#ifndef DRM_FORMAT_YUV420_10BIT
++#define DRM_FORMAT_YUV420_10BIT fourcc_code('Y', 'U', '1', '0')
++#endif
++
++#ifndef DRM_FORMAT_MOD_VENDOR_ARM
++#define DRM_FORMAT_MOD_VENDOR_ARM 0x08
++#endif
++
++#ifndef DRM_FORMAT_MOD_ARM_AFBC
++#define DRM_FORMAT_MOD_ARM_AFBC(__afbc_mode) fourcc_mod_code(ARM, __afbc_mode)
++#endif
++
++#ifndef AFBC_FORMAT_MOD_BLOCK_SIZE_16x16
++#define AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 (1ULL)
++#endif
++
++#ifndef AFBC_FORMAT_MOD_SPARSE
++#define AFBC_FORMAT_MOD_SPARSE (((__u64)1) << 6)
++#endif
++
++#define DRM_AFBC_MODIFIER \
++  (DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_SPARSE) | \
++   DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16))
++
++#ifndef GST_VIDEO_FLAG_ARM_AFBC
++#define GST_VIDEO_FLAG_ARM_AFBC (1UL << 31)
++#define GST_VIDEO_INFO_SET_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_SET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#define GST_VIDEO_INFO_UNSET_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_UNSET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#define GST_VIDEO_INFO_IS_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_IS_SET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#endif
++
+ GST_WL_API
+ void gst_wl_videoformat_init_once (void);
+ 
+diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
+index 7dc0da5..df60a67 100644
+--- a/gst-libs/gst/wayland/gstwlwindow.c
++++ b/gst-libs/gst/wayland/gstwlwindow.c
+@@ -66,6 +66,9 @@ typedef struct _GstWlWindowPrivate
+   /* the size of the video in the buffers */
+   gint video_width, video_height;
+ 
++  gint crop_x, crop_y, crop_w, crop_h;
++  gboolean crop_dirty;
++
+   enum wl_output_transform buffer_transform;
+ 
+   /* when this is not set both the area_surface and the video_surface are not
+@@ -255,6 +258,29 @@ gst_wl_window_new_internal (GstWlDisplay * display, GMutex * render_lock)
+   return self;
+ }
+ 
++void
++gst_wl_window_ensure_crop (GstWlWindow * self, gint x, gint y, gint w, gint h)
++{
++  GstWlWindowPrivate *priv;
++
++  if (!self)
++    return;
++
++  priv = gst_wl_window_get_instance_private (self);
++
++  if (priv->crop_x == x && priv->crop_y == y &&
++      priv->crop_w == w && priv->crop_h == h)
++    return;
++
++  priv->crop_x = x;
++  priv->crop_y = y;
++  priv->crop_w = w;
++  priv->crop_h = h;
++  priv->crop_dirty = TRUE;
++
++  GST_LOG_OBJECT (self, "crop %dx%d-%dx%d", x, y, w, h);
++}
++
+ void
+ gst_wl_window_ensure_fill_mode (GstWlWindow * self,
+     GstWlWindowFillMode fill_mode)
+@@ -523,6 +549,14 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
+   dst.w = priv->render_rectangle.w;
+   dst.h = priv->render_rectangle.h;
+ 
++  if (priv->crop_w && priv->crop_h) {
++    src.x = priv->crop_x;
++    src.y = priv->crop_y;
++    src.w = priv->crop_w;
++    src.h = priv->crop_h;
++  }
++  priv->crop_dirty = FALSE;
++
+   /* center the video_subsurface inside area_subsurface */
+   if (priv->video_viewport) {
+     if (priv->fill_mode == GST_WL_WINDOW_STRETCH) {
+@@ -537,22 +571,21 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
+ 
+       if (src_ratio < dst_ratio) {
+         int h = src.w / dst_ratio;
+-        src.y = (src.h - h) / 2;
++        src.y += (src.h - h) / 2;
+         src.h = h;
+       } else if (src_ratio > dst_ratio) {
+         int w = src.h * dst_ratio;
+-        src.x = (src.w - w) / 2;
++        src.x += (src.w - w) / 2;
+         src.w = w;
+       }
+ 
+-      wp_viewport_set_source (priv->video_viewport,
+-          wl_fixed_from_int (src.x), wl_fixed_from_int (src.y),
+-          wl_fixed_from_int (src.w), wl_fixed_from_int (src.h));
+-
+       res = dst;
+     }
+ 
+     wp_viewport_set_destination (priv->video_viewport, res.w, res.h);
++    wp_viewport_set_source (priv->video_viewport,
++        wl_fixed_from_int (src.x), wl_fixed_from_int (src.y),
++        wl_fixed_from_int (src.w), wl_fixed_from_int (src.h));
+   } else {
+     gst_video_center_rect (&src, &dst, &res, FALSE);
+   }
+@@ -597,13 +630,14 @@ gst_wl_window_render (GstWlWindow * self, GstWlBuffer * buffer,
+   GstWlWindowPrivate *priv = gst_wl_window_get_instance_private (self);
+ 
+   if (G_UNLIKELY (info)) {
+-    priv->video_width =
+-        gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
++    priv->video_width = info->width;
+     priv->video_height = info->height;
+ 
+     wl_subsurface_set_sync (priv->video_subsurface);
+     gst_wl_window_resize_video_surface (self, FALSE);
+     gst_wl_window_set_opaque (self, info);
++  } else if (priv->crop_dirty) {
++    gst_wl_window_resize_video_surface (self, FALSE);
+   }
+ 
+   if (G_LIKELY (buffer)) {
+diff --git a/gst-libs/gst/wayland/gstwlwindow.h b/gst-libs/gst/wayland/gstwlwindow.h
+index 1571ece..8f02f00 100644
+--- a/gst-libs/gst/wayland/gstwlwindow.h
++++ b/gst-libs/gst/wayland/gstwlwindow.h
+@@ -47,6 +47,10 @@ struct _GstWlWindow
+   GObject parent_instance;
+ };
+ 
++GST_WL_API
++void gst_wl_window_ensure_crop (GstWlWindow * self,
++        gint x, gint y, gint w, gint h);
++
+ GST_WL_API
+ void gst_wl_window_ensure_fill_mode (GstWlWindow * self,
+         GstWlWindowFillMode fill_mode);
+-- 
+2.20.1
+
