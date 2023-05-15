@@ -21,3 +21,8 @@ SRC_URI_append += "${@bb.utils.contains('IMAGE_FSTYPES', 'ext4', \
 		   ' file://ext4.cfg', \
 		   '', \
 		   d)}"
+
+do_patch_append() {
+	sed -i 's/-I\($(BCMDHD_ROOT)\)/-I$(srctree)\/\1/g' \
+		${S}/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/Makefile
+}
