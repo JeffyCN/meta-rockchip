@@ -56,6 +56,8 @@ do_configure:prepend() {
 	fi
 
 	[ ! -e "${S}/.config" ] || make -C ${S} mrproper
+
+	sed -i 's/ found;/ found = NULL;/' ${S}/lib/avb/libavb/avb_slot_verify.c
 }
 
 # Generate Rockchip style loader binaries
