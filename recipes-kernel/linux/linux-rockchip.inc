@@ -42,9 +42,20 @@ python () {
     d.setVar('KERNEL_IMAGETYPE_FOR_MAKE', ' ' + d.getVar('KERNEL_DEVICETREE').replace('rockchip/', '').replace('.dtb', '.img'));
 }
 
-# Force regenerating defconfig
 do_kernel_metadata:prepend() {
+	# Force regenerating defconfig
 	rm -f ${WORKDIR}/defconfig
+
+	# Support defconfig fragments
+	cd "${S}/arch/${ARCH}/configs"
+	if [ ! -f "${KBUILD_DEFCONFIG}" ]; then
+		DEFCONFIGS="rockchip_linux_defconfig ${SOC_FAMILY}_linux.config"
+		[ "$KBUILD_DEFCONFIGS" ] || KBUILD_DEFCONFIGS="$DEFCONFIGS"
+
+		echo "Merging $KBUILD_DEFCONFIGS into $KBUILD_DEFCONFIG..."
+		cat ${KBUILD_DEFCONFIGS:-$CONFIGS} > ${KBUILD_DEFCONFIG} || true
+	fi
+	cd -
 }
 
 # Link rockchip style images
