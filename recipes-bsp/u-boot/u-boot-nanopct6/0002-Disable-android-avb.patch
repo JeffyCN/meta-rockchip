@@ -1,0 +1,26 @@
+From 439a1154199696d6b9ea6179d963b6013b4b6754 Mon Sep 17 00:00:00 2001
+From: wata2ki <wata2ki@gmail.com>
+Date: Fri, 2 Jun 2023 01:14:39 +0900
+Subject: [PATCH 2/2] Disable android avb
+
+Signed-off-by: wata2ki <wata2ki@gmail.com>
+---
+ configs/nanopi6_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configs/nanopi6_defconfig b/configs/nanopi6_defconfig
+index ce86b1e..c247390 100644
+--- a/configs/nanopi6_defconfig
++++ b/configs/nanopi6_defconfig
+@@ -33,7 +33,7 @@ CONFIG_BOOTDELAY=1
+ CONFIG_SYS_CONSOLE_INFO_QUIET=y
+ # CONFIG_DISPLAY_CPUINFO is not set
+ CONFIG_ANDROID_BOOTLOADER=y
+-CONFIG_ANDROID_AVB=y
++# CONFIG_ANDROID_AVB is not set
+ CONFIG_ANDROID_BOOT_IMAGE_HASH=y
+ CONFIG_SPL_BOARD_INIT=y
+ # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
+-- 
+2.25.1
+
