@@ -1,0 +1,82 @@
+From 1016d877f0b2d9bee7a871053000eab6158ab51d Mon Sep 17 00:00:00 2001
+From: wata2ki <wata2ki@gmail.com>
+Date: Fri, 2 Jun 2023 00:41:36 +0900
+Subject: [PATCH 1/2] Change default bootargs
+
+Signed-off-by: wata2ki <wata2ki@gmail.com>
+---
+ arch/arm/mach-rockchip/boot_rkimg.c | 51 +----------------------------
+ 1 file changed, 1 insertion(+), 50 deletions(-)
+
+diff --git a/arch/arm/mach-rockchip/boot_rkimg.c b/arch/arm/mach-rockchip/boot_rkimg.c
+index 5802a97..3eeea26 100644
+--- a/arch/arm/mach-rockchip/boot_rkimg.c
++++ b/arch/arm/mach-rockchip/boot_rkimg.c
+@@ -131,7 +131,6 @@ finish:
+ static int get_bootdev_type(void)
+ {
+ 	char *boot_media = NULL, *devtype = NULL;
+-	char boot_options[128] = {0};
+ 	static int appended;
+ 	ulong devnum = 0;
+ 	int type = 0;
+@@ -179,55 +178,7 @@ static int get_bootdev_type(void)
+ 	if (!appended && boot_media) {
+ 		appended = 1;
+ 
+-	/*
+-	 * The legacy rockchip Android (SDK < 8.1) requires "androidboot.mode="
+-	 * to be "charger" or boot media which is a rockchip private solution.
+-	 *
+-	 * The official Android rule (SDK >= 8.1) is:
+-	 * "androidboot.mode=normal" or "androidboot.mode=charger".
+-	 *
+-	 * Now that this U-Boot is usually working with higher version
+-	 * Android (SDK >= 8.1), we follow the official rules.
+-	 *
+-	 * Common: androidboot.mode=charger has higher priority, don't override;
+-	 */
+-#ifdef CONFIG_RKIMG_ANDROID_BOOTMODE_LEGACY
+-		/* rknand doesn't need "androidboot.mode="; */
+-		if (env_exist("bootargs", "androidboot.mode=charger") ||
+-		    (type == IF_TYPE_RKNAND) ||
+-		    (type == IF_TYPE_SPINAND) ||
+-		    (type == IF_TYPE_SPINOR))
+-			snprintf(boot_options, sizeof(boot_options),
+-				 "storagemedia=%s", boot_media);
+-		else
+-			snprintf(boot_options, sizeof(boot_options),
+-				 "storagemedia=%s androidboot.mode=%s",
+-				 boot_media, boot_media);
+-#else
+-		/*
+-		 * 1. "storagemedia": This is a legacy variable to indicate board
+-		 *    storage media for kernel and android.
+-		 *
+-		 * 2. "androidboot.storagemedia": The same purpose as "storagemedia",
+-		 *    but the android framework will auto create property by
+-		 *    variable with format "androidboot.xxx", eg:
+-		 *
+-		 *    "androidboot.storagemedia" => "ro.boot.storagemedia".
+-		 *
+-		 *    So, U-Boot pass this new variable is only for the convenience
+-		 *    to Android.
+-		 */
+-		if (env_exist("bootargs", "androidboot.mode=charger"))
+-			snprintf(boot_options, sizeof(boot_options),
+-				 "storagemedia=%s androidboot.storagemedia=%s",
+-				 boot_media, boot_media);
+-		else
+-			snprintf(boot_options, sizeof(boot_options),
+-				 "storagemedia=%s androidboot.storagemedia=%s "
+-				 "androidboot.mode=normal",
+-				 boot_media, boot_media);
+-#endif
+-		env_update("bootargs", boot_options);
++		env_update("bootargs", "console=ttyFIQ0 root=/dev/mmcblk0p3 rootwait rw ");
+ 	}
+ 
+ 	return type;
+-- 
+2.25.1
+
