@@ -79,6 +79,12 @@ do_install:append () {
 		sed -i 's/defined(MESA_EGL_NO_X11_HEADERS)/1/' \
 			${D}${includedir}/EGL/eglplatform.h
 	fi
+
+	if ${@bb.utils.contains('DISTRO_FEATURES', 'usrmerge', 'true', 'false', d)}; then
+		install -d ${D}${nonarch_base_libdir}/
+		mv ${D}/lib/firmware ${D}${nonarch_base_libdir}/
+		rm -rf ${D}/lib
+	fi
 }
 
 INSANE_SKIP:${PN} = "already-stripped ldflags dev-so textrel"
