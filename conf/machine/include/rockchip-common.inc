@@ -85,9 +85,6 @@ RK_POST_ROOTFS_SCRIPTS ?= ""
 RK_OVERLAY_DIRS ?= ""
 BB_BASEHASH_IGNORE_VARS:append = " RK_POST_ROOTFS_SCRIPTS RK_OVERLAY_DIRS"
 
-# <fslabel:mountpoint> e.g. "oem:/oem userdata:/userdata"
-RK_EXTRA_VOLUMES ?= ""
-
 ROOTFS_POSTPROCESS_COMMAND:append = " do_post_rootfs;"
 do_rootfs[depends] += "rsync-native:do_populate_sysroot"
 do_post_rootfs() {
@@ -192,18 +189,16 @@ gen_rkupdateimg() {
 	echo "bootloader loader.bin" >> "${OUT}"
 	echo "parameter parameter" >> "${OUT}"
 	grep -o "([^)^:]*" parameter | tr -d "(" | while read NAME;do
-		echo -n "${NAME} " >> "${OUT}"
 		case "${NAME}" in
-			uboot-env)
-				echo "uboot.env" >> "${OUT}"
-				;;
-			root*|system*)
-				echo "rootfs.img" >> "${OUT}"
-				;;
-			*)
-				echo "${NAME}.img" >> "${OUT}"
-				;;
+			uboot-env) IMAGE="uboot.env" ;;
+			backup) echo "backup RESERVED" >> "${OUT}"; continue ;;
+			system|system_[ab]) IMAGE="rootfs.img" ;;
+			*_a) IMAGE="${NAME%_a}.img" ;;
+			*_b) IMAGE="${NAME%_b}.img" ;;
+			*) IMAGE="${NAME}.img" ;;
 		esac
+
+		[ ! -r "$IMAGE" ] || echo "$NAME $IMAGE" >> "${OUT}"
 	done
 
 	PSEUDO_DISABLED=1
