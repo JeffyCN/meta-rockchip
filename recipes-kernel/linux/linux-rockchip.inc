@@ -21,14 +21,15 @@ do_patch_append() {
 }
 
 # Hack for rockchip style images
-ROCKCHIP_KERNEL_IMAGES = "boot.img zboot.img"
-KERNEL_IMAGETYPES += "${ROCKCHIP_KERNEL_IMAGES}"
+KERNEL_IMAGETYPES += \
+	"${@'boot.img zboot.img' if d.getVar('ROCKCHIP_KERNEL_IMAGES') == '1' else ''}"
 python () {
     if not d.getVar('KERNEL_DEVICETREE'):
         raise bb.parse.SkipPackage('KERNEL_DEVICETREE is not specified!')
 
-    # Use rockchip stype target, which is '<dts(w/o suffix)>.img'
-    d.setVar('KERNEL_IMAGETYPE_FOR_MAKE', ' ' + d.getVar('KERNEL_DEVICETREE').replace('rockchip/', '').replace('.dtb', '.img'));
+    if d.getVar('ROCKCHIP_KERNEL_IMAGES'):
+        # Use rockchip stype target, which is '<dts(w/o suffix)>.img'
+        d.setVar('KERNEL_IMAGETYPE_FOR_MAKE', ' ' + d.getVar('KERNEL_DEVICETREE').replace('rockchip/', '').replace('.dtb', '.img'));
 }
 
 do_kernel_metadata_prepend() {
@@ -49,11 +50,13 @@ do_kernel_metadata_prepend() {
 
 # Link rockchip style images
 do_install_prepend() {
-	for image in ${ROCKCHIP_KERNEL_IMAGES};do
-		ln -sf ${B}/${image} ${B}/arch/${ARCH}/boot/
+	for image in $(ls "${B}/" | grep ".img$"); do
+		ln -rsf ${B}/${image} ${B}/arch/${ARCH}/boot/
 	done
 
-	if [ "x${RK_USE_COMPRESSED_KERNEL}" = "x1" ]; then
-		ln -sf zboot.img ${B}/arch/${ARCH}/boot/boot.img
+	if [ "${ROCKCHIP_KERNEL_COMPRESSED}" = "1" ]; then
+		if [ -r "${B}/zboot.img" ]; then
+			ln -rsf ${B}/zboot.img ${B}/arch/${ARCH}/boot/boot.img
+		fi
 	fi
 }
