@@ -24,22 +24,23 @@ do_compile:prepend() {
 }
 
 do_compile_kernelmodules:prepend() {
-        export PKG_CONFIG_DIR="${STAGING_DIR_NATIVE}${libdir_native}/pkgconfig"
-        export PKG_CONFIG_PATH="$PKG_CONFIG_DIR:${STAGING_DATADIR_NATIVE}/pkgconfig"
-        export PKG_CONFIG_LIBDIR="$PKG_CONFIG_DIR"
-        export PKG_CONFIG_SYSROOT_DIR=""
+	export PKG_CONFIG_DIR="${STAGING_DIR_NATIVE}${libdir_native}/pkgconfig"
+	export PKG_CONFIG_PATH="$PKG_CONFIG_DIR:${STAGING_DATADIR_NATIVE}/pkgconfig"
+	export PKG_CONFIG_LIBDIR="$PKG_CONFIG_DIR"
+	export PKG_CONFIG_SYSROOT_DIR=""
 	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${STAGING_LIBDIR_NATIVE}
 }
 
 # Hack for rockchip style images
-ROCKCHIP_KERNEL_IMAGES = "boot.img zboot.img"
-KERNEL_IMAGETYPES:append = " ${ROCKCHIP_KERNEL_IMAGES}"
+KERNEL_IMAGETYPES:append = \
+	"${@' boot.img zboot.img' if d.getVar('ROCKCHIP_KERNEL_IMAGES') == '1' else ''}"
 python () {
     if not d.getVar('KERNEL_DEVICETREE'):
         raise bb.parse.SkipPackage('KERNEL_DEVICETREE is not specified!')
 
-    # Use rockchip stype target, which is '<dts(w/o suffix)>.img'
-    d.setVar('KERNEL_IMAGETYPE_FOR_MAKE', ' ' + d.getVar('KERNEL_DEVICETREE').replace('rockchip/', '').replace('.dtb', '.img'));
+    if d.getVar('ROCKCHIP_KERNEL_IMAGES'):
+        # Use rockchip stype target, which is '<dts(w/o suffix)>.img'
+        d.setVar('KERNEL_IMAGETYPE_FOR_MAKE', ' ' + d.getVar('KERNEL_DEVICETREE').replace('rockchip/', '').replace('.dtb', '.img'));
 }
 
 do_kernel_metadata:prepend() {
@@ -60,11 +61,13 @@ do_kernel_metadata:prepend() {
 
 # Link rockchip style images
 do_install:prepend() {
-	for image in ${ROCKCHIP_KERNEL_IMAGES};do
-		ln -sf ${B}/${image} ${B}/arch/${ARCH}/boot/
+	for image in $(ls "${B}/" | grep ".img$"); do
+		ln -rsf ${B}/${image} ${B}/arch/${ARCH}/boot/
 	done
 
-	if [ "x${RK_USE_COMPRESSED_KERNEL}" = "x1" ]; then
-		ln -sf zboot.img ${B}/arch/${ARCH}/boot/boot.img
+	if [ "${ROCKCHIP_KERNEL_COMPRESSED}" = "1" ]; then
+		if [ -r "${B}/zboot.img" ]; then
+			ln -rsf ${B}/zboot.img ${B}/arch/${ARCH}/boot/boot.img
+		fi
 	fi
 }
