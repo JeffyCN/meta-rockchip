@@ -53,7 +53,6 @@ PREFERRED_RPROVIDER_lib32-initd-functions = "lib32-initscripts"
 export RK_ROOTDEV_UUID ?= "614e0000-0000-4b53-8000-1d28000054a9"
 export RK_PARTITION_GROW ?= "1"
 
-RK_USE_COMPRESSED_KERNEL ?= "1"
 RDEPENDS:${KERNEL_PACKAGE_NAME}-base = ""
 
 IMAGE_FSTYPES:remove = "iso live"
