@@ -6,5 +6,3 @@ include conf/machine/include/arm/arch-armv8.inc
 include conf/machine/include/arm/arch-armv8a.inc
 
 SERIAL_CONSOLES = "1500000;ttyFIQ0"
-
-RK_USE_COMPRESSED_KERNEL = "0"
