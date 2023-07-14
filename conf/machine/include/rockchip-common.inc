@@ -19,6 +19,9 @@ PREFERRED_PROVIDER_virtual/bootloader ?= "u-boot-rockchip"
 
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-rockchip"
 
+ROCKCHIP_KERNEL_COMPRESSED ?= "1"
+ROCKCHIP_KERNEL_IMAGES ?= "1"
+
 # Prefer using Rockchip BSP kernel 4.4
 #PREFERRED_VERSION_linux-rockchip ?= "4.19%"
 #LINUXLIBCVERSION ?= "4.19-custom%"
