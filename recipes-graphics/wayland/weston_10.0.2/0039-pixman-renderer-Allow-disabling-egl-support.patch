@@ -1,0 +1,29 @@
+From 31448945a183d2fe2e5c64ac7ff267d832446a03 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 26 Oct 2020 16:05:51 +0800
+Subject: [PATCH 39/84] pixman-renderer: Allow disabling egl support
+
+Set env WESTON_PIXMAN_WITHOUT_EGL to disable egl support.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/pixman-renderer.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libweston/pixman-renderer.c b/libweston/pixman-renderer.c
+index c28d4a8..6296daf 100644
+--- a/libweston/pixman-renderer.c
++++ b/libweston/pixman-renderer.c
+@@ -1378,7 +1378,8 @@ pixman_renderer_init(struct weston_compositor *ec)
+ 		pixman_renderer_get_supported_formats;
+ 
+ #ifdef ENABLE_EGL
+-	pixman_renderer_init_egl(renderer, ec);
++	if (!getenv("WESTON_PIXMAN_WITHOUT_EGL"))
++		pixman_renderer_init_egl(renderer, ec);
+ #endif
+ 
+ 	return 0;
+-- 
+2.20.1
+

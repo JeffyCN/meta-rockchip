@@ -1,0 +1,42 @@
+From 0a8da0e5d683825d5c4c7f07b944e8c3369907b5 Mon Sep 17 00:00:00 2001
+From: Marius Vlad <marius.vlad@collabora.com>
+Date: Wed, 5 Jul 2023 21:20:10 +0300
+Subject: [PATCH 01/84] clients/window: Update min_allocation for smaller
+ widths/heights
+
+This makes sure we update min_allocation in situations where the
+width and height passed is smaller than the one set previously
+(obviously except for the first time). This has the side effect of
+not overwriting pending_allocations such that we correctly resize when
+passed a width/height smaller the ones set-up in the past.
+
+Signed-off-by: Marius Vlad <marius.vlad@collabora.com>
+(cherry picked from commit 955511809558424bb74279df0f88465087e35723)
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ clients/window.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/clients/window.c b/clients/window.c
+index a0d988f..721c375 100644
+--- a/clients/window.c
++++ b/clients/window.c
+@@ -4279,6 +4279,15 @@ window_schedule_resize(struct window *window, int width, int height)
+ 			window->min_allocation.height = min_height;
+ 		else
+ 			window->min_allocation.height = height;
++	} else {
++		/* update min_allocation to allow having a smaller
++		 * pending_allocation and still allow other surfaces type be
++		 * resized correctly */
++		if (width < window->min_allocation.width)
++			window->min_allocation.width = width;
++
++		if (height < window->min_allocation.height)
++			window->min_allocation.height = height;
+ 	}
+ 
+ 	if (window->pending_allocation.width < window->min_allocation.width)
+-- 
+2.20.1
+

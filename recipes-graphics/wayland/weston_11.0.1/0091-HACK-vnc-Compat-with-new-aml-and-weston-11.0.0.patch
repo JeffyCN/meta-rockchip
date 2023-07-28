@@ -1,7 +1,7 @@
-From 9426c72bfe324469e7b55dc1fb8f51c734bf97c4 Mon Sep 17 00:00:00 2001
+From ed26df1d70889b5393dafea21fb583bf8de77b4f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 8 Dec 2022 10:10:20 +0800
-Subject: [PATCH 91/93] HACK: vnc: Compat with new aml and weston 11.0.0
+Subject: [PATCH 91/97] HACK: vnc: Compat with new aml and weston 11.0.0
 
 TODO: Remove it when upgrade to newer weston version.
 
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 1 insertion(+), 4 deletions(-)
 
 diff --git a/libweston/backend-vnc/vnc.c b/libweston/backend-vnc/vnc.c
-index 6cb05d7..4861521 100644
+index 6cb05d76..48615212 100644
 --- a/libweston/backend-vnc/vnc.c
 +++ b/libweston/backend-vnc/vnc.c
 @@ -42,6 +42,7 @@

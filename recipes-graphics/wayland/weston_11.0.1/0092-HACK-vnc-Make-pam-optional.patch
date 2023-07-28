@@ -1,7 +1,7 @@
-From b0d75fcb9d543f06bbbf67530f5e631459bf9c98 Mon Sep 17 00:00:00 2001
+From 5289422383f4b5bca220575117a3866a6a49b7bb Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 8 Dec 2022 10:26:26 +0800
-Subject: [PATCH 92/93] HACK: vnc: Make pam optional
+Subject: [PATCH 92/97] HACK: vnc: Make pam optional
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -10,7 +10,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 15 insertions(+), 4 deletions(-)
 
 diff --git a/libweston/backend-vnc/vnc.c b/libweston/backend-vnc/vnc.c
-index 4861521..ed68f45 100644
+index 48615212..ed68f457 100644
 --- a/libweston/backend-vnc/vnc.c
 +++ b/libweston/backend-vnc/vnc.c
 @@ -423,7 +423,10 @@ vnc_handle_auth(const char *username, const char *password, void *userdata)
@@ -54,7 +54,7 @@ index 4861521..ed68f45 100644
  					 &api, sizeof(api));
  	if (ret < 0) {
 diff --git a/libweston/meson.build b/libweston/meson.build
-index 6f0b624..037a240 100644
+index 6f0b6240..037a240b 100644
 --- a/libweston/meson.build
 +++ b/libweston/meson.build
 @@ -83,13 +83,14 @@ endif

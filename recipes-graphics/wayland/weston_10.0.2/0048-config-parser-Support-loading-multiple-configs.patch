@@ -1,0 +1,267 @@
+From 2fda93dea2dfde5ecb35634b318e7d4894e2b01b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 7 Apr 2021 08:25:57 +0800
+Subject: [PATCH 48/84] config-parser: Support loading multiple configs
+
+Try loading .ini configs under "<config>.d/".
+
+Tested with:
+/etc/xdg/weston/weston.ini.d/99-pixman.ini
+[core]
+use-pixman=true
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ compositor/main.c      |   5 +-
+ shared/config-parser.c | 147 +++++++++++++++++++++++++++++++++--------
+ 2 files changed, 123 insertions(+), 29 deletions(-)
+
+diff --git a/compositor/main.c b/compositor/main.c
+index 2010c02..5f24cd6 100644
+--- a/compositor/main.c
++++ b/compositor/main.c
+@@ -1220,8 +1220,11 @@ load_configuration(struct weston_config **config, int32_t noconfig,
+ 	if (config_file)
+ 		file = config_file;
+ 
+-	if (noconfig == 0)
++	if (noconfig == 0) {
++		setenv("WESTON_MAIN_PARSE", "1", 1);
+ 		*config = weston_config_parse(file);
++		unsetenv("WESTON_MAIN_PARSE");
++	}
+ 
+ 	if (*config) {
+ 		full_path = weston_config_get_full_path(*config);
+diff --git a/shared/config-parser.c b/shared/config-parser.c
+index ed120d5..3f1c012 100644
+--- a/shared/config-parser.c
++++ b/shared/config-parser.c
+@@ -31,6 +31,7 @@
+ #include <stdlib.h>
+ #include <assert.h>
+ #include <ctype.h>
++#include <dirent.h>
+ #include <limits.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
+@@ -70,6 +71,13 @@ open_config_file(struct weston_config *c, const char *name)
+ 	const char *p, *next;
+ 	int fd;
+ 
++	if (!c) {
++		if (name[0] != '/')
++			return -1;
++
++		return open(name, O_RDONLY | O_CLOEXEC);
++	}
++
+ 	if (name[0] == '/') {
+ 		snprintf(c->path, sizeof c->path, "%s", name);
+ 		return open(name, O_RDONLY | O_CLOEXEC);
+@@ -345,6 +353,13 @@ config_add_section(struct weston_config *config, const char *name)
+ {
+ 	struct weston_config_section *section;
+ 
++	/* squash single sessions */
++	if (!strstr(name, "launcher") && !strstr(name, "output")) {
++		section = weston_config_get_section(config, name, NULL, NULL);
++		if (section)
++			return section;
++	}
++
+ 	section = zalloc(sizeof *section);
+ 	if (section == NULL)
+ 		return NULL;
+@@ -363,10 +378,33 @@ config_add_section(struct weston_config *config, const char *name)
+ 
+ static struct weston_config_entry *
+ section_add_entry(struct weston_config_section *section,
+-		  const char *key, const char *value)
++		  const char *key, const char *value, const char *file_name)
+ {
+ 	struct weston_config_entry *entry;
+ 
++	/* hack for removing entry */
++	if (key[0] == '-') {
++		key ++;
++		value = NULL;
++	}
++
++	/* drop old entry */
++	entry = config_section_get_entry(section, key);
++	if (entry) {
++		if (getenv("WESTON_MAIN_PARSE")) {
++			printf("%s: \"%s/%s\" from \"%s\" to \"%s\"\n",
++			       file_name ?: "unknown", section->name,
++			       entry->key, entry->value ?: "", value ?: "");
++		}
++		wl_list_remove(&entry->link);
++		free(entry->key);
++		free(entry->value);
++		free(entry);
++	}
++
++	if (!value || value[0] == '\0')
++		return NULL;
++
+ 	entry = zalloc(sizeof *entry);
+ 	if (entry == NULL)
+ 		return NULL;
+@@ -389,41 +427,28 @@ section_add_entry(struct weston_config_section *section,
+ 	return entry;
+ }
+ 
+-WL_EXPORT
+-struct weston_config *
+-weston_config_parse(const char *name)
++static bool
++weston_config_parse_internal(struct weston_config *config, int fd,
++			     const char *file_name)
+ {
+ 	FILE *fp;
+ 	char line[512], *p;
+ 	struct stat filestat;
+-	struct weston_config *config;
+ 	struct weston_config_section *section = NULL;
+-	int i, fd;
+-
+-	config = zalloc(sizeof *config);
+-	if (config == NULL)
+-		return NULL;
+-
+-	wl_list_init(&config->section_list);
++	int i;
+ 
+-	fd = open_config_file(config, name);
+-	if (fd == -1) {
+-		free(config);
+-		return NULL;
+-	}
++	if (fd < 0 || !config)
++		return false;
+ 
+ 	if (fstat(fd, &filestat) < 0 ||
+ 	    !S_ISREG(filestat.st_mode)) {
+ 		close(fd);
+-		free(config);
+-		return NULL;
++		return false;
+ 	}
+ 
+ 	fp = fdopen(fd, "r");
+-	if (fp == NULL) {
+-		free(config);
+-		return NULL;
+-	}
++	if (fp == NULL)
++		return false;
+ 
+ 	while (fgets(line, sizeof line, fp)) {
+ 		switch (line[0]) {
+@@ -436,8 +461,7 @@ weston_config_parse(const char *name)
+ 				fprintf(stderr, "malformed "
+ 					"section header: %s\n", line);
+ 				fclose(fp);
+-				weston_config_destroy(config);
+-				return NULL;
++				return false;
+ 			}
+ 			p[0] = '\0';
+ 			section = config_add_section(config, &line[1]);
+@@ -448,8 +472,7 @@ weston_config_parse(const char *name)
+ 				fprintf(stderr, "malformed "
+ 					"config line: %s\n", line);
+ 				fclose(fp);
+-				weston_config_destroy(config);
+-				return NULL;
++				return false;
+ 			}
+ 
+ 			p[0] = '\0';
+@@ -461,13 +484,81 @@ weston_config_parse(const char *name)
+ 				p[i - 1] = '\0';
+ 				i--;
+ 			}
+-			section_add_entry(section, line, p);
++			section_add_entry(section, line, p, file_name);
+ 			continue;
+ 		}
+ 	}
+ 
+ 	fclose(fp);
+ 
++	return true;
++}
++
++static int
++accept_config_file(const struct dirent *entry)
++{
++	const char *suffix = ".ini";
++	char *end = strstr(entry->d_name, suffix);
++	return end && end[strlen(suffix)] == '\0';
++}
++
++WL_EXPORT
++struct weston_config *
++weston_config_parse(const char *name)
++{
++	struct stat st;
++	struct dirent **namelist;
++	struct weston_config *config;
++	char path[sizeof(config->path) + 2];
++	int n, i, fd;
++
++	config = zalloc(sizeof *config);
++	if (config == NULL)
++		return NULL;
++
++	wl_list_init(&config->section_list);
++
++	fd = open_config_file(config, name);
++	if (fd >= 0 && !weston_config_parse_internal(config, fd, name)) {
++		fprintf(stderr, "failed to parse %s\n", config->path);
++		free(config);
++		return NULL;
++	}
++
++	strcpy(path, config->path);
++	strcat(path, ".d");
++	if (stat(path, &st) < 0 || !S_ISDIR(st.st_mode))
++		return config;
++
++	n = scandir(path, &namelist, accept_config_file, alphasort);
++	if (n < 0)
++		return config;
++
++	for (i = 0; i < n; i++) {
++		char *file = namelist[i]->d_name;
++		char *sep = "/";
++		char fpath[strlen(path)+strlen(sep)+strlen(file) + 1];
++		strcpy(fpath, path);
++		strcat(fpath, sep);
++		strcat(fpath, file);
++		free(namelist[i]);
++
++		fd = open_config_file(NULL, fpath);
++		if (fd < 0)
++			continue;
++
++		if (!weston_config_parse_internal(config, fd, fpath)) {
++			fprintf(stderr, "failed to parse '%s'\n", fpath);
++			free(config);
++			break;
++		}
++	}
++
++	for (i++; i < n; i++)
++		free(namelist[i]);
++
++	free(namelist);
++
+ 	return config;
+ }
+ 
+-- 
+2.20.1
+

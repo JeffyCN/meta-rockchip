@@ -1,0 +1,92 @@
+From 81e50b9e357f17c35099b0ed7ece8ff726c7d24c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 2 Apr 2021 11:23:36 +0800
+Subject: [PATCH 07/84] backend-drm: Bind Nth primary plane to Nth CRTC
+
+The vop2 allows primary planes to bind with random CRTC, but we need to
+use the same pair as the driver registered.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ libweston/backend-drm/drm-internal.h |  2 ++
+ libweston/backend-drm/drm.c          | 25 +++++++++++++++++++++++--
+ 2 files changed, 25 insertions(+), 2 deletions(-)
+
+diff --git a/libweston/backend-drm/drm-internal.h b/libweston/backend-drm/drm-internal.h
+index 4860088..c7cbb1d 100644
+--- a/libweston/backend-drm/drm-internal.h
++++ b/libweston/backend-drm/drm-internal.h
+@@ -526,6 +526,8 @@ struct drm_crtc {
+ 	uint32_t crtc_id; /* object ID to pass to DRM functions */
+ 	int pipe; /* index of CRTC in resource array / bitmasks */
+ 
++	uint32_t primary_plane_id;
++
+ 	/* Holds the properties for the CRTC */
+ 	struct drm_property_info props_crtc[WDRM_CRTC__COUNT];
+ };
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index 4278770..23490bb 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -186,6 +186,11 @@ drm_plane_is_available(struct drm_plane *plane, struct drm_output *output)
+ 	if (plane->state_cur->output && plane->state_cur->output != output)
+ 		return false;
+ 
++	/* The plane is not the primary plane for this CRTC. */
++	if (plane->type == WDRM_PLANE_TYPE_PRIMARY &&
++	    plane->plane_id != output->crtc->primary_plane_id)
++		return false;
++
+ 	/* Check whether the plane can be used with this CRTC; possible_crtcs
+ 	 * is a bitmask of CRTC indices (pipe), rather than CRTC object ID. */
+ 	return !!(plane->possible_crtcs & (1 << output->crtc->pipe));
+@@ -905,12 +910,14 @@ drm_plane_destroy(struct drm_plane *plane)
+  * @param b DRM compositor backend
+  */
+ static void
+-create_sprites(struct drm_backend *b)
++create_sprites(struct drm_backend *b, drmModeRes *resources)
+ {
+ 	drmModePlaneRes *kplane_res;
+ 	drmModePlane *kplane;
+ 	struct drm_plane *drm_plane;
++	struct drm_crtc *drm_crtc;
+ 	uint32_t i;
++	int crtc_pipe = -1;
+ 	kplane_res = drmModeGetPlaneResources(b->drm.fd);
+ 	if (!kplane_res) {
+ 		weston_log("failed to get plane resources: %s\n",
+@@ -928,6 +935,20 @@ create_sprites(struct drm_backend *b)
+ 		if (!drm_plane)
+ 			continue;
+ 
++		/**
++		 * HACK: Assuming Nth primary plane (or cursor) is the primary
++		 * plane for the Nth crtc.
++		 * See:
++		 * https://lore.kernel.org/dri-devel/20200807090706.GA2352366@phenom.ffwll.local/
++		 */
++		if (drm_plane->type == WDRM_PLANE_TYPE_PRIMARY) {
++			crtc_pipe ++;
++			drm_crtc = drm_crtc_find(b,
++						 resources->crtcs[crtc_pipe]);
++			assert(drm_crtc);
++			drm_crtc->primary_plane_id = drm_plane->plane_id;
++		}
++
+ 		if (drm_plane->type == WDRM_PLANE_TYPE_OVERLAY)
+ 			weston_compositor_stack_plane(b->compositor,
+ 						      &drm_plane->base,
+@@ -3087,7 +3108,7 @@ drm_backend_create(struct weston_compositor *compositor,
+ 	}
+ 
+ 	wl_list_init(&b->plane_list);
+-	create_sprites(b);
++	create_sprites(b, res);
+ 
+ 	if (udev_input_init(&b->input,
+ 			    compositor, b->udev, seat_id,
+-- 
+2.20.1
+
