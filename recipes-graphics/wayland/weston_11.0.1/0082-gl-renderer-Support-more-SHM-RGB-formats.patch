@@ -1,7 +1,7 @@
 From 180c4b98822a0a71cf683d860e4cc9a606c822d6 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 7 Jul 2022 11:09:23 +0800
-Subject: [PATCH 82/97] gl-renderer: Support more SHM RGB formats
+Subject: [PATCH 82/98] gl-renderer: Support more SHM RGB formats
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

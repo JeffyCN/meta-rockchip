@@ -1,7 +1,7 @@
 From ce11acdebc80578992f94cadaefeff4473a668d3 Mon Sep 17 00:00:00 2001
 From: Philipp Zabel <p.zabel@pengutronix.de>
 Date: Thu, 6 Oct 2022 16:50:47 +0200
-Subject: [PATCH 05/97] backend-vnc: use configured keymap
+Subject: [PATCH 05/98] backend-vnc: use configured keymap
 
 Use the keymap rules/model/layout configured in the weston.ini [keyboard]
 section.

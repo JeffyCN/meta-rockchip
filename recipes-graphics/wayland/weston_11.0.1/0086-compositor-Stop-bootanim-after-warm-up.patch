@@ -1,7 +1,7 @@
 From d3c6b70f5c9c794f766ee2f5594a8631ae1ade08 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 28 Sep 2022 10:44:07 +0800
-Subject: [PATCH 86/97] compositor: Stop bootanim after warm-up
+Subject: [PATCH 86/98] compositor: Stop bootanim after warm-up
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

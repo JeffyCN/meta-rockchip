@@ -1,7 +1,7 @@
 From e43339d06dabc0ddaa4523946c420fe7209828e0 Mon Sep 17 00:00:00 2001
 From: Philipp Zabel <p.zabel@pengutronix.de>
 Date: Thu, 6 Oct 2022 12:18:04 +0200
-Subject: [PATCH 06/97] backend-vnc: enable TLS support
+Subject: [PATCH 06/98] backend-vnc: enable TLS support
 
 Add TLS key and certificate parameters to enable encryption support.
 

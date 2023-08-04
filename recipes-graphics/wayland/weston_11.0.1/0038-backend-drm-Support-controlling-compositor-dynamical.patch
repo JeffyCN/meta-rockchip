@@ -1,7 +1,7 @@
 From c2aa42b9d69074fbf577f0fd0d5715815fddc694 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 3 Jul 2020 12:37:37 +0800
-Subject: [PATCH 38/97] backend-drm: Support controlling compositor dynamically
+Subject: [PATCH 38/98] backend-drm: Support controlling compositor dynamically
 
 Use config file to control compositor's state.
 

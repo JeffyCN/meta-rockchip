@@ -1,7 +1,7 @@
 From 8c6d9779d12b889de76d70a3d83c922796360405 Mon Sep 17 00:00:00 2001
 From: Marius Vlad <marius.vlad@collabora.com>
 Date: Wed, 5 Jul 2023 21:20:10 +0300
-Subject: [PATCH 09/97] clients/window: Update min_allocation for smaller
+Subject: [PATCH 09/98] clients/window: Update min_allocation for smaller
  widths/heights
 
 This makes sure we update min_allocation in situations where the

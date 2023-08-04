@@ -1,7 +1,7 @@
 From 9241c8fff316ed6c060292c924f20f4225b9434f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 7 Jul 2020 17:00:40 +0800
-Subject: [PATCH 20/97] HACK: gl-renderer: Support making hole for surface
+Subject: [PATCH 20/98] HACK: gl-renderer: Support making hole for surface
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

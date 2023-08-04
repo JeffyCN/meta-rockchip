@@ -1,7 +1,7 @@
 From fe0eb097841e430d796cb6261fa4e9a725981ec7 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 6 Jan 2021 10:13:40 +0800
-Subject: [PATCH 50/97] backend-drm: Fix disabling output error when using
+Subject: [PATCH 50/98] backend-drm: Fix disabling output error when using
  atomic
 
 Disabling output in async mode is not allow by drm driver's

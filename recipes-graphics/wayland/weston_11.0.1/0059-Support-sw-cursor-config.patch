@@ -1,7 +1,7 @@
 From 7d147eb7fbf16b8054b4f8a52ac391f60d516c72 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 13 Jul 2021 10:56:56 +0800
-Subject: [PATCH 59/97] Support sw-cursor config
+Subject: [PATCH 59/98] Support sw-cursor config
 
 Tested with:
 [core]

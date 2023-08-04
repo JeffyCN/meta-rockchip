@@ -1,0 +1,26 @@
+From c28e9a5dd5b30c1317ee1ef00a9298433bd9f393 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 4 Aug 2023 11:00:11 +0800
+Subject: [PATCH 98/98] HACK: meson_options: Disable backend-vnc by default
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ meson_options.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/meson_options.txt b/meson_options.txt
+index df5ba603..0681c094 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -35,7 +35,7 @@ option(
+ option(
+ 	'backend-vnc',
+ 	type: 'boolean',
+-	value: true,
++	value: false,
+ 	description: 'Weston backend: VNC remote screensharing'
+ )
+ option(
+-- 
+2.20.1
+

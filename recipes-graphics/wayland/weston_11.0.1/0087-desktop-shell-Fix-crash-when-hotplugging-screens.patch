@@ -1,7 +1,7 @@
 From 005d2bd8b19eac22df12eff4684fcddeeb4654d2 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 3 Oct 2022 21:03:04 +0800
-Subject: [PATCH 87/97] desktop-shell: Fix crash when hotplugging screens
+Subject: [PATCH 87/98] desktop-shell: Fix crash when hotplugging screens
 
 1/ Force allowing respawn.
 2/ Panel's output might not be available when committing.

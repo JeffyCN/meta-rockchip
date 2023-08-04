@@ -1,7 +1,7 @@
 From 960e9d5b88e4c05039762cdf06be6d9f8bff911f Mon Sep 17 00:00:00 2001
 From: Philipp Zabel <philipp.zabel@gmail.com>
 Date: Sat, 19 Nov 2022 09:52:01 +0100
-Subject: [PATCH 07/97] libweston: Add user authentication support via PAM
+Subject: [PATCH 07/98] libweston: Add user authentication support via PAM
 
 Add user authentication support for remote backends via PAM.
 This requires a configuration file /etc/pam.d/weston.

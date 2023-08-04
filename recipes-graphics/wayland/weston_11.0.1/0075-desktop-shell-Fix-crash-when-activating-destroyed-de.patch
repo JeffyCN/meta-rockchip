@@ -1,7 +1,7 @@
 From 9040dfd7997b7b895908406445469158636efde0 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 31 May 2022 12:32:18 +0800
-Subject: [PATCH 75/97] desktop-shell: Fix crash when activating destroyed
+Subject: [PATCH 75/98] desktop-shell: Fix crash when activating destroyed
  desktop surface
 
 Tested with Qt's Windows Flags Example, by switching between Popup and

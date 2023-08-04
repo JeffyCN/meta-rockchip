@@ -1,7 +1,7 @@
 From 600073216b4890c46f19a6016b2d16290b0ed543 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 15 Jul 2021 14:38:13 +0800
-Subject: [PATCH 60/97] gl-renderer: Support NV16 dma buf
+Subject: [PATCH 60/98] gl-renderer: Support NV16 dma buf
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

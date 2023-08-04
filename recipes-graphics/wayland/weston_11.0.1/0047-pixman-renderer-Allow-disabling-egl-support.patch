@@ -1,7 +1,7 @@
 From ed5b45fd53fe26ce885bd1cab43fb95666bba75f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 26 Oct 2020 16:05:51 +0800
-Subject: [PATCH 47/97] pixman-renderer: Allow disabling egl support
+Subject: [PATCH 47/98] pixman-renderer: Allow disabling egl support
 
 Set env WESTON_PIXMAN_WITHOUT_EGL to disable egl support.
 

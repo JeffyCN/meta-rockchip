@@ -1,7 +1,7 @@
 From 8743dc16e90e4413568e849bc7ba23b081552908 Mon Sep 17 00:00:00 2001
 From: Stefan Agner <stefan@agner.ch>
 Date: Sun, 22 Sep 2019 19:40:04 +0200
-Subject: [PATCH 02/97] backend-vnc: add VNC support using Neat VNC library
+Subject: [PATCH 02/98] backend-vnc: add VNC support using Neat VNC library
 
 This adds basic VNC protocol support using the Neat VNC library
 (https://github.com/any1/neatvnc). Neat VNC depends on the AML main

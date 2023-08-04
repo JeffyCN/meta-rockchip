@@ -1,7 +1,7 @@
 From daef6b737a2bbeaa27140b137642410039784fb4 Mon Sep 17 00:00:00 2001
 From: Philipp Zabel <p.zabel@pengutronix.de>
 Date: Fri, 30 Sep 2022 12:04:15 +0200
-Subject: [PATCH 03/97] man: add a man page for the VNC backend
+Subject: [PATCH 03/98] man: add a man page for the VNC backend
 
 Add a new weston-vnc man page, based on the weston-rdp man page.
 Also add links in the main weston man page.

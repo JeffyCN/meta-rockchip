@@ -1,7 +1,7 @@
 From cb881f663881dae655469a97fcc45148145b52b4 Mon Sep 17 00:00:00 2001
 From: Philipp Zabel <p.zabel@pengutronix.de>
 Date: Thu, 6 Oct 2022 16:26:58 +0200
-Subject: [PATCH 04/97] backend-vnc: implement direct key code handling
+Subject: [PATCH 04/98] backend-vnc: implement direct key code handling
 
 Allow clients that support the QEMU Extended Key Event Message to send
 keycodes directly.

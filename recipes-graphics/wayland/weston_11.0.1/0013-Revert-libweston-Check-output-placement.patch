@@ -1,7 +1,7 @@
 From 696f39cbe60544c924c0b9fc840c9accf66698f8 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 3 Nov 2022 11:57:59 +0800
-Subject: [PATCH 13/97] Revert "libweston: Check output placement"
+Subject: [PATCH 13/98] Revert "libweston: Check output placement"
 
 This reverts commit 7e7198bd881859b20f74cbdae46b5700ff1cc5d4.
 

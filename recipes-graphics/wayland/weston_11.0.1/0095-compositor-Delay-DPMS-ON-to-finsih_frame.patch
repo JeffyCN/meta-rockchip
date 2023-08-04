@@ -1,7 +1,7 @@
 From 4e576c9f6ea811a6fda46e25813f64cb3ab35fcd Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 18 Jul 2023 09:42:32 +0800
-Subject: [PATCH 95/97] compositor: Delay DPMS-ON to finsih_frame()
+Subject: [PATCH 95/98] compositor: Delay DPMS-ON to finsih_frame()
 
 To make sure that the new frame is ready when turning on outputs.
 

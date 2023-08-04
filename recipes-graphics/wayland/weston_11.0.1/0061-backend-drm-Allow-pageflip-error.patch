@@ -1,7 +1,7 @@
 From 056a638ed5f5ed5aed403b060f23430bcfadcc31 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 13 Aug 2021 10:10:01 +0800
-Subject: [PATCH 61/97] backend-drm: Allow pageflip error
+Subject: [PATCH 61/98] backend-drm: Allow pageflip error
 
 Allow to recover from pageflip error:
 [02:08:14.089] queueing pageflip failed: Operation not permitted

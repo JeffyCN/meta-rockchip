@@ -1,7 +1,7 @@
 From ab1e0d957d019978fc6ed6a5f601db10d1408e13 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 27 Apr 2022 22:59:32 +0800
-Subject: [PATCH 12/97] Revert "gl-renderer: require GL_EXT_unpack_subimage"
+Subject: [PATCH 12/98] Revert "gl-renderer: require GL_EXT_unpack_subimage"
 
 This reverts commit 593d5af43a8e2c2a3371088fa7ae430d0517c82d.
 

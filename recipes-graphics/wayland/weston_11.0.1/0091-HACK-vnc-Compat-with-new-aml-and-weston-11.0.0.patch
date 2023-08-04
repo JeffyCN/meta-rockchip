@@ -1,7 +1,7 @@
 From ed26df1d70889b5393dafea21fb583bf8de77b4f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 8 Dec 2022 10:10:20 +0800
-Subject: [PATCH 91/97] HACK: vnc: Compat with new aml and weston 11.0.0
+Subject: [PATCH 91/98] HACK: vnc: Compat with new aml and weston 11.0.0
 
 TODO: Remove it when upgrade to newer weston version.
 

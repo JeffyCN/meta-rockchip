@@ -1,7 +1,7 @@
 From 942010e9fd7eeeac6fcfe62487f719c081bf5f73 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 2 Jun 2022 18:22:38 +0800
-Subject: [PATCH 23/97] compositor: Fix damage tracking error when overlapped
+Subject: [PATCH 23/98] compositor: Fix damage tracking error when overlapped
  outputs
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>

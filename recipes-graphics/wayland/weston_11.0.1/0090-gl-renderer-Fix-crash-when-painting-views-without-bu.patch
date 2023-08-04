@@ -1,7 +1,7 @@
 From 8c3fe38cd07e48a4599621cdc6c97b1dcc6b19e1 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 5 Dec 2022 16:48:12 +0800
-Subject: [PATCH 90/97] gl-renderer: Fix crash when painting views without
+Subject: [PATCH 90/98] gl-renderer: Fix crash when painting views without
  buffer
 
 By adding a sanity check for gb.

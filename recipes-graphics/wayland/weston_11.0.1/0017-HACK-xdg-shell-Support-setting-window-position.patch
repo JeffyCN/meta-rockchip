@@ -1,7 +1,7 @@
 From 7a9dc6633124f9f2f9884626f06d81ffd6a6f4da Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 27 Feb 2019 17:06:58 +0800
-Subject: [PATCH 17/97] HACK: xdg-shell: Support setting window position
+Subject: [PATCH 17/98] HACK: xdg-shell: Support setting window position
 
 Set window position when .set_window_geometry() called with size 0x0.
 

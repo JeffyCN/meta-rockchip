@@ -1,7 +1,7 @@
 From 2a35f6d930bc434e4c639e9af31614ffc20e8dcc Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 5 Aug 2022 11:27:54 +0800
-Subject: [PATCH 83/97] gl-renderer: Clear RGB when alpha is zero in fast path
+Subject: [PATCH 83/98] gl-renderer: Clear RGB when alpha is zero in fast path
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

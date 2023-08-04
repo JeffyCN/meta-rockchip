@@ -1,7 +1,7 @@
 From 6c839e9b32f3147bee9bdc1f5182f1234f802884 Mon Sep 17 00:00:00 2001
 From: Pekka Paalanen <pekka.paalanen@collabora.com>
 Date: Fri, 22 Jul 2022 11:30:04 +0300
-Subject: [PATCH 01/97] libweston: add weston_renderer::resize_output()
+Subject: [PATCH 01/98] libweston: add weston_renderer::resize_output()
 
 Previously renderers were not told when the output (framebuffer they
 need to draw) size changed. Renderers just pulled that information out

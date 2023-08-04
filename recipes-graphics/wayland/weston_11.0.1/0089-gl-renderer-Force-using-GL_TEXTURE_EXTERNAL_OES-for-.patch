@@ -1,7 +1,7 @@
 From 27ccdaa782e3ff925b4e4ad26f9ececdcd349d60 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 23 Nov 2022 10:21:13 +0800
-Subject: [PATCH 89/97] gl-renderer: Force using GL_TEXTURE_EXTERNAL_OES for
+Subject: [PATCH 89/98] gl-renderer: Force using GL_TEXTURE_EXTERNAL_OES for
  imported dma-buf
 
 Mali depends on that.

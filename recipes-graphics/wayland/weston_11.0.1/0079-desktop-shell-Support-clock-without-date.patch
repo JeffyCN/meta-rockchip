@@ -1,7 +1,7 @@
 From 7e5c5f909347ed90a75c9979aff237d89966d9fc Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 15 Jun 2022 11:02:44 +0800
-Subject: [PATCH 79/97] desktop-shell: Support clock without date
+Subject: [PATCH 79/98] desktop-shell: Support clock without date
 
 Tested with:
 [shell]
