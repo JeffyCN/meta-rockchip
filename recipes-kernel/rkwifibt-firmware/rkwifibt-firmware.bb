@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf0
 
 inherit local-git
 
-SRCREV = "54d05e00e73a91c14c86005e86fff45fa094203e"
+SRCREV = "fe32b4846ce7fc14a73a9922e397b906fadd7868"
 SRC_URI = "git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkwifibt;"
 
 S = "${WORKDIR}/git"
@@ -55,7 +55,7 @@ FILES:${PN}-ap6212a1-wifi = " \
 	lib/firmware/nvram_ap6212a.txt \
 "
 FILES:${PN}-ap6212a1-bt = " \
-	lib/firmware/BCM43430A1.hcd \
+	lib/firmware/BCM4343A1.hcd \
 "
 
 FILES:${PN}-ap6236-wifi = " \
