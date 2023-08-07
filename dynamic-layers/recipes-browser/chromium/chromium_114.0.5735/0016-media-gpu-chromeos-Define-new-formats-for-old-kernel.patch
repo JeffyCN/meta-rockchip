@@ -1,0 +1,36 @@
+From 921315131f167cfbf69dd45932ee1325e4ff6ba2 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 9 Sep 2022 18:54:08 +0800
+Subject: [PATCH 16/20] media: gpu: chromeos: Define new formats for old kernel
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/chromeos/fourcc.h | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/media/gpu/chromeos/fourcc.h b/media/gpu/chromeos/fourcc.h
+index d43cd0859..5224b61b5 100644
+--- a/media/gpu/chromeos/fourcc.h
++++ b/media/gpu/chromeos/fourcc.h
+@@ -13,6 +13,18 @@
+ #include "media/gpu/media_gpu_export.h"
+ #include "third_party/abseil-cpp/absl/types/optional.h"
+ 
++#ifndef V4L2_PIX_FMT_MT21C
++#define V4L2_PIX_FMT_MT21C    v4l2_fourcc('M', 'T', '2', '1') /* Mediatek compressed block mode  */
++#endif
++
++#ifndef V4L2_PIX_FMT_VP9
++#define V4L2_PIX_FMT_VP9      v4l2_fourcc('V', 'P', '9', '0') /* VP9 */
++#endif
++
++#ifndef V4L2_PIX_FMT_HEVC
++#define V4L2_PIX_FMT_HEVC       v4l2_fourcc('H', 'E', 'V', 'C') /* HEVC */
++#endif
++
+ namespace media {
+ 
+ // Composes a Fourcc value.
+-- 
+2.20.1
+
