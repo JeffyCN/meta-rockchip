@@ -1,7 +1,7 @@
 # Copyright (C) 2019, Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-PATCHPATH = "${CURDIR}/u-boot"
+PATCHPATH = "${CURDIR}/u-boot-rockchip"
 inherit auto-patch
 
 inherit local-git python3-dir
