@@ -1,0 +1,36 @@
+From af0067705495b0028ac01c313544cf16673fc282 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 4 Aug 2023 17:15:32 +0800
+Subject: [PATCH 19/20] HACK: ui: gl: Force enabling validating command decoder
+
+Mali doesn't support passthrough, so validating needs to be enabled.
+
+See:
+https://chromium-review.googlesource.com/c/chromium/src/+/4212134
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ui/gl/features.gni | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/ui/gl/features.gni b/ui/gl/features.gni
+index fbc49c2eb..e968b26cf 100644
+--- a/ui/gl/features.gni
++++ b/ui/gl/features.gni
+@@ -26,9 +26,10 @@ declare_args() {
+   # Independent of use_dawn, which controls whether Dawn is used in Chromium.
+   build_dawn_tests = is_mac || is_win || is_linux || is_chromeos || is_android
+ 
+-  enable_validating_command_decoder =
+-      !is_win && !is_apple &&
+-      !(is_linux && !is_castos && !is_chromeos_lacros) && !is_fuchsia
++  # enable_validating_command_decoder =
++  #     !is_win && !is_apple &&
++  #     !(is_linux && !is_castos && !is_chromeos_lacros) && !is_fuchsia
++  enable_validating_command_decoder = true
+ }
+ 
+ declare_args() {
+-- 
+2.20.1
+
