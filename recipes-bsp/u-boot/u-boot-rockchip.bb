@@ -22,6 +22,7 @@ SRCREV_rkbin = "104659686b734ab041ef958c0abece1a250f48a4"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=u-boot; \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkbin;name=rkbin;destsuffix=rkbin; \
+	file://0003-Revert-Makefile-enable-Werror-option.patch \
 "
 
 SRCREV_FORMAT = "default_rkbin"
