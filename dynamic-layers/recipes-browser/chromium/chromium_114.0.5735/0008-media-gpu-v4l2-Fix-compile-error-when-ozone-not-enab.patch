@@ -1,0 +1,67 @@
+From 3cb07f785285a7d6f9039850c71b10225983c630 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 28 Sep 2020 20:02:00 +0800
+Subject: [PATCH 08/20] media: gpu: v4l2: Fix compile error when ozone not
+ enabled
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/v4l2/BUILD.gn                               | 5 ++++-
+ media/gpu/v4l2/v4l2_slice_video_decode_accelerator.cc | 7 +++++++
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
+index 5f0caac52..25b67b4ff 100644
+--- a/media/gpu/v4l2/BUILD.gn
++++ b/media/gpu/v4l2/BUILD.gn
+@@ -125,9 +125,12 @@ source_set("v4l2") {
+     "//media/parsers",
+     "//third_party/libyuv",
+     "//ui/gfx/geometry",
+-    "//ui/ozone",
+   ]
+ 
++  if (use_ozone) {
++    deps += [ "//ui/ozone" ]
++  }
++
+   if (is_chromeos_ash) {
+     sources += [
+       "v4l2_jpeg_encode_accelerator.cc",
+diff --git a/media/gpu/v4l2/v4l2_slice_video_decode_accelerator.cc b/media/gpu/v4l2/v4l2_slice_video_decode_accelerator.cc
+index 11b9d93b0..46e7b9e80 100644
+--- a/media/gpu/v4l2/v4l2_slice_video_decode_accelerator.cc
++++ b/media/gpu/v4l2/v4l2_slice_video_decode_accelerator.cc
+@@ -52,8 +52,11 @@
+ #include "ui/gl/gl_context.h"
+ #include "ui/gl/gl_display.h"
+ #include "ui/gl/gl_surface_egl.h"
++
++#if defined(USE_OZONE)
+ #include "ui/ozone/public/ozone_platform.h"
+ #include "ui/ozone/public/surface_factory_ozone.h"
++#endif
+ 
+ #define NOTIFY_ERROR(x)                       \
+   do {                                        \
+@@ -158,6 +161,9 @@ V4L2SliceVideoDecodeAccelerator::CreateGLImage(const gfx::Size& size,
+                                                gfx::NativePixmapHandle handle,
+                                                GLenum target,
+                                                GLuint texture_id) {
++#if !defined(USE_OZONE)
++  return nullptr;
++#else
+   DVLOGF(3);
+ 
+   size_t num_planes = handle.planes.size();
+@@ -191,6 +197,7 @@ V4L2SliceVideoDecodeAccelerator::CreateGLImage(const gfx::Size& size,
+       size, buffer_format, std::move(pixmap), target, texture_id);
+   DCHECK(image);
+   return image;
++#endif
+ }
+ 
+ V4L2SliceVideoDecodeAccelerator::V4L2SliceVideoDecodeAccelerator(
+-- 
+2.20.1
+
