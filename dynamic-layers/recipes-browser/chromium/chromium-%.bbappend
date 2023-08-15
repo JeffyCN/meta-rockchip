@@ -8,7 +8,7 @@ inherit auto-patch
 PACKAGECONFIG ??= "use-egl use-linux-v4l2 proprietary-codecs"
 PACKAGECONFIG[use-linux-v4l2] = "use_v4l2_codec=true use_v4lplugin=true use_linux_v4l2_only=true"
 
-GN_ARGS:append = " is_debug=false is_official_build=false fatal_linker_warnings=false"
+GN_ARGS:append = " fatal_linker_warnings=false"
 
 CHROMIUM_EXTRA_ARGS:append = " --no-sandbox --gpu-sandbox-start-early --ignore-gpu-blacklist --ignore-gpu-blocklist --enable-accelerated-video-decode"
 
