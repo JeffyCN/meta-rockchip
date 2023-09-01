@@ -9,13 +9,13 @@
 #include <linux/socket.h>
 #include <netpacket/packet.h>
 #include <net/if.h>
+#include <unistd.h>
 
 #define VERSION	"1.2"
 
 #define TAG "dhd_priv: "
 #if defined(ANDROID)
 #include <signal.h>
-#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
 #include "cutils/misc.h"
@@ -78,7 +78,7 @@ main(int argc, char **argv)
 	priv_cmd.buf = buf;
 	priv_cmd.used_len = 500;
 	priv_cmd.total_len = 500;
-	ifr.ifr_data = &priv_cmd;
+	ifr.ifr_data = (void *)&priv_cmd;
 
 	if ((ret = ioctl(ioctl_sock, SIOCDEVPRIVATE + 1, &ifr)) < 0) {
 		DHD_PRINTF(TAG "failed to issue private commands %d\n", ret);

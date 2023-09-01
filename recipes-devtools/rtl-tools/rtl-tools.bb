@@ -9,8 +9,12 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/GPL-2.0-only;md5=801f80980d171d
 SRC_URI = " \
 	file://hciattach.c \
 	file://hciattach.h \
+	file://hciattach_h4.c \
+	file://hciattach_h4.h \
 	file://hciattach_rtk.c \
 	file://Makefile \
+	file://rtb_fwc.c \
+	file://rtb_fwc.h \
 "
 
 S = "${WORKDIR}"
