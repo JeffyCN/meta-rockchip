@@ -9,13 +9,13 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 SRC_URI = " \
 	file://dhd_priv.c \
 	file://brcm_patchram_plus1.c \
-	file://Makefile \
 "
 
 S = "${WORKDIR}"
 
-do_compile_append() {
-	${CC} ${CFLAGS} ${LDFLAGS} brcm_patchram_plus1.c -o brcm_patchram_plus
+do_compile() {
+	${CC} ${CFLAGS} ${LDFLAGS} dhd_priv.c -o dhd_priv
+	${CC} ${CFLAGS} ${LDFLAGS} brcm_patchram_plus1.c -o brcm_patchram_plus1
 }
 
 do_install() {
