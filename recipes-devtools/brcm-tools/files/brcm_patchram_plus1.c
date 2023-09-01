@@ -104,6 +104,7 @@
 
 // TODO: Integrate BCM support into Bluez hciattach
 
+#include <ctype.h>
 #include <stdio.h>
 #include <getopt.h>
 #include <errno.h>
@@ -121,6 +122,7 @@
 #include <sys/termios.h>
 #include <sys/ioctl.h>
 #include <limits.h>
+#include <unistd.h>
 #endif
 
 #include <string.h>
@@ -152,9 +154,40 @@
 #define HCI_UART_3WIRE	2
 #define HCI_UART_H4DS	3
 #define HCI_UART_LL		4
-
+#define LOCAL_NAME_BUFFER_LEN                   32
+#define HCI_EVT_CMD_CMPL_LOCAL_NAME_STRING      6
 typedef unsigned char uchar;
+/* AMPAK FW auto detection table */
+typedef struct {
+    char *chip_id;
+    char *updated_chip_id;
+} fw_auto_detection_entry_t;
 
+#define FW_TABLE_VERSION "v1.1 20161117"
+static const fw_auto_detection_entry_t fw_auto_detection_table[] = {
+	//{"4343A0","BCM43430"},    //AP6212
+	{"BCM43430A1","BCM4343A1"}, //AP6212A
+	{"BCM20702A","BCM20710A1"}, //AP6210B
+	{"BCM4335C0","BCM4335C0"}, //AP6335
+	{"BCM4330B1","BCM40183B2"}, //AP6330
+	{"BCM4324B3","BCM43241B4"}, //AP62X2
+	{"BCM4350C0","BCM4350C0"}, //AP6354
+	{"BCM4345C5","BCM4345C5"}, //AP6256
+	{"BCM4354A2","BCM4356A2"}, //AP6356
+	{"BCM4345C0","BCM4345C0"}, //AP6255
+	//{"BCM43341B0","BCM43341B0"}, //AP6234
+	//{"BCM2076B1","BCM2076B1"}, //AP6476
+	{"BCM43430B0","BCM4343B0"}, //AP6236
+	{"BCM4359C0","BCM4359C0"},  //AP6359
+	{"BCM4349B1","BCM4359B1"},  //AP6359
+	{"BCM4359C0","BCM4359C0"},	//AP6398s
+	//add
+	{"BCM4362A2","BCM4362A2"},  //AP6275S/PCIE
+	{"BCM4381A1","BCM4381A1"},  //AP6281S
+	{"BCM43013A0","BCM43013A0"},  //AP6203BM
+	{"SYN43756B0","SYN43756B0"},  //AP6276S
+	{(char *) NULL, NULL}
+};
 int uart_fd = -1;
 int hcdfile_fd = -1;
 int termios_baudrate = 0;
@@ -170,8 +203,12 @@ int tosleep = 0;
 
 struct termios termios;
 uchar buffer[1024];
+uchar local_name[LOCAL_NAME_BUFFER_LEN];
+uchar fw_folder_path[1024];
 
 uchar hci_reset[] = { 0x01, 0x03, 0x0c, 0x00 };
+
+uchar hci_read_local_name[] = { 0x01, 0x14, 0x0c, 0x00 };
 
 uchar hci_download_minidriver[] = { 0x01, 0x2e, 0xfc, 0x00 };
 
@@ -197,6 +234,23 @@ uchar hci_write_i2spcm_interface_param[] =
 int
 parse_patchram(char *optarg)
 {
+	int len = strlen(optarg);
+	char *p = optarg+len-1;;
+	/*Look for first '/' to know the fw path*/
+	while(len>0)
+	{
+		if(*p == '/')
+			break;
+		len--;
+		p--;
+	}
+	if(len>0)
+	{
+		*p =0;
+		strcpy(fw_folder_path,optarg);
+		fprintf(stderr,"FW folder path = %s\n", fw_folder_path);
+	}
+#if 0
 	char *p;
 
 	if (!(p = strrchr(optarg, '.'))) {
@@ -216,6 +270,7 @@ parse_patchram(char *optarg)
 		exit(5);
 	}
 
+#endif
 	return(0);
 }
 
@@ -335,7 +390,7 @@ writeApName(const char* name, int len)
     char nameBuf[AP_NAME_SUFFIX_LEN] = {0};
 
     if(len < 17) {
-        return;
+        return -1;
     }
 
     if(0 != strncmp(name, "11:22:33:44:55", 17)) {
@@ -370,7 +425,7 @@ parse_bdaddr_rand(char *optarg)
 				optargtest[j] = metachar[rand()%16]; 
 			}
 		}
-		optargtest[17]="\0";
+		optargtest[17]='\0';
 		
 		writeApName(optargtest,AP_NAME_SUFFIX_LEN);
 	}
@@ -719,6 +774,54 @@ proc_reset()
 }
 
 void
+proc_read_local_name()
+{
+	int i;
+	char *p_name;
+	hci_send_cmd(hci_read_local_name, sizeof(hci_read_local_name));
+	read_event(uart_fd, buffer);
+	p_name = &buffer[1+HCI_EVT_CMD_CMPL_LOCAL_NAME_STRING];
+	for (i=0; (i < LOCAL_NAME_BUFFER_LEN)||(*(p_name+i) != 0); i++)
+		*(p_name+i) = toupper(*(p_name+i));
+	strcpy(local_name,p_name);
+	fprintf(stderr,"chip id = %s\n", local_name);
+}
+
+void
+proc_open_patchram()
+{
+	char fw_path[1024];
+	char *p;
+	int i;
+	fw_auto_detection_entry_t *p_entry;
+	p_entry = (fw_auto_detection_entry_t *)fw_auto_detection_table;
+	while (p_entry->chip_id != NULL)
+	{
+		if (strstr(local_name, p_entry->chip_id)!=NULL)
+		{
+			strcpy(local_name,p_entry->updated_chip_id);
+			break;
+		}
+		p_entry++;
+	}
+	sprintf(fw_path,"%s/%s.hcd",fw_folder_path,local_name);
+	fprintf(stderr, "FW path = %s\n", fw_path);
+	if ((hcdfile_fd = open(fw_path, O_RDONLY)) == -1) {
+		fprintf(stderr, "file %s could not be opened, error %d\n", fw_path , errno);
+		p = local_name;
+		fprintf(stderr, "Retry lower case FW name\n");
+		for (i=0; (i < LOCAL_NAME_BUFFER_LEN)||(*(p+i) != 0); i++)
+			*(p+i) = tolower(*(p+i));
+		sprintf(fw_path,"%s/%s.hcd",fw_folder_path,local_name);
+		fprintf(stderr, "FW path = %s\n", fw_path);
+		if ((hcdfile_fd = open(fw_path, O_RDONLY)) == -1) {
+			fprintf(stderr, "file %s could not be opened, error %d\n", fw_path, errno);
+			exit(5);
+		}
+	}
+}
+
+void
 proc_patchram()
 {
 	int len;
@@ -884,7 +987,7 @@ main (int argc, char **argv)
 #ifdef ANDROID
 	read_default_bdaddr();
 #endif
-
+	fprintf(stderr, "###AMPAK FW Auto detection patch version = [%s]###\n", FW_TABLE_VERSION);
 	if (parse_cmd_line(argc, argv)) {
 		exit(1);
 	}
@@ -896,6 +999,8 @@ main (int argc, char **argv)
 	init_uart();
 
 	proc_reset();
+	proc_read_local_name();
+	proc_open_patchram();
 
 	if (use_baudrate_for_download) {
 		if (termios_baudrate) {
