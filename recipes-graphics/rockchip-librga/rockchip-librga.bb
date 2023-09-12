@@ -16,9 +16,9 @@ PV_append = "+git${SRCPV}"
 inherit local-git
 
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=linux-rga-im2d; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=linux-rga-multi; \
 "
-SRCREV = "a1b05b8fcf4698176477370fd942b31d9ae66404"
+SRCREV = "c6105b06ade0e5dc7f16924c7f0f5e9dcdb198bc"
 S = "${WORKDIR}/git"
 
 inherit meson pkgconfig
