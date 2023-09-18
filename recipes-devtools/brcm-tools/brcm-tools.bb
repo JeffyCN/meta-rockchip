@@ -21,5 +21,5 @@ do_compile() {
 do_install() {
 	install -d ${D}${bindir}
 	install -m 0755 dhd_priv ${D}${bindir}
-	install -m 0755 brcm_patchram_plus ${D}${bindir}
+	install -m 0755 brcm_patchram_plus1 ${D}${bindir}
 }
