@@ -47,8 +47,9 @@ do_generate_toolchain_file:append () {
 
 do_install:append () {
 	# rkaiq installed 3A server to the wrong dir.
-	[ -d ${D}/usr/usr ] && mv ${D}/usr/usr/* ${D}/usr/
-	rm -rf ${D}/usr/etc ${D}/usr/usr ${D}/usr/bin/*demo
+	[ ! -d ${D}/usr/usr ] || cp -rp ${D}/usr/usr ${D}/
+	rm -rf ${D}/usr/etc ${D}/usr/usr ${D}/usr/bin/*demo \
+		${D}/usr/bin/rkaiq_tool_server
 
 	chrpath -d ${D}/usr/lib/libsmartIr.so
 
