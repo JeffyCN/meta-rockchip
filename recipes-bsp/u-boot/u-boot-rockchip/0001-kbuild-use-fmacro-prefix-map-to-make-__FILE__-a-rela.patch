@@ -1,4 +1,4 @@
-From 6632c46f536ff0604c319b6fccd90b5a1eb70451 Mon Sep 17 00:00:00 2001
+From 3a641f1942c5127934efe8025f64fa5bd50c0869 Mon Sep 17 00:00:00 2001
 From: Masahiro Yamada <yamada.masahiro@socionext.com>
 Date: Mon, 16 Apr 2018 13:18:31 +0900
 Subject: [PATCH 1/3] kbuild: use -fmacro-prefix-map to make __FILE__ a
@@ -25,10 +25,10 @@ Reviewed-by: Simon Glass <sjg@chromium.org>
  1 file changed, 3 insertions(+)
 
 diff --git a/Makefile b/Makefile
-index 590fd4c1f2..373babe7dc 100644
+index 1012b065ad..d19486fa20 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -594,6 +594,9 @@ endif
+@@ -601,6 +601,9 @@ endif
  KBUILD_CFLAGS += $(call cc-option,-fno-stack-protector)
  KBUILD_CFLAGS += $(call cc-option,-fno-delete-null-pointer-checks)
  
