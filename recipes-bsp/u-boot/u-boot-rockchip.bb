@@ -17,8 +17,8 @@ PV = "2017.09+git${SRCPV}"
 
 LIC_FILES_CHKSUM = "file://Licenses/README;md5=a2c678cfd4a4d97135585cad908541c6"
 
-SRCREV = "1605e9e8fb52503209543a16b5d8c6908d1064f7"
-SRCREV_rkbin = "104659686b734ab041ef958c0abece1a250f48a4"
+SRCREV = "a93658f8f45dc0266be21840931131b10c325e03"
+SRCREV_rkbin = "c41b714cacd249e3ef69b2bbe774da5095eefd72"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=u-boot; \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkbin;name=rkbin;destsuffix=rkbin; \
@@ -85,16 +85,16 @@ do_compile_append() {
 
 	# Generate idblock image
 	bbnote "${PN}: Generating ${RK_IDBLOCK_IMG} from ${RK_LOADER_BIN}"
-	./tools/boot_merger --unpack "${RK_LOADER_BIN}"
+	../rkbin/tools/boot_merger unpack -i "${RK_LOADER_BIN}" -o .
 
-	if [ -f FlashHead ];then
-		cat FlashHead FlashData > "${RK_IDBLOCK_IMG}"
+	if [ -f FlashHead.bin ];then
+		cat FlashHead.bin FlashData.bin > "${RK_IDBLOCK_IMG}"
 	else
-		./tools/mkimage -n "${SOC_FAMILY}" -T rksd -d FlashData \
+		./tools/mkimage -n "${SOC_FAMILY}" -T rksd -d FlashData.bin \
 			"${RK_IDBLOCK_IMG}"
 	fi
 
-	cat FlashBoot >> "${RK_IDBLOCK_IMG}"
+	cat FlashBoot.bin >> "${RK_IDBLOCK_IMG}"
 }
 
 do_deploy_append() {

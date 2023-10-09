@@ -1,4 +1,4 @@
-From 36052f6b31c8dde0e04527a104dd44f2fc8bc079 Mon Sep 17 00:00:00 2001
+From afcc5575be944502825affeca78c7b1aeef0ba9b Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 30 Jan 2023 17:13:26 +0800
 Subject: [PATCH 2/3] HACK: Support python3 for dtoc
