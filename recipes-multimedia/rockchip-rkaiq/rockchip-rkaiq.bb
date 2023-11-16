@@ -37,7 +37,7 @@ do_generate_toolchain_file:append () {
 	echo "set( CMAKE_SYSROOT_COMPILE ${STAGING_DIR_HOST} )" >> \
 		${WORKDIR}/toolchain.cmake
 
-	sed -i "s/\(\${CMAKE_C_COMPILER}\)/\1 -I\${CMAKE_SYSROOT}\/usr\/include/" \
+	sed -i "s/\( \${CMAKE_C_COMPILER}\)/\1 -I\${CMAKE_SYSROOT}\/usr\/include/" \
 		${S}/rkaiq/iq_parser_v2/CMakeLists.txt
 
 	sed -i 's/if ( !pattr )/if ( pattr )/' ${S}/rkaiq/iq_parser/xmltags.cpp
