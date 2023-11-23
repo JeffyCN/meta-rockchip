@@ -12,7 +12,7 @@ inherit local-git
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=libmali; \
 "
-SRCREV = "f450951d029e1cd4f3ac9ede1d76b46951e32ee8"
+SRCREV = "1d173f39b51a31212d9ec346044fa81587df34f4"
 S = "${WORKDIR}/git"
 
 DEPENDS = "coreutils-native libdrm"
