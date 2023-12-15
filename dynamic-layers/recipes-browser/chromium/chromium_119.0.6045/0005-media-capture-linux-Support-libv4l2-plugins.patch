@@ -1,0 +1,168 @@
+From f478f5494e84a92cca580d7ae12bba8f2896a15b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 1 Jul 2019 10:37:35 +0800
+Subject: [PATCH 05/17] media: capture: linux: Support libv4l2 plugins
+
+Allow using libv4l2 plugins for linux v4l2 capture devices.
+
+Depends on custom libv4l2 with mmap & munmap.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/capture/BUILD.gn                        | 15 +++++++
+ .../video/linux/v4l2_capture_device_impl.cc   | 44 ++++++++++++++++++-
+ .../video/linux/v4l2_capture_device_impl.h    |  6 +++
+ 3 files changed, 64 insertions(+), 1 deletion(-)
+
+diff --git a/media/capture/BUILD.gn b/media/capture/BUILD.gn
+index 78d147f04..87390e20b 100644
+--- a/media/capture/BUILD.gn
++++ b/media/capture/BUILD.gn
+@@ -2,6 +2,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//build/buildflag_header.gni")
+ import("//build/config/chromeos/ui_mode.gni")
+ import("//build/config/features.gni")
+ import("//build/config/ui.gni")
+@@ -18,6 +19,14 @@ group("capture") {
+   ]
+ }
+ 
++buildflag_header("buildflags") {
++  header = "buildflags.h"
++
++  flags = [
++    "USE_LIBV4L2=$use_v4lplugin",
++  ]
++}
++
+ component("capture_switches") {
+   defines = [ "CAPTURE_IMPLEMENTATION" ]
+   sources = [
+@@ -274,6 +283,12 @@ component("capture_lib") {
+       "video/linux/video_capture_device_linux.h",
+     ]
+     deps += [ "//gpu/command_buffer/client" ]
++
++    public_deps += [ ":buildflags" ]
++
++    if (use_v4lplugin) {
++      deps += [ "//media/gpu/v4l2:libv4l2_stubs" ]
++    }
+   }
+ 
+   if (is_linux) {
+diff --git a/media/capture/video/linux/v4l2_capture_device_impl.cc b/media/capture/video/linux/v4l2_capture_device_impl.cc
+index c8a49b3f0..51e0bdaa8 100644
+--- a/media/capture/video/linux/v4l2_capture_device_impl.cc
++++ b/media/capture/video/linux/v4l2_capture_device_impl.cc
+@@ -10,19 +10,55 @@
+ #include <sys/poll.h>
+ #include <unistd.h>
+ 
++// Auto-generated for dlopen libv4l2 libraries
++#include "media/gpu/v4l2/v4l2_stubs.h"
++#include "third_party/v4l-utils/lib/include/libv4l2.h"
++
++using media_gpu_v4l2::kModuleV4l2;
++using media_gpu_v4l2::InitializeStubs;
++using media_gpu_v4l2::StubPathMap;
++
++inline static constexpr char kLibV4l2Path[] =
++#if defined(__aarch64__)
++      "/usr/lib64/libv4l2.so";
++#else
++      "/usr/lib/libv4l2.so";
++#endif
++
+ namespace media {
+ 
+ V4L2CaptureDeviceImpl::~V4L2CaptureDeviceImpl() = default;
+ 
++V4L2CaptureDeviceImpl::V4L2CaptureDeviceImpl() {
++  use_libv4l2_ = false;
++}
++
+ int V4L2CaptureDeviceImpl::open(const char* device_name, int flags) {
+-  return ::open(device_name, flags);
++  int fd = ::open64(device_name, flags);
++  if (fd < 0)
++    return fd;
++
++  StubPathMap paths;
++  paths[kModuleV4l2].push_back(kLibV4l2Path);
++
++  static bool libv4l2_initialized = InitializeStubs(paths);
++  if (libv4l2_initialized && v4l2_fd_open(fd, V4L2_DISABLE_CONVERSION) != -1)
++      use_libv4l2_ = true;
++
++  return fd;
+ }
+ 
+ int V4L2CaptureDeviceImpl::close(int fd) {
++  if (use_libv4l2_)
++    return v4l2_close(fd);
++
+   return ::close(fd);
+ }
+ 
+ int V4L2CaptureDeviceImpl::ioctl(int fd, int request, void* argp) {
++  if (use_libv4l2_)
++    return v4l2_ioctl(fd, request, argp);
++
+   return ::ioctl(fd, request, argp);
+ }
+ 
+@@ -32,10 +68,16 @@ void* V4L2CaptureDeviceImpl::mmap(void* start,
+                                   int flags,
+                                   int fd,
+                                   off_t offset) {
++  if (use_libv4l2_)
++    return v4l2_mmap(start, length, prot, flags, fd, offset);
++
+   return ::mmap(start, length, prot, flags, fd, offset);
+ }
+ 
+ int V4L2CaptureDeviceImpl::munmap(void* start, size_t length) {
++  if (use_libv4l2_)
++    return v4l2_munmap(start, length);
++
+   return ::munmap(start, length);
+ }
+ 
+diff --git a/media/capture/video/linux/v4l2_capture_device_impl.h b/media/capture/video/linux/v4l2_capture_device_impl.h
+index e2f6bc154..201f48a35 100644
+--- a/media/capture/video/linux/v4l2_capture_device_impl.h
++++ b/media/capture/video/linux/v4l2_capture_device_impl.h
+@@ -8,6 +8,7 @@
+ #include <fcntl.h>
+ #include <poll.h>
+ 
++#include "media/capture/buildflags.h"
+ #include "media/capture/capture_export.h"
+ #include "media/capture/video/linux/v4l2_capture_device.h"
+ 
+@@ -17,6 +18,8 @@ namespace media {
+ // V4L2 APIs.
+ class CAPTURE_EXPORT V4L2CaptureDeviceImpl : public V4L2CaptureDevice {
+  public:
++  V4L2CaptureDeviceImpl();
++
+   int open(const char* device_name, int flags) override;
+   int close(int fd) override;
+   int ioctl(int fd, int request, void* argp) override;
+@@ -32,6 +35,9 @@ class CAPTURE_EXPORT V4L2CaptureDeviceImpl : public V4L2CaptureDevice {
+ 
+  private:
+   ~V4L2CaptureDeviceImpl() override;
++
++  // Use libv4l2 when operating |fd|.
++  bool use_libv4l2_;
+ };
+ 
+ }  // namespace media
+-- 
+2.38.5
+
