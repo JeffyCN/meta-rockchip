@@ -10,9 +10,24 @@ supported upstream.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- media/gpu/v4l2/BUILD.gn | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ media/gpu/gpu_video_encode_accelerator_factory.cc | 3 ++-
+ media/gpu/v4l2/BUILD.gn                           | 2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
+diff --git a/media/gpu/gpu_video_encode_accelerator_factory.cc b/media/gpu/gpu_video_encode_accelerator_factory.cc
+index 2d74e6b..c2ae2db 100644
+--- a/media/gpu/gpu_video_encode_accelerator_factory.cc
++++ b/media/gpu/gpu_video_encode_accelerator_factory.cc
+@@ -48,7 +48,8 @@ std::unique_ptr<VideoEncodeAccelerator> CreateV4L2VEA() {
+   scoped_refptr<V4L2Device> device = V4L2Device::Create();
+   if (!device)
+     return nullptr;
+-#if BUILDFLAG(IS_CHROMEOS)
++/* HACK: Enable V4L2 VEA for v4l-rkmpp */
++#if 1 // BUILDFLAG(IS_CHROMEOS)
+   // TODO(crbug.com/901264): Encoders use hack for passing offset within
+   // a DMA-buf, which is not supported upstream.
+   return base::WrapUnique<VideoEncodeAccelerator>(
 diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
 index a73b9fb03..996be6e48 100644
 --- a/media/gpu/v4l2/BUILD.gn
