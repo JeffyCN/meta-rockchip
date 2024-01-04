@@ -1,18 +1,33 @@
-From 04b7f7d42fcfcc726cf4b3db0837f7409f4c91b8 Mon Sep 17 00:00:00 2001
+From 118cce3f565640185f101c8d987a17df086913fb Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 13 Feb 2023 15:30:55 +0800
 Subject: [PATCH 02/17] HACK: media: gpu: v4l2: Enable V4L2 VEA
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- media/gpu/v4l2/BUILD.gn | 5 +++++
- 1 file changed, 5 insertions(+)
+ media/gpu/gpu_video_encode_accelerator_factory.cc | 3 ++-
+ media/gpu/v4l2/BUILD.gn                           | 5 +++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
+diff --git a/media/gpu/gpu_video_encode_accelerator_factory.cc b/media/gpu/gpu_video_encode_accelerator_factory.cc
+index a5fd9b716..08fed189d 100644
+--- a/media/gpu/gpu_video_encode_accelerator_factory.cc
++++ b/media/gpu/gpu_video_encode_accelerator_factory.cc
+@@ -48,7 +48,8 @@ namespace media {
+ namespace {
+ #if BUILDFLAG(USE_V4L2_CODEC)
+ std::unique_ptr<VideoEncodeAccelerator> CreateV4L2VEA() {
+-#if BUILDFLAG(IS_CHROMEOS)
++/* HACK: Enable V4L2 VEA for v4l-rkmpp */
++#if 1 // BUILDFLAG(IS_CHROMEOS)
+   // TODO(crbug.com/901264): Encoders use hack for passing offset within
+   // a DMA-buf, which is not supported upstream.
+   return base::WrapUnique<VideoEncodeAccelerator>(
 diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
-index 5aa6d8c76..6c754a3d8 100644
+index f442ce0f7..0d93063c0 100644
 --- a/media/gpu/v4l2/BUILD.gn
 +++ b/media/gpu/v4l2/BUILD.gn
-@@ -89,7 +89,12 @@ source_set("v4l2") {
+@@ -97,7 +97,12 @@ source_set("v4l2") {
        # AV1 delegate depends on header files only in ChromeOS SDK
        "v4l2_video_decoder_delegate_av1.cc",
        "v4l2_video_decoder_delegate_av1.h",
