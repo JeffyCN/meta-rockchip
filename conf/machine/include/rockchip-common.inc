@@ -22,11 +22,9 @@ PREFERRED_PROVIDER_virtual/kernel ?= "linux-rockchip"
 ROCKCHIP_KERNEL_COMPRESSED ?= "1"
 ROCKCHIP_KERNEL_IMAGES ?= "1"
 
-# Prefer using Rockchip BSP kernel 4.4
-#PREFERRED_VERSION_linux-rockchip ?= "4.19%"
-#LINUXLIBCVERSION ?= "4.19-custom%"
-PREFERRED_VERSION_linux-rockchip ?= "4.4%"
-LINUXLIBCVERSION ?= "4.4-custom%"
+# Prefer using Rockchip BSP kernel 5.10
+PREFERRED_VERSION_linux-rockchip ?= "5.10%"
+LINUXLIBCVERSION ?= "5.10-custom%"
 
 # Custom kernel might not support newest python
 PACKAGECONFIG_remove_pn-perf += " scripting"
