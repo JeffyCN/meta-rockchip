@@ -15,7 +15,7 @@ for type in dec enc; do
 	dev=/dev/video-${type}0
 	echo $type > $dev
 	chmod 660 $dev
-	chown root.video $dev
+	chown root:video $dev
 done
 
 # Link /usr/lib64 for dlopen libv4l2.so
