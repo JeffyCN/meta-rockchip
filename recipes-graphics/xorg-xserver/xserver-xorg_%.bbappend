@@ -12,9 +12,10 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI:append = " file://20-modesetting.conf"
 
-do_configure:prepend() {
+xserver_autogen() {
     NOCONFIGURE="yes" ${S}/autogen.sh
 }
+EXTRACONFFUNCS += "xserver_autogen"
 
 do_install:append() {
     install -d ${D}${datadir}/X11/xorg.conf.d
