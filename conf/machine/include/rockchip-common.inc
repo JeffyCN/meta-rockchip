@@ -25,6 +25,7 @@ ROCKCHIP_KERNEL_IMAGES ?= "1"
 # Prefer using Rockchip BSP kernel 5.10
 PREFERRED_VERSION_linux-rockchip ?= "5.10%"
 LINUXLIBCVERSION ?= "5.10-custom%"
+OLDEST_KERNEL ?= "5.10"
 
 # Custom kernel might not support newest python
 PACKAGECONFIG:remove:pn-perf = "scripting"
