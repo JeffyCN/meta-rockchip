@@ -3,6 +3,8 @@ From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 16 Jul 2018 09:53:40 +0800
 Subject: [PATCH] Support rebooting with arg
 
+Upstream-Status: Inappropriate [Rockchip specific]
+
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  src/halt.c | 19 +++++++++++++++++--
