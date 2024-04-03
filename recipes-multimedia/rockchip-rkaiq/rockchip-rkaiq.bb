@@ -43,6 +43,8 @@ do_generate_toolchain_file:append () {
 	sed -i 's/if ( !pattr )/if ( pattr )/' ${S}/rkaiq/iq_parser/xmltags.cpp
 	sed -i '/\<prebuilts\>/d' ${S}/rkaiq_3A_server/CMakeLists.txt
 	sed -i 's/\(add_library(.* STATIC IMPORTED\))/\1 GLOBAL)/' ${S}/rkaiq/algos/CMakeLists.txt
+	sed -i 's/-Werror//' ${S}/rkaiq/cmake/CompileOptions.cmake
+	sed -i '/#include <stdlib.h>/i#include <stdio.h>' ${S}/rkaiq/ipc_server/MessageParser.hpp
 }
 
 do_install:append () {
