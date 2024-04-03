@@ -1,0 +1,41 @@
+From 87ce93d7b1315b818826054c488172abd15de0a0 Mon Sep 17 00:00:00 2001
+From: Jiajian Wu <jair.wu@rock-chips.com>
+Date: Tue, 11 Oct 2022 09:21:10 +0800
+Subject: [PATCH 14/22] riff: Fix bps caculation error for ADPCM
+
+The bps shall be caculated according to:
+ADPCM: rate * blockalign / ((blockalign - ch * 7) / ch * 2)
+DVI ADPCM: rate * blockalign / ((blockalign - ch * 4) / ch * 2)
+cus the sample size is 4bit in ADPCM witch is half
+of raw pcm.
+
+Signed-off-by: Jiajian Wu <jair.wu@rock-chips.com>
+---
+ gst-libs/gst/riff/riff-media.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/gst-libs/gst/riff/riff-media.c b/gst-libs/gst/riff/riff-media.c
+index 21200a1..b88ab17 100644
+--- a/gst-libs/gst/riff/riff-media.c
++++ b/gst-libs/gst/riff/riff-media.c
+@@ -1298,7 +1298,7 @@ gst_riff_create_audio_caps (guint16 codec_id,
+          * would probably confuse timing */
+         strf->av_bps = 0;
+         if (strf->channels != 0 && strf->rate != 0 && strf->blockalign != 0) {
+-          int spb = ((strf->blockalign - strf->channels * 7) / 2) * 2;
++          int spb = ((strf->blockalign - strf->channels * 7) / strf->channels) * 2;
+           strf->av_bps =
+               gst_util_uint64_scale_int (strf->rate, strf->blockalign, spb);
+           GST_DEBUG ("fixing av_bps to calculated value %d of MS ADPCM",
+@@ -1420,7 +1420,7 @@ gst_riff_create_audio_caps (guint16 codec_id,
+          * as this would probably confuse timing */
+         strf->av_bps = 0;
+         if (strf->channels != 0 && strf->rate != 0 && strf->blockalign != 0) {
+-          int spb = ((strf->blockalign - strf->channels * 4) / 2) * 2;
++          int spb = ((strf->blockalign - strf->channels * 4) / strf->channels) * 2;
+           strf->av_bps =
+               gst_util_uint64_scale_int (strf->rate, strf->blockalign, spb);
+           GST_DEBUG ("fixing av_bps to calculated value %d of IMA DVI ADPCM",
+-- 
+2.20.1
+

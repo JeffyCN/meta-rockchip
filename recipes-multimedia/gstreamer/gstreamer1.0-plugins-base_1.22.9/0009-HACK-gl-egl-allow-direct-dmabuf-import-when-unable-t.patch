@@ -1,0 +1,39 @@
+From 41d4dbddc7c2841d1513787100eaf85edeaab7ee Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 18 Mar 2020 10:09:49 +0800
+Subject: [PATCH 09/22] HACK: gl/egl: allow direct dmabuf import when unable to
+ query formats
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/gl/egl/gsteglimage.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/gst-libs/gst/gl/egl/gsteglimage.c b/gst-libs/gst/gl/egl/gsteglimage.c
+index 179abe9..8c05328 100644
+--- a/gst-libs/gst/gl/egl/gsteglimage.c
++++ b/gst-libs/gst/gl/egl/gsteglimage.c
+@@ -831,8 +831,8 @@ gst_egl_image_check_dmabuf_direct (GstGLContext * context,
+   gst_eglQueryDmaBufModifiersEXT =
+       gst_gl_context_get_proc_address (context, "eglQueryDmaBufModifiersEXT");
+ 
+-  if (!gst_eglQueryDmaBufFormatsEXT || !gst_eglQueryDmaBufModifiersEXT)
+-    return FALSE;
++  if (!gst_eglQueryDmaBufFormatsEXT)
++    return TRUE;
+ 
+   display_egl = gst_gl_display_egl_from_gl_display (context->display);
+   if (!display_egl) {
+@@ -869,6 +869,9 @@ gst_egl_image_check_dmabuf_direct (GstGLContext * context,
+     return FALSE;
+   }
+ 
++  if (!gst_eglQueryDmaBufModifiersEXT)
++    return TRUE;
++
+   ret = gst_eglQueryDmaBufModifiersEXT (egl_display, fourcc, 0, NULL, NULL,
+       &num_modifiers);
+   if (!ret || num_modifiers == 0) {
+-- 
+2.20.1
+

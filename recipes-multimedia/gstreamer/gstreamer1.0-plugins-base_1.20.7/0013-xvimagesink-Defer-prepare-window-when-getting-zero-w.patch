@@ -1,0 +1,99 @@
+From 1f27993b348f8c09f333b64b0e77ee8ee6eb48e1 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 9 Jun 2022 12:01:28 +0800
+Subject: [PATCH 13/22] xvimagesink: Defer prepare window when getting zero
+ window handle
+
+The window might not ready when we requesting it.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/xvimage/xvimagesink.c | 30 +++++++++++++++++-------------
+ sys/xvimage/xvimagesink.h |  2 ++
+ 2 files changed, 19 insertions(+), 13 deletions(-)
+
+diff --git a/sys/xvimage/xvimagesink.c b/sys/xvimage/xvimagesink.c
+index 00f995a..eb63923 100644
+--- a/sys/xvimage/xvimagesink.c
++++ b/sys/xvimage/xvimagesink.c
+@@ -419,6 +419,10 @@ gst_xv_image_sink_xvimage_put (GstXvImageSink * xvimagesink,
+   GstVideoRectangle mem_crop;
+   GstXWindow *xwindow;
+ 
++  /* Ask for window handle */
++  if (G_UNLIKELY (!xvimagesink->xwindow))
++    gst_video_overlay_prepare_window_handle (GST_VIDEO_OVERLAY (xvimagesink));
++
+   /* We take the flow_lock. If expose is in there we don't want to run
+      concurrently from the data flow thread */
+   g_mutex_lock (&xvimagesink->flow_lock);
+@@ -1002,7 +1006,9 @@ gst_xv_image_sink_setcaps (GstBaseSink * bsink, GstCaps * caps)
+     goto no_display_size;
+ 
+   g_mutex_lock (&xvimagesink->flow_lock);
+-  if (!xvimagesink->xwindow) {
++  if (!xvimagesink->xwindow_id) {
++    GST_WARNING_OBJECT (xvimagesink, "overlay window not ready");
++  } else if (!xvimagesink->xwindow) {
+     xvimagesink->xwindow = gst_xv_image_sink_xwindow_new (xvimagesink,
+         GST_VIDEO_SINK_WIDTH (xvimagesink),
+         GST_VIDEO_SINK_HEIGHT (xvimagesink));
+@@ -1289,6 +1295,12 @@ invalid_buffer:
+   }
+ no_window:
+   {
++    /* HACK: Defer window prepare when getting zero window handle */
++    if (!xvimagesink->xwindow_id) {
++      GST_WARNING_OBJECT (xvimagesink, "buffer dropped (window not ready)");
++      goto done;
++    }
++
+     /* No Window available to put our image into */
+     GST_WARNING_OBJECT (xvimagesink, "could not output image - no window");
+     res = GST_FLOW_ERROR;
+@@ -1508,18 +1520,7 @@ gst_xv_image_sink_set_window_handle (GstVideoOverlay * overlay, guintptr id)
+     xvimagesink->xwindow = NULL;
+   }
+ 
+-  /* If the xid is 0 we go back to an internal window */
+-  if (xwindow_id == 0) {
+-    /* If no width/height caps nego did not happen window will be created
+-       during caps nego then */
+-    if (GST_VIDEO_SINK_WIDTH (xvimagesink)
+-        && GST_VIDEO_SINK_HEIGHT (xvimagesink)) {
+-      xwindow =
+-          gst_xv_image_sink_xwindow_new (xvimagesink,
+-          GST_VIDEO_SINK_WIDTH (xvimagesink),
+-          GST_VIDEO_SINK_HEIGHT (xvimagesink));
+-    }
+-  } else {
++  if ((xvimagesink->xwindow_id = xwindow_id)) {
+     xwindow = gst_xvcontext_create_xwindow_from_xid (context, xwindow_id);
+     gst_xwindow_set_event_handling (xwindow, xvimagesink->handle_events);
+   }
+@@ -2168,6 +2169,9 @@ gst_xv_image_sink_init (GstXvImageSink * xvimagesink)
+   xvimagesink->handle_expose = TRUE;
+ 
+   xvimagesink->draw_borders = TRUE;
++
++  /* HACK: Use a non-zero initial ID to detect overlay mode */
++  xvimagesink->xwindow_id = -1;
+ }
+ 
+ static void
+diff --git a/sys/xvimage/xvimagesink.h b/sys/xvimage/xvimagesink.h
+index 35a3081..c84eeea 100644
+--- a/sys/xvimage/xvimagesink.h
++++ b/sys/xvimage/xvimagesink.h
+@@ -134,6 +134,8 @@ struct _GstXvImageSink
+   /* saved render rectangle until we have a window */
+   gboolean pending_render_rect;
+   GstVideoRectangle render_rect;
++
++  guintptr xwindow_id;
+ };
+ 
+ struct _GstXvImageSinkClass
+-- 
+2.20.1
+

@@ -1,0 +1,50 @@
+From 2574ceda1d2e465b4e81a1de036f7a3364c5373c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 17 Sep 2021 13:20:24 +0800
+Subject: [PATCH 11/22] videoconvert: Support preferred formats
+
+Set env "GST_VIDEO_CONVERT_PREFERRED_FORMAT" to specify preferred
+formats, for example:
+export GST_VIDEO_CONVERT_PREFERRED_FORMAT=NV12:NV16
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/videoconvert/gstvideoconvert.c | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/gst/videoconvert/gstvideoconvert.c b/gst/videoconvert/gstvideoconvert.c
+index 0f65ee2..0aab69e 100644
+--- a/gst/videoconvert/gstvideoconvert.c
++++ b/gst/videoconvert/gstvideoconvert.c
+@@ -268,6 +268,28 @@ score_value (GstBaseTransform * base, const GstVideoFormatInfo * in_info,
+       loss += SCORE_DEPTH_LOSS;
+   }
+ 
++  {
++    const char *buf = g_getenv ("GST_VIDEO_CONVERT_PREFERRED_FORMAT");
++    if (buf) {
++      const char *name = GST_VIDEO_FORMAT_INFO_NAME (t_info);
++      int preferred_loss = 1;
++
++      /* lower other formats */
++      loss += 1024;
++
++      while (buf) {
++        if (buf[0] == ':')
++          buf++;
++
++        if (!strncmp (buf, name, strlen (name)))
++          loss = preferred_loss;
++
++        buf = strchr (buf, ':');
++        preferred_loss++;
++      }
++    }
++  }
++
+   GST_DEBUG_OBJECT (base, "score %s -> %s = %d",
+       GST_VIDEO_FORMAT_INFO_NAME (in_info),
+       GST_VIDEO_FORMAT_INFO_NAME (t_info), loss);
+-- 
+2.20.1
+

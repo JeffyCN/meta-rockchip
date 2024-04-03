@@ -1,0 +1,32 @@
+From 8fef488baa16ba1cafd192fe522979846ebd4e7a Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 4 May 2023 09:12:49 +0800
+Subject: [PATCH 17/22] xvimagesink: Ignore expose-redraw when video not ready
+
+See:
+https://github.com/JeffyCN/rockchip_mirrors/issues/26
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/xvimage/xvimagesink.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/sys/xvimage/xvimagesink.c b/sys/xvimage/xvimagesink.c
+index 9f8b594..784a251 100644
+--- a/sys/xvimage/xvimagesink.c
++++ b/sys/xvimage/xvimagesink.c
+@@ -1690,6 +1690,11 @@ gst_xv_image_sink_expose (GstVideoOverlay * overlay)
+ 
+   GST_DEBUG ("doing expose");
+   gst_xv_image_sink_xwindow_update_geometry (xvimagesink);
++
++  if (GST_VIDEO_SINK_WIDTH (xvimagesink) <= 0 ||
++      GST_VIDEO_SINK_HEIGHT (xvimagesink) <= 0)
++    return;
++
+   gst_xv_image_sink_xvimage_put (xvimagesink, NULL);
+ }
+ 
+-- 
+2.20.1
+

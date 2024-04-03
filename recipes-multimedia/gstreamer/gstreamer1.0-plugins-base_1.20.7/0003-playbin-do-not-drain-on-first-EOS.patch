@@ -1,0 +1,264 @@
+From 70abdc441204854365d99d9d7dbb86bdfa07afa1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?St=C3=A9phane=20Cerveau?= <scerveau@collabora.com>
+Date: Mon, 9 Aug 2021 18:02:57 +0200
+Subject: [PATCH 03/22] playbin: do not drain on first EOS
+
+In a case of audio/video media, the decodebin
+should wait for each branch to be on EOS before
+draining the others.
+
+A new signal "wait-on-eos" has been implemented
+for (uri)decodebin to tell that an EOS has been
+received on a branch.
+
+In the case of playbin2, it will compare
+the nb of active pads with the nb of EOS received
+and decodebin will start to drain all the active pads when the nb
+of EOS is equal to active pads (active combiners).
+---
+ gst/playback/gstdecodebin2.c   | 37 ++++++++++++++++++++++++++++++++++
+ gst/playback/gstplaybin2.c     | 31 ++++++++++++++++++++++++++++
+ gst/playback/gsturidecodebin.c | 32 +++++++++++++++++++++++++++++
+ 3 files changed, 100 insertions(+)
+
+diff --git a/gst/playback/gstdecodebin2.c b/gst/playback/gstdecodebin2.c
+index 4b5f89c..1349b27 100644
+--- a/gst/playback/gstdecodebin2.c
++++ b/gst/playback/gstdecodebin2.c
+@@ -163,6 +163,9 @@ struct _GstDecodeBin
+   GMutex expose_lock;           /* Protects exposal and removal of groups */
+   GstDecodeChain *decode_chain; /* Top level decode chain */
+   guint nbpads;                 /* unique identifier for source pads */
++  guint nbpads_eos;             /* number of pads in EOS */
++  gboolean wait_on_eos;         /* wait EOS on other pads */
++  GCond eos_cond;               /* condition to block the pad in EOS */
+ 
+   GMutex factories_lock;
+   guint32 factories_cookie;     /* Cookie from last time when factories was updated */
+@@ -224,6 +227,8 @@ struct _GstDecodeBinClass
+ 
+   /* fired when the last group is drained */
+   void (*drained) (GstElement * element);
++  /* emitted when an EOS is received */
++    gboolean (*wait_on_eos) (GstElement * element, guint eos_received);
+ };
+ 
+ /* signals */
+@@ -236,6 +241,7 @@ enum
+   SIGNAL_AUTOPLUG_SORT,
+   SIGNAL_AUTOPLUG_QUERY,
+   SIGNAL_DRAINED,
++  SIGNAL_WAIT_ON_EOS,
+   LAST_SIGNAL
+ };
+ 
+@@ -870,6 +876,20 @@ gst_decode_bin_class_init (GstDecodeBinClass * klass)
+       G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstDecodeBinClass, drained),
+       NULL, NULL, NULL, G_TYPE_NONE, 0, G_TYPE_NONE);
+ 
++  /**
++   * GstDecodeBin::wait-on-eos
++   * @bin: The decodebin
++   * @nb_eos: the number of EOS received
++   *
++   * This signal is emitted once decodebin has received an EOS.
++   *
++   * Since: 1.20
++   */
++  gst_decode_bin_signals[SIGNAL_WAIT_ON_EOS] =
++      g_signal_new ("wait-on-eos", G_TYPE_FROM_CLASS (klass),
++      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstDecodeBinClass, wait_on_eos),
++      NULL, NULL, NULL, G_TYPE_BOOLEAN, 1, G_TYPE_UINT);
++
+   g_object_class_install_property (gobject_klass, PROP_CAPS,
+       g_param_spec_boxed ("caps", "Caps", "The caps on which to stop decoding.",
+           GST_TYPE_CAPS, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+@@ -1111,6 +1131,7 @@ gst_decode_bin_init (GstDecodeBin * decode_bin)
+     gst_object_unref (pad);
+   }
+ 
++  g_cond_init (&decode_bin->eos_cond);
+   g_mutex_init (&decode_bin->expose_lock);
+   decode_bin->decode_chain = NULL;
+ 
+@@ -1177,6 +1198,7 @@ gst_decode_bin_finalize (GObject * object)
+ 
+   decode_bin = GST_DECODE_BIN (object);
+ 
++  g_cond_clear (&decode_bin->eos_cond);
+   g_mutex_clear (&decode_bin->expose_lock);
+   g_mutex_clear (&decode_bin->dyn_lock);
+   g_mutex_clear (&decode_bin->subtitle_lock);
+@@ -4282,6 +4304,17 @@ gst_decode_pad_handle_eos (GstDecodePad * pad)
+   }
+ 
+   EXPOSE_LOCK (dbin);
++  dbin->nbpads_eos++;
++  g_signal_emit (G_OBJECT (dbin),
++      gst_decode_bin_signals[SIGNAL_WAIT_ON_EOS], 0, dbin->nbpads_eos,
++      &dbin->wait_on_eos);
++  g_cond_broadcast (&dbin->eos_cond);
++  GST_DEBUG_OBJECT (dbin, "dbin->nbpads_eos %u wait_on_eos %u",
++      dbin->nbpads_eos, dbin->wait_on_eos);
++
++  while (dbin->wait_on_eos)
++    g_cond_wait (&dbin->eos_cond, &dbin->expose_lock);
++
+   if (dbin->decode_chain) {
+     drain_and_switch_chains (dbin->decode_chain, pad, &last_group, &drained,
+         &switched);
+@@ -5323,6 +5356,10 @@ unblock_pads (GstDecodeBin * dbin)
+     GST_DEBUG_OBJECT (dpad, "unblocked");
+     gst_object_unref (dpad);
+   }
++  dbin->nbpads = 0;
++  dbin->nbpads_eos = 0;
++  dbin->wait_on_eos = FALSE;
++  g_cond_broadcast (&dbin->eos_cond);
+ }
+ 
+ static void
+diff --git a/gst/playback/gstplaybin2.c b/gst/playback/gstplaybin2.c
+index 30b3e68..25ddc91 100644
+--- a/gst/playback/gstplaybin2.c
++++ b/gst/playback/gstplaybin2.c
+@@ -337,6 +337,7 @@ struct _GstSourceGroup
+   gulong notify_source_id;
+   gulong source_setup_id;
+   gulong drained_id;
++  gulong wait_on_eos_id;
+   gulong autoplug_factories_id;
+   gulong autoplug_select_id;
+   gulong autoplug_continue_id;
+@@ -3952,6 +3953,30 @@ drained_cb (GstElement * decodebin, GstSourceGroup * group)
+   group->pending_about_to_finish = TRUE;
+ }
+ 
++static gboolean
++wait_on_eos_cb (GstElement * decodebin, guint eos_received,
++    GstSourceGroup * group)
++{
++  GstPlayBin *playbin = group->playbin;
++  int i;
++  guint active_pads = 0;
++
++  for (i = 0; i < PLAYBIN_STREAM_LAST; i++) {
++    GstSourceCombine *combine = &group->combiner[i];
++    if (combine->has_active_pad)
++      active_pads++;
++  }
++
++  GST_DEBUG_OBJECT (playbin,
++      "%d eos received in group with uri %s, active pads %d", eos_received,
++      group->uri, active_pads);
++
++  if (eos_received < active_pads)
++    return TRUE;
++
++  return FALSE;
++}
++
+ /* Like gst_element_factory_can_sink_any_caps() but doesn't
+  * allow ANY caps on the sinkpad template */
+ static gboolean
+@@ -5421,6 +5446,10 @@ activate_group (GstPlayBin * playbin, GstSourceGroup * group, GstState target)
+   group->drained_id =
+       g_signal_connect (uridecodebin, "drained", G_CALLBACK (drained_cb),
+       group);
++  /* is called when the uridecodebin received an EOS */
++  group->wait_on_eos_id =
++      g_signal_connect (uridecodebin, "wait-on-eos",
++      G_CALLBACK (wait_on_eos_cb), group);
+ 
+   /* will be called when a new media type is found. We return a list of decoders
+    * including sinks for decodebin to try */
+@@ -5594,6 +5623,7 @@ error_cleanup:
+       REMOVE_SIGNAL (group->uridecodebin, group->notify_source_id);
+       REMOVE_SIGNAL (group->uridecodebin, group->source_setup_id);
+       REMOVE_SIGNAL (group->uridecodebin, group->drained_id);
++      REMOVE_SIGNAL (group->uridecodebin, group->wait_on_eos_id);
+       REMOVE_SIGNAL (group->uridecodebin, group->autoplug_factories_id);
+       REMOVE_SIGNAL (group->uridecodebin, group->autoplug_select_id);
+       REMOVE_SIGNAL (group->uridecodebin, group->autoplug_continue_id);
+@@ -5683,6 +5713,7 @@ deactivate_group (GstPlayBin * playbin, GstSourceGroup * group)
+     REMOVE_SIGNAL (group->uridecodebin, group->notify_source_id);
+     REMOVE_SIGNAL (group->uridecodebin, group->source_setup_id);
+     REMOVE_SIGNAL (group->uridecodebin, group->drained_id);
++    REMOVE_SIGNAL (group->uridecodebin, group->wait_on_eos_id);
+     REMOVE_SIGNAL (group->uridecodebin, group->autoplug_factories_id);
+     REMOVE_SIGNAL (group->uridecodebin, group->autoplug_select_id);
+     REMOVE_SIGNAL (group->uridecodebin, group->autoplug_continue_id);
+diff --git a/gst/playback/gsturidecodebin.c b/gst/playback/gsturidecodebin.c
+index d2ef658..07b6892 100644
+--- a/gst/playback/gsturidecodebin.c
++++ b/gst/playback/gsturidecodebin.c
+@@ -147,6 +147,8 @@ struct _GstURIDecodeBinClass
+ 
+   /* emitted when all data is decoded */
+   void (*drained) (GstElement * element);
++  /* emitted when an EOS is received */
++    gboolean (*wait_on_eos) (GstElement * element, guint eos_received);
+ };
+ 
+ static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src_%u",
+@@ -170,6 +172,7 @@ enum
+   SIGNAL_AUTOPLUG_QUERY,
+   SIGNAL_DRAINED,
+   SIGNAL_SOURCE_SETUP,
++  SIGNAL_WAIT_ON_EOS,
+   LAST_SIGNAL
+ };
+ 
+@@ -697,6 +700,19 @@ gst_uri_decode_bin_class_init (GstURIDecodeBinClass * klass)
+       G_SIGNAL_RUN_LAST,
+       G_STRUCT_OFFSET (GstURIDecodeBinClass, drained), NULL, NULL, NULL,
+       G_TYPE_NONE, 0, G_TYPE_NONE);
++  /**
++   * GstURIDecodeBin::wait-on-eos
++   * @bin: The decodebin
++   * @nb_eos: the number of EOS received
++   *
++   * This signal is emitted once decodebin has received an EOS.
++   *
++   * Since: 1.20
++   */
++  gst_uri_decode_bin_signals[SIGNAL_WAIT_ON_EOS] =
++      g_signal_new ("wait-on-eos", G_TYPE_FROM_CLASS (klass),
++      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstURIDecodeBinClass, wait_on_eos),
++      NULL, NULL, NULL, G_TYPE_BOOLEAN, 1, G_TYPE_UINT);
+ 
+   /**
+    * GstURIDecodeBin::source-setup:
+@@ -1820,6 +1836,20 @@ proxy_drained_signal (GstElement * decodebin, GstURIDecodeBin * dec)
+   g_signal_emit (dec, gst_uri_decode_bin_signals[SIGNAL_DRAINED], 0, NULL);
+ }
+ 
++
++static gboolean
++proxy_wait_on_eos_signal (GstElement * decodebin, guint eos_received,
++    GstURIDecodeBin * dec)
++{
++  gboolean result;
++
++  g_signal_emit (dec, gst_uri_decode_bin_signals[SIGNAL_WAIT_ON_EOS], 0,
++      eos_received, &result);
++  GST_DEBUG_OBJECT (dec, "wait-on-eos returned %d", result);
++
++  return result;
++}
++
+ /* make a decodebin and connect to all the signals */
+ static GstElement *
+ make_decoder (GstURIDecodeBin * decoder)
+@@ -1863,6 +1893,8 @@ make_decoder (GstURIDecodeBin * decoder)
+         G_CALLBACK (proxy_autoplug_query_signal), decoder);
+     g_signal_connect (decodebin, "drained",
+         G_CALLBACK (proxy_drained_signal), decoder);
++    g_signal_connect (decodebin, "wait-on-eos",
++        G_CALLBACK (proxy_wait_on_eos_signal), decoder);
+ 
+     /* set up callbacks to create the links between decoded data
+      * and video/audio/subtitle rendering/output. */
+-- 
+2.20.1
+

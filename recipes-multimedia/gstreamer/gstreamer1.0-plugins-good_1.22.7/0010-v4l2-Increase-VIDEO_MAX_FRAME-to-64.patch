@@ -1,0 +1,29 @@
+From 47039a828681a359b5e54aa9d84225ab753b1743 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 23 Jun 2022 16:01:56 +0800
+Subject: [PATCH 10/12] v4l2: Increase VIDEO_MAX_FRAME to 64
+
+This is done in the kernel side for android:
+e81694723af1 ANDROID: media: increase video max frame number
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/v4l2/ext/videodev2.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sys/v4l2/ext/videodev2.h b/sys/v4l2/ext/videodev2.h
+index 16a9494..c3ccddc 100644
+--- a/sys/v4l2/ext/videodev2.h
++++ b/sys/v4l2/ext/videodev2.h
+@@ -68,7 +68,7 @@
+  * Common stuff for both V4L1 and V4L2
+  * Moved from videodev.h
+  */
+-#define VIDEO_MAX_FRAME               32
++#define VIDEO_MAX_FRAME               64
+ #define VIDEO_MAX_PLANES               8
+ 
+ /*
+-- 
+2.20.1
+

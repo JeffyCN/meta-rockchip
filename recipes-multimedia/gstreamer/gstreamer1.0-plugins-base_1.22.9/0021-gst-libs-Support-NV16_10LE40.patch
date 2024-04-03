@@ -1,0 +1,292 @@
+From 766c5c4afb836acc4dd11127874571430d463562 Mon Sep 17 00:00:00 2001
+From: Jiajian Wu <jair.wu@rock-chips.com>
+Date: Mon, 12 Jun 2023 17:07:55 +0800
+Subject: [PATCH 21/22] gst-libs: Support NV16_10LE40
+
+Signed-off-by: Jiajian Wu <jair.wu@rock-chips.com>
+---
+ gst-libs/gst/video/video-converter.c |   3 +
+ gst-libs/gst/video/video-format.c    | 161 +++++++++++++++++++++++++++
+ gst-libs/gst/video/video-format.h    |   6 +-
+ gst-libs/gst/video/video-info.c      |   7 ++
+ tests/check/libs/video.c             |   1 +
+ 5 files changed, 176 insertions(+), 2 deletions(-)
+
+diff --git a/gst-libs/gst/video/video-converter.c b/gst-libs/gst/video/video-converter.c
+index c49d9a0..5a5fc6e 100644
+--- a/gst-libs/gst/video/video-converter.c
++++ b/gst-libs/gst/video/video-converter.c
+@@ -2781,6 +2781,8 @@ get_rga_format (GstVideoFormat format)
+       return RK_FORMAT_YCbCr_422_P;
+     case GST_VIDEO_FORMAT_NV12_10LE40:
+       return RK_FORMAT_YCbCr_420_SP_10B;
++    case GST_VIDEO_FORMAT_NV16_10LE40:
++      return RK_FORMAT_YCbCr_422_SP_10B;
+     default:
+       return RK_FORMAT_UNKNOWN;
+   }
+@@ -7524,6 +7526,7 @@ get_scale_format (GstVideoFormat format, gint plane)
+     case GST_VIDEO_FORMAT_NV12_10LE32:
+     case GST_VIDEO_FORMAT_NV16_10LE32:
+     case GST_VIDEO_FORMAT_NV12_10LE40:
++    case GST_VIDEO_FORMAT_NV16_10LE40:
+     case GST_VIDEO_FORMAT_BGR10A2_LE:
+     case GST_VIDEO_FORMAT_RGB10A2_LE:
+     case GST_VIDEO_FORMAT_Y444_16BE:
+diff --git a/gst-libs/gst/video/video-format.c b/gst-libs/gst/video/video-format.c
+index d869f9a..fcebf74 100644
+--- a/gst-libs/gst/video/video-format.c
++++ b/gst-libs/gst/video/video-format.c
+@@ -5663,6 +5663,162 @@ pack_NV12_10LE40 (const GstVideoFormatInfo * info, GstVideoPackFlags flags,
+   }
+ }
+ 
++#define PACK_NV16_10LE40 GST_VIDEO_FORMAT_AYUV64, unpack_NV16_10LE40, 1, pack_NV16_10LE40
++static void
++unpack_NV16_10LE40 (const GstVideoFormatInfo * info, GstVideoPackFlags flags,
++    gpointer dest, const gpointer data[GST_VIDEO_MAX_PLANES],
++    const gint stride[GST_VIDEO_MAX_PLANES], gint x, gint y, gint width)
++{
++  gint i;
++  guint16 *restrict d = dest;
++  const guint8 *restrict sy = GET_PLANE_LINE (0, y);
++  const guint8 *restrict suv = GET_PLANE_LINE (1, y);
++  guint16 Y0 = 0, Y1 = 0, Yn = 0, Un = 0, Vn = 0;
++  guint32 UV = 0;
++
++  for (i = 0; i < width; i++) {
++    gboolean update_c = FALSE;
++
++    switch (i & 3) {
++      case 0:
++        Y0 = GST_READ_UINT16_LE (sy);
++        Yn = Y0 & 0x3ff;
++        sy += 2;
++
++        UV = GST_READ_UINT32_LE (suv);
++        Un = UV & 0x3ff;
++        Vn = (UV >> 10) & 0x3ff;
++        suv += 4;
++
++        Yn <<= 6;
++        Un <<= 6;
++        Vn <<= 6;
++        update_c = TRUE;
++        break;
++      case 1:
++        Y1 = GST_READ_UINT16_LE (sy);
++        Yn = (Y0 >> 10) | ((Y1 & 0xf) << 6);
++        sy += 2;
++
++        Yn <<= 6;
++        break;
++      case 2:
++        Yn = (Y1 >> 4) & 0x3ff;
++
++        Un = (UV >> 20) & 0x3ff;
++        Vn = (UV >> 30);
++        UV = GST_READ_UINT8 (suv);
++        Vn |= (UV << 2);
++        suv++;
++
++        Yn <<= 6;
++        Un <<= 6;
++        Vn <<= 6;
++        update_c = TRUE;
++        break;
++      case 3:
++        Y0 = GST_READ_UINT8 (sy);
++        Yn = (Y1 >> 14) | (Y0 << 2);
++        sy++;
++
++        Yn <<= 6;
++        break;
++    }
++
++    if (!(flags & GST_VIDEO_PACK_FLAG_TRUNCATE_RANGE)) {
++      Yn |= Yn >> 10;
++      if (update_c) {
++        Un |= Un >> 10;
++        Vn |= Vn >> 10;
++      }
++    }
++
++    d[i * 4 + 0] = 0xffff;
++    d[i * 4 + 1] = Yn;
++    d[i * 4 + 2] = Un;
++    d[i * 4 + 3] = Vn;
++  }
++}
++
++static void
++pack_NV16_10LE40 (const GstVideoFormatInfo * info, GstVideoPackFlags flags,
++    const gpointer src, gint sstride, gpointer data[GST_VIDEO_MAX_PLANES],
++    const gint stride[GST_VIDEO_MAX_PLANES], GstVideoChromaSite chroma_site,
++    gint y, gint width)
++{
++  gint i;
++  guint8 *restrict dy = GET_PLANE_LINE (0, y);
++  guint8 *restrict duv = GET_PLANE_LINE (1, y);
++  guint16 Y0 = 0, Y1 = 0, Y2 = 0, Y3 = 0;
++  guint16 U0 = 0, V0 = 0, U1 = 0, V1 = 0;
++  const guint16 *restrict s = src;
++
++  for (i = 0; i < width; i++) {
++    switch (i & 3) {
++      case 0:
++        Y0 = s[i * 4 + 1] >> 6;
++        GST_WRITE_UINT8 (dy, Y0 & 0xff);
++        dy++;
++
++        U0 = s[i * 4 + 2] >> 6;
++        V0 = s[i * 4 + 3] >> 6;
++
++        GST_WRITE_UINT8 (duv, U0 & 0xff);
++        duv++;
++
++        GST_WRITE_UINT8 (duv, (U0 >> 8) | ((V0 & 0x3f) << 2));
++        duv++;
++
++        break;
++      case 1:
++        Y1 = s[i * 4 + 1] >> 6;
++        GST_WRITE_UINT8 (dy, (Y0 >> 8) | ((Y1 & 0x3f) << 2));
++        dy++;
++        break;
++      case 2:
++        Y2 = s[i * 4 + 1] >> 6;
++        GST_WRITE_UINT8 (dy, (Y1 >> 6) | ((Y2 & 0xf) << 4));
++        dy++;
++
++        U1 = s[i * 4 + 2] >> 6;
++        V1 = s[i * 4 + 3] >> 6;
++
++        GST_WRITE_UINT8 (duv, (V0 >> 6) | ((U1 & 0xf) << 4));
++        duv++;
++
++        GST_WRITE_UINT8 (duv, (U1 >> 4) | ((V1 & 0x3) << 6));
++        duv++;
++
++        GST_WRITE_UINT8 (duv, V1 >> 2);
++        duv++;
++        break;
++      case 3:
++        Y3 = s[i * 4 + 1] >> 6;
++        GST_WRITE_UINT8 (dy, (Y2 >> 4) | ((Y3 & 0x3) << 6));
++        dy++;
++        GST_WRITE_UINT8 (dy, (Y3 >> 2));
++        dy++;
++        break;
++    }
++  }
++
++  switch (width & 3) {
++    case 0:
++      break;
++    case 1:
++      GST_WRITE_UINT8 (dy, Y0 >> 8);
++      GST_WRITE_UINT8 (duv, V0 >> 6);
++      break;
++    case 2:
++      GST_WRITE_UINT8 (dy, Y1 >> 6);
++      GST_WRITE_UINT8 (duv, V0 >> 6);
++      break;
++    case 3:
++      GST_WRITE_UINT8 (dy, Y2 >> 4);
++      break;
++  }
++}
++
+ #define PACK_VUYA GST_VIDEO_FORMAT_AYUV, unpack_VUYA, 1, pack_VUYA
+ static void
+ unpack_VUYA (const GstVideoFormatInfo * info, GstVideoPackFlags flags,
+@@ -7225,6 +7381,9 @@ static const VideoFormat formats[] = {
+   MAKE_YUV_C_LE_FORMAT (NV12_10LE40, "raw video",
+       GST_MAKE_FOURCC ('R', 'K', '2', '0'), DPTH10_10_10, PSTR0, PLANE011,
+       OFFS0, SUB420, PACK_NV12_10LE40),
++  MAKE_YUV_C_LE_FORMAT (NV16_10LE40, "raw video",
++      GST_MAKE_FOURCC ('R', 'K', '6', '0'), DPTH10_10_10, PSTR0, PLANE011,
++      OFFS0, SUB422, PACK_NV16_10LE40),
+   MAKE_YUV_FORMAT (Y210, "raw video", GST_MAKE_FOURCC ('Y', '2', '1', '0'),
+       DPTH10_10_10, PSTR488, PLANE0, OFFS0, SUB422, PACK_Y210),
+   MAKE_YUV_FORMAT (Y410, "raw video", GST_MAKE_FOURCC ('Y', '4', '1', '0'),
+@@ -7547,6 +7706,8 @@ gst_video_format_from_fourcc (guint32 fourcc)
+       return GST_VIDEO_FORMAT_NV16_10LE32;
+     case GST_MAKE_FOURCC ('R', 'K', '2', '0'):
+       return GST_VIDEO_FORMAT_NV12_10LE40;
++    case GST_MAKE_FOURCC ('R', 'K', '6', '0'):
++      return GST_VIDEO_FORMAT_NV16_10LE40;
+     case GST_MAKE_FOURCC ('Y', '4', '1', '0'):
+       return GST_VIDEO_FORMAT_Y410;
+     case GST_MAKE_FOURCC ('V', 'U', 'Y', 'A'):
+diff --git a/gst-libs/gst/video/video-format.h b/gst-libs/gst/video/video-format.h
+index 7a645cc..fb35ed6 100644
+--- a/gst-libs/gst/video/video-format.h
++++ b/gst-libs/gst/video/video-format.h
+@@ -145,6 +145,7 @@ G_BEGIN_DECLS
+  * @GST_VIDEO_FORMAT_NV12_16L32S: NV12 with 16x32 Y tiles and 16x16 UV tiles. (Since: 1.22)
+  * @GST_VIDEO_FORMAT_NV12_8L128 : NV12 with 8x128 tiles in linear order (Since: 1.22)
+  * @GST_VIDEO_FORMAT_NV12_10BE_8L128 : NV12 10bit big endian with 8x128 tiles in linear order (Since: 1.22)
++ * @GST_VIDEO_FORMAT_NV16_10LE40: Fully packed variant of NV16_10LE32 (Since: 1.22)
+  *
+  * Enum value describing the most common video formats.
+  *
+@@ -234,6 +235,7 @@ typedef enum {
+   GST_VIDEO_FORMAT_NV12_10LE32,
+   GST_VIDEO_FORMAT_NV16_10LE32,
+   GST_VIDEO_FORMAT_NV12_10LE40,
++  GST_VIDEO_FORMAT_NV16_10LE40,
+   GST_VIDEO_FORMAT_Y210,
+   GST_VIDEO_FORMAT_Y410,
+   GST_VIDEO_FORMAT_VUYA,
+@@ -874,7 +876,7 @@ gconstpointer  gst_video_format_get_palette          (GstVideoFormat format, gsi
+     "GBR_12BE, Y444_12LE, GBR_12LE, I422_12BE, I422_12LE, Y212_BE, Y212_LE, I420_12BE, " \
+     "I420_12LE, P012_BE, P012_LE, Y444_10BE, GBR_10BE, Y444_10LE, GBR_10LE, r210, " \
+     "I422_10BE, I422_10LE, NV16_10LE32, Y210, v210, UYVP, I420_10BE, I420_10LE, " \
+-    "P010_10BE, P010_10LE, NV12_10LE32, NV12_10LE40, NV12_10BE_8L128, Y444, RGBP, GBR, BGRP, NV24, xBGR, BGRx, " \
++    "P010_10BE, P010_10LE, NV12_10LE32, NV12_10LE40, NV16_10LE40, NV12_10BE_8L128, Y444, RGBP, GBR, BGRP, NV24, xBGR, BGRx, " \
+     "xRGB, RGBx, BGR, IYU2, v308, RGB, Y42B, NV61, NV16, VYUY, UYVY, YVYU, YUY2, I420, " \
+     "YV12, NV21, NV12, NV12_8L128, NV12_64Z32, NV12_4L4, NV12_32L32, NV12_16L32S, Y41B, IYU1, YVU9, YUV9, RGB16, " \
+     "BGR16, RGB15, BGR15, RGB8P, GRAY16_BE, GRAY16_LE, GRAY10_LE32, GRAY8 }"
+@@ -887,7 +889,7 @@ gconstpointer  gst_video_format_get_palette          (GstVideoFormat format, gsi
+     "GBR_12LE, Y444_12BE, GBR_12BE, I422_12LE, I422_12BE, Y212_LE, Y212_BE, I420_12LE, " \
+     "I420_12BE, P012_LE, P012_BE, Y444_10LE, GBR_10LE, Y444_10BE, GBR_10BE, r210, " \
+     "I422_10LE, I422_10BE, NV16_10LE32, Y210, v210, UYVP, I420_10LE, I420_10BE, " \
+-    "P010_10LE, NV12_10LE32, NV12_10LE40, P010_10BE, NV12_10BE_8L128, Y444, RGBP, GBR, BGRP, NV24, xBGR, BGRx, " \
++    "P010_10LE, NV12_10LE32, NV12_10LE40, NV16_10LE40, P010_10BE, NV12_10BE_8L128, Y444, RGBP, GBR, BGRP, NV24, xBGR, BGRx, " \
+     "xRGB, RGBx, BGR, IYU2, v308, RGB, Y42B, NV61, NV16, VYUY, UYVY, YVYU, YUY2, I420, " \
+     "YV12, NV21, NV12, NV12_8L128, NV12_64Z32, NV12_4L4, NV12_32L32, NV12_16L32S, Y41B, IYU1, YVU9, YUV9, RGB16, " \
+     "BGR16, RGB15, BGR15, RGB8P, GRAY16_LE, GRAY16_BE, GRAY10_LE32, GRAY8 }"
+diff --git a/gst-libs/gst/video/video-info.c b/gst-libs/gst/video/video-info.c
+index d543e31..6eabc07 100644
+--- a/gst-libs/gst/video/video-info.c
++++ b/gst-libs/gst/video/video-info.c
+@@ -1219,6 +1219,13 @@ fill_planes (GstVideoInfo * info, gsize plane_size[GST_VIDEO_MAX_PLANES])
+         cr_h = GST_ROUND_UP_2 (cr_h);
+       info->size = info->offset[1] + info->stride[0] * cr_h;
+       break;
++    case GST_VIDEO_FORMAT_NV16_10LE40:
++      info->stride[0] = ((width * 5 >> 2) + 4) / 5 * 5;
++      info->stride[1] = info->stride[0];
++      info->offset[0] = 0;
++      info->offset[1] = info->stride[0] * height;
++      info->size = info->offset[1] + info->stride[0] * height;
++      break;
+     case GST_VIDEO_FORMAT_NV12_8L128:
+     {
+       gint tile_size = GST_VIDEO_FORMAT_INFO_TILE_SIZE (info->finfo, 0);
+diff --git a/tests/check/libs/video.c b/tests/check/libs/video.c
+index 875f322..90c159a 100644
+--- a/tests/check/libs/video.c
++++ b/tests/check/libs/video.c
+@@ -3212,6 +3212,7 @@ GST_START_TEST (test_video_formats_pstrides)
+         || fmt == GST_VIDEO_FORMAT_NV12_10LE32
+         || fmt == GST_VIDEO_FORMAT_NV16_10LE32
+         || fmt == GST_VIDEO_FORMAT_NV12_10LE40
++        || fmt == GST_VIDEO_FORMAT_NV16_10LE40
+         || fmt == GST_VIDEO_FORMAT_Y410
+         || fmt == GST_VIDEO_FORMAT_NV12_8L128
+         || fmt == GST_VIDEO_FORMAT_NV12_10BE_8L128) {
+-- 
+2.20.1
+

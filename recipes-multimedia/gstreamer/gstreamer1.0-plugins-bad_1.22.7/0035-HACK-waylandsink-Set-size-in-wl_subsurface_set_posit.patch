@@ -1,0 +1,40 @@
+From 1b6e660ffb57483b1b2a9cf2a86f9628b16cfe15 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 21 Jul 2022 12:29:27 +0800
+Subject: [PATCH 35/45] HACK: waylandsink: Set size in
+ wl_subsurface_set_position() when no viewport
+
+Tested with hacked enlightenment.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/wayland/gstwlwindow.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
+index 6f96d6f..aca1d8a 100644
+--- a/gst-libs/gst/wayland/gstwlwindow.c
++++ b/gst-libs/gst/wayland/gstwlwindow.c
+@@ -637,7 +637,18 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
+         wl_fixed_from_int (video_width), wl_fixed_from_int (video_height));
+     wp_viewport_set_destination (priv->video_viewport, res.w, res.h);
+   } else {
+-    gst_video_center_rect (&src, &dst, &res, FALSE);
++    if (priv->fill_mode == GST_WL_WINDOW_STRETCH) {
++      res = dst;
++    } else {
++      if (priv->fill_mode == GST_WL_WINDOW_CROP)
++        GST_WARNING ("The compositor doesn't support crop mode (no viewport)!");
++
++      gst_video_center_rect (&src, &dst, &res, TRUE);
++    }
++
++    /* HACK: Use custom API for scaling */
++    wl_subsurface_set_position (priv->video_subsurface,
++        res.w << 16 | res.x, res.h << 16 | res.y);
+   }
+ 
+   wl_subsurface_set_position (priv->video_subsurface, res.x, res.y);
+-- 
+2.20.1
+

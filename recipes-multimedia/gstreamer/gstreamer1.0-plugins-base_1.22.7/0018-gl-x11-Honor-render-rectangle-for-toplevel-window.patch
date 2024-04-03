@@ -1,0 +1,47 @@
+From e906ccbc86afd98a9bf67616422bca3650e4bd07 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 4 May 2023 17:52:33 +0800
+Subject: [PATCH 18/22] gl: x11: Honor render-rectangle for toplevel window
+
+Tested on RK3588 evb with:
+gst-launch-1.0 videotestsrc ! glimagesink render-rectangle='<100,200,300,400>'
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/gl/x11/gstglwindow_x11.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/gst-libs/gst/gl/x11/gstglwindow_x11.c b/gst-libs/gst/gl/x11/gstglwindow_x11.c
+index f047b67..e7fd1aa 100644
+--- a/gst-libs/gst/gl/x11/gstglwindow_x11.c
++++ b/gst-libs/gst/gl/x11/gstglwindow_x11.c
+@@ -230,6 +230,13 @@ gst_gl_window_x11_create_window (GstGLWindowX11 * window_x11)
+       window_x11->visual_info->depth, InputOutput,
+       window_x11->visual_info->visual, mask, &win_attr);
+ 
++  /* Set USPosition for toplevel window */
++  if (!window_x11->parent_win) {
++    XSizeHints hints = {0};
++    hints.flags  = USPosition;
++    XSetWMNormalHints (window_x11->device, window_x11->internal_win_id, &hints);
++  }
++
+   gst_gl_window_x11_handle_events (GST_GL_WINDOW (window_x11),
+       window_x11->priv->handle_events);
+ 
+@@ -411,6 +418,12 @@ _show_window (GstGLWindow * window)
+   guint width = window_x11->priv->preferred_width;
+   guint height = window_x11->priv->preferred_height;
+ 
++  if (window_x11->priv->render_rect.w > 0 &&
++      window_x11->priv->render_rect.h > 0) {
++    width = window_x11->priv->render_rect.w;
++    height = window_x11->priv->render_rect.h;
++  }
++
+   if (!window_x11->visible) {
+     if (!window_x11->parent_win) {
+       XResizeWindow (window_x11->device, window_x11->internal_win_id,
+-- 
+2.20.1
+

@@ -1,0 +1,63 @@
+From 2bb13ad2fb5d7e54e79196ee66610db8096a1655 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 4 May 2023 18:09:19 +0800
+Subject: [PATCH 20/22] gl: x11: Allow disabling decorations for toplevel
+ window
+
+Tested on RK3588 evb with:
+GST_GL_X11_NO_DECORATIONS=1 \
+gst-launch-1.0 videotestsrc ! glimagesink render-rectangle='<100,200,300,400>'
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/gl/x11/gstglwindow_x11.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/gst-libs/gst/gl/x11/gstglwindow_x11.c b/gst-libs/gst/gl/x11/gstglwindow_x11.c
+index e7fd1aa..563748c 100644
+--- a/gst-libs/gst/gl/x11/gstglwindow_x11.c
++++ b/gst-libs/gst/gl/x11/gstglwindow_x11.c
+@@ -70,6 +70,18 @@ struct _GstGLWindowX11Private
+ G_DEFINE_TYPE_WITH_PRIVATE (GstGLWindowX11, gst_gl_window_x11,
+     GST_TYPE_GL_WINDOW);
+ 
++typedef struct
++{
++  unsigned long flags;
++  unsigned long functions;
++  unsigned long decorations;
++  long input_mode;
++  unsigned long status;
++}
++MotifWmHints, MwmHints;
++
++#define MWM_HINTS_DECORATIONS   (1L << 1)
++
+ static guintptr gst_gl_window_x11_get_display (GstGLWindow * window);
+ guintptr gst_gl_window_x11_get_gl_context (GstGLWindow * window);
+ gboolean gst_gl_window_x11_activate (GstGLWindow * window, gboolean activate);
+@@ -237,6 +249,21 @@ gst_gl_window_x11_create_window (GstGLWindowX11 * window_x11)
+     XSetWMNormalHints (window_x11->device, window_x11->internal_win_id, &hints);
+   }
+ 
++  /* Set decoration for toplevel window */
++  Atom atom = XInternAtom (window_x11->device, "_MOTIF_WM_HINTS", True);
++  if (!window_x11->parent_win && atom != None) {
++    MotifWmHints hints;
++    gboolean decorations = !g_getenv ("GST_GL_X11_NO_DECORATIONS");
++    hints.flags |= MWM_HINTS_DECORATIONS;
++    hints.decorations = decorations ? 1 << 0 : 0;
++
++    XChangeProperty (window_x11->device, window_x11->internal_win_id,
++                     atom, atom, 32, PropModeReplace,
++                     (guchar *) &hints, sizeof (MotifWmHints) / sizeof (long));
++
++    XSync (window_x11->device, FALSE);
++  }
++
+   gst_gl_window_x11_handle_events (GST_GL_WINDOW (window_x11),
+       window_x11->priv->handle_events);
+ 
+-- 
+2.20.1
+

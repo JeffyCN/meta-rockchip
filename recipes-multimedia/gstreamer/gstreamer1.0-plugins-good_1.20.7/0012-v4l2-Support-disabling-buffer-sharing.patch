@@ -1,0 +1,114 @@
+From bbd00d94457c5d83a691374004d7ef20c767bead Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 27 Jun 2022 17:48:30 +0800
+Subject: [PATCH 12/12] v4l2: Support disabling buffer sharing
+
+Tested with:
+export GST_DEBUG=v4l2bufferpool:5
+gst-launch-1.0 v4l2src no-buffer-sharing=true ! waylandsink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/v4l2/gstv4l2object.c | 20 ++++++++++++++++++++
+ sys/v4l2/gstv4l2object.h |  5 ++++-
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/sys/v4l2/gstv4l2object.c b/sys/v4l2/gstv4l2object.c
+index a55809d..311f59b 100644
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -57,6 +57,7 @@ GST_DEBUG_CATEGORY_EXTERN (v4l2_debug);
+ #define ENCODED_BUFFER_SIZE             (2 * 1024 * 1024)
+ 
+ static guint DEFAULT_PROP_MIN_BUFFERS = 0;
++static gboolean DEFAULT_PROP_NO_BUFFER_SHARING = FALSE;
+ 
+ enum
+ {
+@@ -314,6 +315,9 @@ gst_v4l2_object_install_properties_helper (GObjectClass * gobject_class,
+   if (buf)
+     DEFAULT_PROP_MIN_BUFFERS = atoi (buf);
+ 
++  if ((buf = g_getenv ("GST_V4L2_NO_BUF_SHARING")))
++    DEFAULT_PROP_NO_BUFFER_SHARING = buf[0] == '1';
++
+   g_object_class_install_property (gobject_class, PROP_DEVICE,
+       g_param_spec_string ("device", "Device", "Device location",
+           default_device, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+@@ -439,6 +443,12 @@ gst_v4l2_object_install_properties_helper (GObjectClass * gobject_class,
+           0, VIDEO_MAX_FRAME, DEFAULT_PROP_MIN_BUFFERS,
+           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+ 
++  g_object_class_install_property (gobject_class, PROP_NO_BUFFER_SHARING,
++      g_param_spec_boolean ("no-buffer-sharing", "No buffer sharing",
++          "When enabled, disable buffer sharing",
++          DEFAULT_PROP_NO_BUFFER_SHARING,
++          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
+   gst_type_mark_as_plugin_api (GST_TYPE_V4L2_DEVICE_FLAGS, 0);
+   gst_type_mark_as_plugin_api (GST_TYPE_V4L2_TV_NORM, 0);
+   gst_type_mark_as_plugin_api (GST_TYPE_V4L2_IO_MODE, 0);
+@@ -557,6 +567,7 @@ gst_v4l2_object_new (GstElement * element,
+   }
+ 
+   v4l2object->min_buffers = DEFAULT_PROP_MIN_BUFFERS;
++  v4l2object->no_buffer_sharing = DEFAULT_PROP_NO_BUFFER_SHARING;
+ 
+   return v4l2object;
+ }
+@@ -731,6 +742,9 @@ gst_v4l2_object_set_property_helper (GstV4l2Object * v4l2object,
+     case PROP_MIN_BUFFERS:
+       v4l2object->min_buffers = g_value_get_uint (value);
+       break;
++    case PROP_NO_BUFFER_SHARING:
++      v4l2object->no_buffer_sharing = g_value_get_boolean (value);
++      break;
+     default:
+       return FALSE;
+       break;
+@@ -831,6 +845,9 @@ gst_v4l2_object_get_property_helper (GstV4l2Object * v4l2object,
+     case PROP_MIN_BUFFERS:
+       g_value_set_uint (value, v4l2object->min_buffers);
+       break;
++    case PROP_NO_BUFFER_SHARING:
++      g_value_set_boolean (value, v4l2object->no_buffer_sharing);
++      break;
+     default:
+       return FALSE;
+       break;
+@@ -4996,6 +5013,9 @@ gst_v4l2_object_decide_allocation (GstV4l2Object * obj, GstQuery * query)
+   if (min + obj->min_buffers + 1 > VIDEO_MAX_FRAME)
+     can_share_own_pool = FALSE;
+ 
++  if (obj->no_buffer_sharing)
++    can_share_own_pool = FALSE;
++
+   /* select a pool */
+   switch (obj->mode) {
+     case GST_V4L2_IO_RW:
+diff --git a/sys/v4l2/gstv4l2object.h b/sys/v4l2/gstv4l2object.h
+index f1a3e83..755b146 100644
+--- a/sys/v4l2/gstv4l2object.h
++++ b/sys/v4l2/gstv4l2object.h
+@@ -222,6 +222,8 @@ struct _GstV4l2Object {
+    * on slow USB firmwares. When this is set, gst_v4l2_set_format() will modify
+    * the caps to reflect what was negotiated during fixation */
+   gboolean skip_try_fmt_probes;
++
++  gboolean no_buffer_sharing;
+ };
+ 
+ struct _GstV4l2ObjectClassHelper {
+@@ -247,7 +249,8 @@ GType gst_v4l2_object_get_type (void);
+     PROP_EXTRA_CONTROLS,      \
+     PROP_PIXEL_ASPECT_RATIO,  \
+     PROP_FORCE_ASPECT_RATIO,  \
+-    PROP_MIN_BUFFERS
++    PROP_MIN_BUFFERS,         \
++    PROP_NO_BUFFER_SHARING
+ 
+ /* create/destroy */
+ GstV4l2Object*  gst_v4l2_object_new       (GstElement * element,
+-- 
+2.20.1
+

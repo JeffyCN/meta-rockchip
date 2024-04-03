@@ -1,0 +1,32 @@
+From b88a553011deef12223ee8a8561983c4441891a7 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 28 Apr 2022 17:31:28 +0800
+Subject: [PATCH 01/22] Revert "decodebin: only emit 'drained' signal when top
+ chain is drained"
+
+This reverts commit e945b3706c86aa13d05d195a1170e6277a247548.
+
+See:
+https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/976
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/playback/gstdecodebin2.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gst/playback/gstdecodebin2.c b/gst/playback/gstdecodebin2.c
+index 7dcad54..1849714 100644
+--- a/gst/playback/gstdecodebin2.c
++++ b/gst/playback/gstdecodebin2.c
+@@ -4242,7 +4242,7 @@ beach:
+ 
+   *drained = chain->drained;
+ 
+-  if (*drained && !chain->parent)       /* only emit signal from top chain */
++  if (*drained)
+     g_signal_emit (dbin, gst_decode_bin_signals[SIGNAL_DRAINED], 0, NULL);
+ 
+   return handled;
+-- 
+2.20.1
+

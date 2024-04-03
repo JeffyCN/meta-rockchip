@@ -1,0 +1,132 @@
+From 4066a86f854e6092fab0aeb4e0ed6a8e91e319d2 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 28 Apr 2023 17:09:54 +0800
+Subject: [PATCH 15/22] xvimagesink: Allow disabling decorations
+
+Tested on RK3588 EVB with:
+gst-launch-1.0 videotestsrc ! xvimagesink decorations=0
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/xvimage/xvcontext.c   |  5 +++--
+ sys/xvimage/xvcontext.h   |  3 ++-
+ sys/xvimage/xvimagesink.c | 17 ++++++++++++++++-
+ sys/xvimage/xvimagesink.h |  2 ++
+ 4 files changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/sys/xvimage/xvcontext.c b/sys/xvimage/xvcontext.c
+index 975c3a9..97962d9 100644
+--- a/sys/xvimage/xvcontext.c
++++ b/sys/xvimage/xvcontext.c
+@@ -1048,7 +1048,8 @@ gst_xv_touchdevice_free (GstXvTouchDevice * device)
+ #endif
+ 
+ GstXWindow *
+-gst_xvcontext_create_xwindow (GstXvContext * context, gint width, gint height)
++gst_xvcontext_create_xwindow (GstXvContext * context, gint width, gint height,
++    gboolean decorations)
+ {
+   GstXWindow *window;
+   Atom wm_delete;
+@@ -1098,7 +1099,7 @@ gst_xvcontext_create_xwindow (GstXvContext * context, gint width, gint height)
+     hints = g_malloc0 (sizeof (MotifWmHints));
+ 
+     hints->flags |= MWM_HINTS_DECORATIONS;
+-    hints->decorations = 1 << 0;
++    hints->decorations = decorations ? 1 << 0 : 0;
+ 
+     XChangeProperty (context->disp, window->win,
+         hints_atom, hints_atom, 32, PropModeReplace,
+diff --git a/sys/xvimage/xvcontext.h b/sys/xvimage/xvcontext.h
+index e515fcc..1fb7614 100644
+--- a/sys/xvimage/xvcontext.h
++++ b/sys/xvimage/xvcontext.h
+@@ -287,7 +287,8 @@ struct _GstXvTouchDevice {
+ G_END_DECLS
+ 
+ GstXWindow *   gst_xvcontext_create_xwindow     (GstXvContext * context,
+-                                                 gint width, gint height);
++                                                 gint width, gint height,
++                                                 gboolean decorations);
+ GstXWindow *   gst_xvcontext_create_xwindow_from_xid (GstXvContext * context, XID xid);
+ 
+ void           gst_xwindow_destroy              (GstXWindow * window);
+diff --git a/sys/xvimage/xvimagesink.c b/sys/xvimage/xvimagesink.c
+index fea70a5..a0fa468 100644
+--- a/sys/xvimage/xvimagesink.c
++++ b/sys/xvimage/xvimagesink.c
+@@ -200,6 +200,7 @@ enum
+   PROP_DRAW_BORDERS,
+   PROP_WINDOW_WIDTH,
+   PROP_WINDOW_HEIGHT,
++  PROP_DECORATIONS,
+   PROP_LAST
+ };
+ 
+@@ -557,7 +558,8 @@ gst_xv_image_sink_xwindow_new (GstXvImageSink * xvimagesink,
+ 
+   context = xvimagesink->context;
+ 
+-  xwindow = gst_xvcontext_create_xwindow (context, width, height);
++  xwindow = gst_xvcontext_create_xwindow (context, width, height,
++      xvimagesink->decorations);
+ 
+   /* set application name as a title */
+   gst_xv_image_sink_xwindow_set_title (xvimagesink, xwindow, NULL);
+@@ -2057,6 +2059,9 @@ gst_xv_image_sink_set_property (GObject * object, guint prop_id,
+     case PROP_DRAW_BORDERS:
+       xvimagesink->draw_borders = g_value_get_boolean (value);
+       break;
++    case PROP_DECORATIONS:
++      xvimagesink->decorations = g_value_get_boolean (value);
++      break;
+     default:
+       if (!gst_video_overlay_set_property (object, PROP_LAST, prop_id, value))
+         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+@@ -2147,6 +2152,9 @@ gst_xv_image_sink_get_property (GObject * object, guint prop_id,
+       else
+         g_value_set_uint64 (value, 0);
+       break;
++    case PROP_DECORATIONS:
++      g_value_set_boolean (value, xvimagesink->decorations);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -2310,6 +2318,8 @@ gst_xv_image_sink_init (GstXvImageSink * xvimagesink)
+ 
+   /* HACK: Use a non-zero initial ID to detect overlay mode */
+   xvimagesink->xwindow_id = -1;
++
++  xvimagesink->decorations = TRUE;
+ }
+ 
+ static void
+@@ -2446,6 +2456,11 @@ gst_xv_image_sink_class_init (GstXvImageSinkClass * klass)
+           "Height of the window", 0, G_MAXUINT64, 0,
+           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
+ 
++  g_object_class_install_property (gobject_class, PROP_DECORATIONS,
++      g_param_spec_boolean ("decorations", "decorations",
++          "Allow window decorations", TRUE,
++          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
+   gobject_class->finalize = gst_xv_image_sink_finalize;
+ 
+   gst_element_class_set_static_metadata (gstelement_class,
+diff --git a/sys/xvimage/xvimagesink.h b/sys/xvimage/xvimagesink.h
+index c84eeea..2e7182c 100644
+--- a/sys/xvimage/xvimagesink.h
++++ b/sys/xvimage/xvimagesink.h
+@@ -136,6 +136,8 @@ struct _GstXvImageSink
+   GstVideoRectangle render_rect;
+ 
+   guintptr xwindow_id;
++
++  gboolean decorations;
+ };
+ 
+ struct _GstXvImageSinkClass
+-- 
+2.20.1
+

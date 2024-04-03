@@ -1,0 +1,219 @@
+From 17dcb5cb21b3ce5ff7173323bcd2acf926f029b1 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 28 Apr 2023 18:34:49 +0800
+Subject: [PATCH 16/22] xvimagesink: Apply toplevel window's position
+
+Tested on RK3588 evb with:
+gst-launch-1.0 videotestsrc ! xvimagesink render-rectangle='<100,200,300,400>'
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/xvimage/xvcontext.c        | 18 +++++++++++---
+ sys/xvimage/xvcontext.h        |  1 +
+ sys/xvimage/xvimageallocator.c | 45 ++++++++++++++++++++++------------
+ sys/xvimage/xvimagesink.c      | 20 ++++++++++++---
+ 4 files changed, 60 insertions(+), 24 deletions(-)
+
+diff --git a/sys/xvimage/xvcontext.c b/sys/xvimage/xvcontext.c
+index 97962d9..5fd1c85 100644
+--- a/sys/xvimage/xvcontext.c
++++ b/sys/xvimage/xvcontext.c
+@@ -1048,19 +1048,21 @@ gst_xv_touchdevice_free (GstXvTouchDevice * device)
+ #endif
+ 
+ GstXWindow *
+-gst_xvcontext_create_xwindow (GstXvContext * context, gint width, gint height,
+-    gboolean decorations)
++gst_xvcontext_create_xwindow (GstXvContext * context, gint x, gint y,
++    gint width, gint height, gboolean decorations)
+ {
+   GstXWindow *window;
+   Atom wm_delete;
+   Atom hints_atom = None;
++  XSizeHints hints;
+ 
+   g_return_val_if_fail (GST_IS_XVCONTEXT (context), NULL);
+ 
+   window = g_slice_new0 (GstXWindow);
+ 
+   window->context = gst_xvcontext_ref (context);
+-  window->render_rect.x = window->render_rect.y = 0;
++  window->render_rect.x = x;
++  window->render_rect.y = y;
+   window->render_rect.w = width;
+   window->render_rect.h = height;
+   window->have_render_rect = FALSE;
+@@ -1079,7 +1081,15 @@ gst_xvcontext_create_xwindow (GstXvContext * context, gint width, gint height,
+   g_mutex_lock (&context->lock);
+ 
+   window->win = XCreateSimpleWindow (context->disp,
+-      context->root, 0, 0, width, height, 0, 0, context->black);
++      context->root, x, y, width, height, 0, 0, context->black);
++
++  /* Apply size hints */
++  hints.flags  = USPosition | USSize;
++  hints.x = x;
++  hints.y = y;
++  hints.width  = width;
++  hints.height = height;
++  XSetWMNormalHints (context->disp, window->win, &hints);
+ 
+   /* We have to do that to prevent X from redrawing the background on
+    * ConfigureNotify. This takes away flickering of video when resizing. */
+diff --git a/sys/xvimage/xvcontext.h b/sys/xvimage/xvcontext.h
+index 1fb7614..9f535ae 100644
+--- a/sys/xvimage/xvcontext.h
++++ b/sys/xvimage/xvcontext.h
+@@ -287,6 +287,7 @@ struct _GstXvTouchDevice {
+ G_END_DECLS
+ 
+ GstXWindow *   gst_xvcontext_create_xwindow     (GstXvContext * context,
++                                                 gint x, gint y,
+                                                  gint width, gint height,
+                                                  gboolean decorations);
+ GstXWindow *   gst_xvcontext_create_xwindow_from_xid (GstXvContext * context, XID xid);
+diff --git a/sys/xvimage/xvimageallocator.c b/sys/xvimage/xvimageallocator.c
+index a6d8432..e5264b7 100644
+--- a/sys/xvimage/xvimageallocator.c
++++ b/sys/xvimage/xvimageallocator.c
+@@ -590,46 +590,48 @@ xattach_failed:
+ 
+ /* We are called with the x_lock taken */
+ static void
+-gst_xwindow_draw_borders (GstXWindow * window, GstVideoRectangle * rect)
++gst_xwindow_draw_borders (GstXWindow * window, GstVideoRectangle * render_rect,
++    GstVideoRectangle * video_rect)
+ {
+   gint t1, t2;
+   GstXvContext *context;
+ 
+   g_return_if_fail (window != NULL);
+-  g_return_if_fail (rect != NULL);
++  g_return_if_fail (render_rect != NULL);
++  g_return_if_fail (video_rect != NULL);
+ 
+   context = window->context;
+ 
+   XSetForeground (context->disp, window->gc, context->black);
+ 
+   /* Left border */
+-  if (rect->x > window->render_rect.x) {
++  if (video_rect->x > render_rect->x) {
+     XFillRectangle (context->disp, window->win, window->gc,
+-        window->render_rect.x, window->render_rect.y,
+-        rect->x - window->render_rect.x, window->render_rect.h);
++        render_rect->x, render_rect->y,
++        video_rect->x - render_rect->x, render_rect->h);
+   }
+ 
+   /* Right border */
+-  t1 = rect->x + rect->w;
+-  t2 = window->render_rect.x + window->render_rect.w;
++  t1 = video_rect->x + video_rect->w;
++  t2 = render_rect->x + render_rect->w;
+   if (t1 < t2) {
+     XFillRectangle (context->disp, window->win, window->gc,
+-        t1, window->render_rect.y, t2 - t1, window->render_rect.h);
++        t1, render_rect->y, t2 - t1, render_rect->h);
+   }
+ 
+   /* Top border */
+-  if (rect->y > window->render_rect.y) {
++  if (video_rect->y > render_rect->y) {
+     XFillRectangle (context->disp, window->win, window->gc,
+-        window->render_rect.x, window->render_rect.y,
+-        window->render_rect.w, rect->y - window->render_rect.y);
++        render_rect->x, render_rect->y,
++        render_rect->w, video_rect->y - render_rect->y);
+   }
+ 
+   /* Bottom border */
+-  t1 = rect->y + rect->h;
+-  t2 = window->render_rect.y + window->render_rect.h;
++  t1 = video_rect->y + video_rect->h;
++  t2 = render_rect->y + render_rect->h;
+   if (t1 < t2) {
+     XFillRectangle (context->disp, window->win, window->gc,
+-        window->render_rect.x, t1, window->render_rect.w, t2 - t1);
++        render_rect->x, t1, render_rect->w, t2 - t1);
+   }
+ }
+ 
+@@ -639,15 +641,26 @@ gst_xvimage_memory_render (GstXvImageMemory * mem, GstVideoRectangle * src_crop,
+ {
+   GstXvContext *context;
+   XvImage *xvimage;
++  GstVideoRectangle render_rect;
+ 
+   context = window->context;
+ 
+   g_mutex_lock (&context->lock);
+   xvimage = gst_xvimage_memory_get_xvimage (mem);
+ 
+-  if (draw_border) {
+-    gst_xwindow_draw_borders (window, dst_crop);
++  render_rect = window->render_rect;
++  if (window->internal) {
++    XMoveResizeWindow (context->disp, window->win,
++        window->render_rect.x, window->render_rect.y,
++        window->render_rect.w, window->render_rect.h);
++    dst_crop->x -= window->render_rect.x;
++    dst_crop->y -= window->render_rect.y;
++    render_rect.x = render_rect.y = 0;
+   }
++
++  if (draw_border)
++    gst_xwindow_draw_borders (window, &render_rect, dst_crop);
++
+ #ifdef HAVE_XSHM
+   if (context->use_xshm) {
+     GST_LOG ("XvShmPutImage with image %dx%d and window %dx%d, from xvimage %p",
+diff --git a/sys/xvimage/xvimagesink.c b/sys/xvimage/xvimagesink.c
+index a0fa468..9f8b594 100644
+--- a/sys/xvimage/xvimagesink.c
++++ b/sys/xvimage/xvimagesink.c
+@@ -548,7 +548,7 @@ gst_xv_image_sink_xwindow_set_title (GstXvImageSink * xvimagesink,
+ /* This function handles a GstXWindow creation
+  * The width and height are the actual pixel size on the display */
+ static GstXWindow *
+-gst_xv_image_sink_xwindow_new (GstXvImageSink * xvimagesink,
++gst_xv_image_sink_xwindow_new (GstXvImageSink * xvimagesink, gint x, gint y,
+     gint width, gint height)
+ {
+   GstXWindow *xwindow = NULL;
+@@ -558,7 +558,7 @@ gst_xv_image_sink_xwindow_new (GstXvImageSink * xvimagesink,
+ 
+   context = xvimagesink->context;
+ 
+-  xwindow = gst_xvcontext_create_xwindow (context, width, height,
++  xwindow = gst_xvcontext_create_xwindow (context, x, y, width, height,
+       xvimagesink->decorations);
+ 
+   /* set application name as a title */
+@@ -1156,9 +1156,21 @@ gst_xv_image_sink_setcaps (GstBaseSink * bsink, GstCaps * caps)
+   if (!xvimagesink->xwindow_id) {
+     GST_WARNING_OBJECT (xvimagesink, "overlay window not ready");
+   } else if (!xvimagesink->xwindow) {
++    gint x, y, w, h;
++
++    if (xvimagesink->pending_render_rect) {
++      x = xvimagesink->render_rect.x;
++      y = xvimagesink->render_rect.y;
++      w = xvimagesink->render_rect.w;
++      h = xvimagesink->render_rect.h;
++    } else {
++      x = y = 0;
++      w = GST_VIDEO_SINK_WIDTH (xvimagesink);
++      h = GST_VIDEO_SINK_HEIGHT (xvimagesink);
++    }
++
+     xvimagesink->xwindow = gst_xv_image_sink_xwindow_new (xvimagesink,
+-        GST_VIDEO_SINK_WIDTH (xvimagesink),
+-        GST_VIDEO_SINK_HEIGHT (xvimagesink));
++        x, y, w, h);
+   }
+ 
+   if (xvimagesink->pending_render_rect) {
+-- 
+2.20.1
+

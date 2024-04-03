@@ -1,0 +1,39 @@
+From e87b8e73f8f6a8f2c0f75fb3de590412a3c2789d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 11 May 2022 15:21:44 +0800
+Subject: [PATCH 06/12] v4l2src: Support setting default device
+
+Use env "GST_V4L2SRC_DEFAULT_DEVICE" to specify default device.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/v4l2/gstv4l2src.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/sys/v4l2/gstv4l2src.c b/sys/v4l2/gstv4l2src.c
+index 97ef231..ddd4c9d 100644
+--- a/sys/v4l2/gstv4l2src.c
++++ b/sys/v4l2/gstv4l2src.c
+@@ -66,7 +66,7 @@
+ GST_DEBUG_CATEGORY (v4l2src_debug);
+ #define GST_CAT_DEFAULT v4l2src_debug
+ 
+-#define DEFAULT_PROP_DEVICE   "/dev/video0"
++static const gchar *DEFAULT_PROP_DEVICE = NULL;
+ 
+ enum
+ {
+@@ -148,6 +148,10 @@ gst_v4l2src_class_init (GstV4l2SrcClass * klass)
+   GstBaseSrcClass *basesrc_class;
+   GstPushSrcClass *pushsrc_class;
+ 
++  DEFAULT_PROP_DEVICE = g_getenv ("GST_V4L2SRC_DEFAULT_DEVICE");
++  if (!DEFAULT_PROP_DEVICE)
++    DEFAULT_PROP_DEVICE = "/dev/video0";
++
+   gobject_class = G_OBJECT_CLASS (klass);
+   element_class = GST_ELEMENT_CLASS (klass);
+   basesrc_class = GST_BASE_SRC_CLASS (klass);
+-- 
+2.20.1
+

@@ -1,0 +1,108 @@
+From d6e1368cd422db157eb96a6c68d0edc3fac5ca79 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 6 Nov 2019 15:07:44 +0800
+Subject: [PATCH 04/12] v4l2: Support preferred formats
+
+Set env "GST_V4L2_PREFERRED_FOURCC" to specify preferred formats, for
+example:
+export GST_V4L2SRC_PREFERRED_FOURCC=YU12:NV12
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/v4l2/gstv4l2object.c | 17 +++++++++++++++++
+ sys/v4l2/gstv4l2src.c    | 37 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 54 insertions(+)
+
+diff --git a/sys/v4l2/gstv4l2object.c b/sys/v4l2/gstv4l2object.c
+index 9736cd5..5d5ae4f 100644
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -25,6 +25,7 @@
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <errno.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
+ #include <sys/ioctl.h>
+@@ -1172,6 +1173,22 @@ gst_v4l2_object_format_get_rank (const struct v4l2_fmtdesc *fmt)
+       break;
+   }
+ 
++  {
++    const char *buf = g_getenv ("GST_V4L2_PREFERRED_FOURCC");
++    int max_rank = YUV_BASE_RANK * 2;
++
++    while (buf) {
++      if (buf[0] == ':')
++        buf++;
++
++      if (!strncmp (buf, (char *) &fourcc, 4))
++        rank = max_rank;
++
++      buf = strchr (buf, ':');
++      max_rank--;
++    }
++  }
++
+   /* All ranks are below 1<<15 so a shift by 15
+    * will a) make all non-emulated formats larger
+    * than emulated and b) will not overflow
+diff --git a/sys/v4l2/gstv4l2src.c b/sys/v4l2/gstv4l2src.c
+index 2d1537e..97ef231 100644
+--- a/sys/v4l2/gstv4l2src.c
++++ b/sys/v4l2/gstv4l2src.c
+@@ -438,6 +438,38 @@ gst_v4l2_src_parse_fixed_struct (GstStructure * s,
+     gst_structure_get_fraction (s, "framerate", fps_n, fps_d);
+ }
+ 
++static gint
++gst_v4l2src_get_format_loss (GstStructure * s)
++{
++  GstVideoFormat format;
++  const gchar *buf = g_getenv ("GST_V4L2_PREFERRED_FOURCC");
++  guint32 fourcc, loss;
++
++  if (!buf)
++    return 0;
++
++  format =
++      gst_video_format_from_string (gst_structure_get_string (s, "format"));
++  if (format == GST_VIDEO_FORMAT_UNKNOWN)
++    return 0;
++
++  fourcc = gst_video_format_to_fourcc (format);
++
++  loss = 0;
++  while (buf) {
++    if (buf[0] == ':')
++      buf++;
++
++    if (!strncmp (buf, (char *) &fourcc, 4))
++      return loss;
++
++    buf = strchr (buf, ':');
++    loss++;
++  }
++
++  return loss;
++}
++
+ static gint
+ gst_v4l2src_fixed_caps_compare (GstCaps * caps_a, GstCaps * caps_b,
+     struct PreferredCapsInfo *pref)
+@@ -468,6 +500,11 @@ gst_v4l2src_fixed_caps_compare (GstCaps * caps_a, GstCaps * caps_b,
+   a_distance = ABS (aw * ah - pref->width * pref->height);
+   b_distance = ABS (bw * bh - pref->width * pref->height);
+ 
++  if (a_distance == b_distance) {
++    a_distance = gst_v4l2src_get_format_loss (a);
++    b_distance = gst_v4l2src_get_format_loss (b);
++  }
++
+   gint ret = a_distance - b_distance;
+ 
+   GST_TRACE ("Placing %" GST_PTR_FORMAT " %s %" GST_PTR_FORMAT,
+-- 
+2.20.1
+

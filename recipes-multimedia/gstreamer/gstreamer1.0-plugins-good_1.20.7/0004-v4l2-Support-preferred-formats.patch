@@ -1,0 +1,108 @@
+From 6ef28d91fa81318661e20cd710dff16e5b9f4456 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 6 Nov 2019 15:07:44 +0800
+Subject: [PATCH 04/12] v4l2: Support preferred formats
+
+Set env "GST_V4L2_PREFERRED_FOURCC" to specify preferred formats, for
+example:
+export GST_V4L2SRC_PREFERRED_FOURCC=YU12:NV12
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/v4l2/gstv4l2object.c | 17 +++++++++++++++++
+ sys/v4l2/gstv4l2src.c    | 37 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 54 insertions(+)
+
+diff --git a/sys/v4l2/gstv4l2object.c b/sys/v4l2/gstv4l2object.c
+index f3e0e99..a1d0332 100644
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -25,6 +25,7 @@
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <errno.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
+ #include <sys/ioctl.h>
+@@ -1137,6 +1138,22 @@ gst_v4l2_object_format_get_rank (const struct v4l2_fmtdesc *fmt)
+       break;
+   }
+ 
++  {
++    const char *buf = g_getenv ("GST_V4L2_PREFERRED_FOURCC");
++    int max_rank = YUV_BASE_RANK * 2;
++
++    while (buf) {
++      if (buf[0] == ':')
++        buf++;
++
++      if (!strncmp (buf, (char *) &fourcc, 4))
++        rank = max_rank;
++
++      buf = strchr (buf, ':');
++      max_rank--;
++    }
++  }
++
+   /* All ranks are below 1<<15 so a shift by 15
+    * will a) make all non-emulated formats larger
+    * than emulated and b) will not overflow
+diff --git a/sys/v4l2/gstv4l2src.c b/sys/v4l2/gstv4l2src.c
+index f100407..f9c4124 100644
+--- a/sys/v4l2/gstv4l2src.c
++++ b/sys/v4l2/gstv4l2src.c
+@@ -308,6 +308,38 @@ gst_v4l2_src_parse_fixed_struct (GstStructure * s,
+     gst_structure_get_fraction (s, "framerate", fps_n, fps_d);
+ }
+ 
++static gint
++gst_v4l2src_get_format_loss (GstStructure * s)
++{
++  GstVideoFormat format;
++  const gchar *buf = g_getenv ("GST_V4L2_PREFERRED_FOURCC");
++  guint32 fourcc, loss;
++
++  if (!buf)
++    return 0;
++
++  format =
++      gst_video_format_from_string (gst_structure_get_string (s, "format"));
++  if (format == GST_VIDEO_FORMAT_UNKNOWN)
++    return 0;
++
++  fourcc = gst_video_format_to_fourcc (format);
++
++  loss = 0;
++  while (buf) {
++    if (buf[0] == ':')
++      buf++;
++
++    if (!strncmp (buf, (char *) &fourcc, 4))
++      return loss;
++
++    buf = strchr (buf, ':');
++    loss++;
++  }
++
++  return loss;
++}
++
+ /* TODO Consider framerate */
+ static gint
+ gst_v4l2src_fixed_caps_compare (GstCaps * caps_a, GstCaps * caps_b,
+@@ -360,6 +392,11 @@ gst_v4l2src_fixed_caps_compare (GstCaps * caps_a, GstCaps * caps_b,
+   if (bh == pref->height)
+     bd -= 1;
+ 
++  if (ad == bd) {
++    ad = gst_v4l2src_get_format_loss (a);
++    bd = gst_v4l2src_get_format_loss (b);
++  }
++
+   /* If the choices are equivalent, maintain the order */
+   if (ad == bd)
+     ret = 1;
+-- 
+2.20.1
+

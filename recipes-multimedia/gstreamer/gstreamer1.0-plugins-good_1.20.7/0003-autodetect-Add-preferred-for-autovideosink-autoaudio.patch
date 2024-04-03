@@ -1,0 +1,96 @@
+From 5598cde3d30ecd0987d42d818e06298cb4d2ab42 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 11 Jun 2019 10:19:22 +0800
+Subject: [PATCH 03/12] autodetect: Add preferred for
+ autovideosink/autoaudiosink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/autodetect/gstautoaudiosink.c |  3 +++
+ gst/autodetect/gstautodetect.c    | 14 ++++++++++++++
+ gst/autodetect/gstautodetect.h    |  1 +
+ gst/autodetect/gstautovideosink.c |  3 +++
+ 4 files changed, 21 insertions(+)
+
+diff --git a/gst/autodetect/gstautoaudiosink.c b/gst/autodetect/gstautoaudiosink.c
+index 5c18972..088c83e 100644
+--- a/gst/autodetect/gstautoaudiosink.c
++++ b/gst/autodetect/gstautoaudiosink.c
+@@ -39,6 +39,8 @@
+ #include "config.h"
+ #endif
+ 
++#include <stdlib.h>
++
+ #include "gstautodetectelements.h"
+ #include "gstautodetect.h"
+ #include "gstautoaudiosink.h"
+@@ -99,6 +101,7 @@ gst_auto_audio_sink_init (GstAutoAudioSink * sink)
+ 
+   autodetect->media_klass = "Audio";
+   autodetect->flag = GST_ELEMENT_FLAG_SINK;
++  autodetect->preferred = g_getenv ("AUTOAUDIOSINK_PREFERRED");
+ 
+   sink->ts_offset = DEFAULT_TS_OFFSET;
+ }
+diff --git a/gst/autodetect/gstautodetect.c b/gst/autodetect/gstautodetect.c
+index 864d465..56ce69d 100644
+--- a/gst/autodetect/gstautodetect.c
++++ b/gst/autodetect/gstautodetect.c
+@@ -273,6 +273,20 @@ gst_auto_detect_find_best (GstAutoDetect * self)
+   GST_LOG_OBJECT (self, "Trying to find usable %s elements ...",
+       self->media_klass_lc);
+ 
++  if (self->preferred) {
++    for (item = list; item != NULL; item = item->next) {
++      GstElementFactory *f = GST_ELEMENT_FACTORY (item->data);
++
++      if (!strcmp (self->preferred, GST_OBJECT_NAME (f))) {
++        GST_DEBUG_OBJECT (self, "Preferred %s", GST_OBJECT_NAME (f));
++
++        list = g_list_delete_link (list, item);
++        list = g_list_prepend (list, f);
++        break;
++      }
++    }
++  }
++
+   for (item = list; item != NULL; item = item->next) {
+     GstElementFactory *f = GST_ELEMENT_FACTORY (item->data);
+     GstElement *el;
+diff --git a/gst/autodetect/gstautodetect.h b/gst/autodetect/gstautodetect.h
+index 3f54c14..85731c0 100644
+--- a/gst/autodetect/gstautodetect.h
++++ b/gst/autodetect/gstautodetect.h
+@@ -41,6 +41,7 @@ typedef struct _GstAutoDetect {
+   GstBin parent;
+   
+   /* configuration for subclasses */
++  const gchar *preferred;
+   const gchar *media_klass; /* Audio/Video/... */
+   GstElementFlags flag; /* GST_ELEMENT_FLAG_{SINK/SOURCE} */
+ 
+diff --git a/gst/autodetect/gstautovideosink.c b/gst/autodetect/gstautovideosink.c
+index b3eaf1f..545e21c 100644
+--- a/gst/autodetect/gstautovideosink.c
++++ b/gst/autodetect/gstautovideosink.c
+@@ -39,6 +39,8 @@
+ #include "config.h"
+ #endif
+ 
++#include <stdlib.h>
++
+ #include "gstautodetectelements.h"
+ #include "gstautodetect.h"
+ #include "gstautovideosink.h"
+@@ -99,6 +101,7 @@ gst_auto_video_sink_init (GstAutoVideoSink * sink)
+ 
+   autodetect->media_klass = "Video";
+   autodetect->flag = GST_ELEMENT_FLAG_SINK;
++  autodetect->preferred = g_getenv ("AUTOVIDEOSINK_PREFERRED");
+ 
+   sink->ts_offset = DEFAULT_TS_OFFSET;
+ }
+-- 
+2.20.1
+

@@ -1,0 +1,32 @@
+From 17b5466948ffe2bb08ac4360828b18bc473f704a Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 4 May 2023 17:52:33 +0800
+Subject: [PATCH 19/22] gl: wayland: Honor render-rectangle for toplevel window
+
+Tested on RK3588 evb with:
+gst-launch-1.0 videotestsrc ! glimagesink render-rectangle='<100,200,300,400>'
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/gl/wayland/gstglwindow_wayland_egl.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/gst-libs/gst/gl/wayland/gstglwindow_wayland_egl.c b/gst-libs/gst/gl/wayland/gstglwindow_wayland_egl.c
+index 440b635..8748e3d 100644
+--- a/gst-libs/gst/gl/wayland/gstglwindow_wayland_egl.c
++++ b/gst-libs/gst/gl/wayland/gstglwindow_wayland_egl.c
+@@ -735,6 +735,11 @@ _set_render_rectangle (gpointer data)
+ 
+   window_resize (render->window_egl, render->rect.w, render->rect.h);
+ 
++  /* try to position the xdg surface with hacked wayland server API */
++  if (render->window_egl->window.xdg_surface)
++    xdg_surface_set_window_geometry (render->window_egl->window.xdg_surface,
++        render->rect.x, render->rect.y, 0, 0);
++
+   render->window_egl->window.render_rect = render->rect;
+ }
+ 
+-- 
+2.20.1
+

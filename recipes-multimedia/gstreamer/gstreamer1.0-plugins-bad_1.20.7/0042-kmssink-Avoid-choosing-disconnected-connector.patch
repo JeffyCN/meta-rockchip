@@ -1,0 +1,30 @@
+From a45a9a61e55690e2494b60dc687d10aecb249acf Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 29 Feb 2024 15:18:46 +0800
+Subject: [PATCH 42/43] kmssink: Avoid choosing disconnected connector
+
+The connectors might share CRTC, so CRTC's buffer doesn't mean connector
+is used.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 71c0e77..bd1005e 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -358,6 +358,9 @@ connector_is_used (int fd, drmModeRes * res, drmModeConnector * conn)
+   gboolean result;
+   drmModeCrtc *crtc;
+ 
++  if (conn->connection != DRM_MODE_CONNECTED)
++    return FALSE;
++
+   result = FALSE;
+   crtc = find_crtc_for_connector (fd, res, conn, NULL);
+   if (crtc) {
+-- 
+2.20.1
+
