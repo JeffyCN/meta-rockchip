@@ -15,9 +15,9 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 inherit local-git
 
-SRCREV = "be96b36bab4c3533f7cd011385539b565578ab8b"
+SRCREV = "bd19d1ee0d4c21945f156f75a8eb1cdafed2777a"
 SRC_URI = " \
-	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=rkaiq-2023_04_04; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=rkaiq-2024_04_08; \
 	file://rkaiq_daemons.sh \
 "
 
@@ -56,25 +56,11 @@ do_install:append () {
 	chrpath -d ${D}/usr/lib/libsmartIr.so
 
 	install -d ${D}${sysconfdir}/iqfiles
+	ln -sf isp3x ${S}/rkaiq/iqfiles/isp30
 
-	case "${RK_ISP_VERSION}" in
-		2.0)
-			install -m 0644 ${S}/rkaiq/iqfiles/isp20/*.json \
-				${D}${sysconfdir}/iqfiles/
-			;;
-		2.1)
-			install -m 0644 ${S}/rkaiq/iqfiles/isp21/*.json \
-				${D}${sysconfdir}/iqfiles/
-			;;
-		3.0)
-			install -m 0644 ${S}/rkaiq/iqfiles/isp3x/*.json \
-				${D}${sysconfdir}/iqfiles/
-			;;
-		3.2_LITE)
-			install -m 0644 ${S}/rkaiq/iqfiles/isp32_lite/*.json \
-				${D}${sysconfdir}/iqfiles/
-			;;
-	esac
+	IQFILES_DIR="$(echo isp${RK_ISP_VERSION} | tr 'A-Z' 'a-z' | tr -d '.')"
+	install -m 0644 ${S}/rkaiq/iqfiles/$IQFILES_DIR/*.json \
+		${D}${sysconfdir}/iqfiles/
 
 	install -d ${D}${sysconfdir}/init.d
 	install -m 0755 ${WORKDIR}/rkaiq_daemons.sh ${D}${sysconfdir}/init.d/
