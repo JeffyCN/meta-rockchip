@@ -8,8 +8,6 @@ LIC_FILES_CHKSUM = " \
 	file://LICENSES/Apache-2.0;md5=7f43e699e0a26fae98c2938092f008d2 \
 	file://LICENSES/MIT;md5=e8f57dd048e186199433be2c41bd3d6d"
 
-PV_append = "+git${SRCPV}"
-
 inherit local-git
 
 SRCREV = "0de995aa8b98f0be666af18a0e0bb9dcec462039"
@@ -24,13 +22,13 @@ EXTRA_OECMAKE = "     \
     -DHAVE_DRM=ON     \
 "
 
-CFLAGS += "-D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64"
+CFLAGS:append = " -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64"
 
 PACKAGES = "${PN}-demos ${PN}-dbg ${PN}-staticdev ${PN}-dev ${PN} ${PN}-vpu"
-FILES_${PN}-vpu = "${libdir}/lib*vpu${SOLIBS}"
-FILES_${PN} = "${libdir}/lib*mpp${SOLIBS}"
-FILES_${PN}-dev = "${libdir}/lib*${SOLIBSDEV} ${includedir} ${libdir}/pkgconfig"
-FILES_${PN}-demos = "${bindir}/*"
-SECTION_${PN}-dev = "devel"
-FILES_${PN}-staticdev = "${libdir}/*.a"
-SECTION_${PN}-staticdev = "devel"
+FILES:${PN}-vpu = "${libdir}/lib*vpu${SOLIBS}"
+FILES:${PN} = "${libdir}/lib*mpp${SOLIBS}"
+FILES:${PN}-dev = "${libdir}/lib*${SOLIBSDEV} ${includedir} ${libdir}/pkgconfig"
+FILES:${PN}-demos = "${bindir}/*"
+SECTION:${PN}-dev = "devel"
+FILES:${PN}-staticdev = "${libdir}/*.a"
+SECTION:${PN}-staticdev = "devel"

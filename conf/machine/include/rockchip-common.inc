@@ -3,7 +3,7 @@
 
 require conf/machine/include/soc-family.inc
 
-MACHINE_EXTRA_RRECOMMENDS_append = " \
+MACHINE_EXTRA_RRECOMMENDS:append = " \
 	${RK_WIFIBT_FIRMWARES} \
 	kernel-modules \
 "
@@ -27,7 +27,7 @@ PREFERRED_VERSION_linux-rockchip ?= "5.10%"
 LINUXLIBCVERSION ?= "5.10-custom%"
 
 # Custom kernel might not support newest python
-PACKAGECONFIG_remove_pn-perf += " scripting"
+PACKAGECONFIG:remove:pn-perf = "scripting"
 
 PREFERRED_PROVIDER_virtual/xserver ?= "xserver-xorg"
 XSERVER ?= " \
@@ -42,9 +42,9 @@ PREFERRED_PROVIDER_virtual/libgles2 ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libgles3 ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libopencl ?= "rockchip-libmali"
 PREFERRED_PROVIDER_virtual/libgbm ?= "rockchip-libmali"
-PACKAGECONFIG_pn-wayland ?= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'no-egl', '', d)}"
+PACKAGECONFIG:pn-wayland ?= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'no-egl', '', d)}"
 
-DEPENDS_append_pn-mesa-gl += " rockchip-libmali"
+DEPENDS:append:pn-mesa-gl = " rockchip-libmali"
 
 PREFERRED_PROVIDER_virtual/libgl ?= "mesa-gl"
 PREFERRED_PROVIDER_virtual/mesa ?= "mesa-gl"
@@ -54,12 +54,12 @@ PREFERRED_RPROVIDER_lib32-initd-functions = "lib32-initscripts"
 export RK_ROOTDEV_UUID ?= "614e0000-0000-4b53-8000-1d28000054a9"
 export RK_PARTITION_GROW ?= "1"
 
-RDEPENDS_${KERNEL_PACKAGE_NAME}-base = ""
+RDEPENDS:${KERNEL_PACKAGE_NAME}-base = ""
 
-IMAGE_FSTYPES_remove += "iso live"
+IMAGE_FSTYPES:remove = "iso live"
 export RK_ROOTFS_TYPE ?= "ext4"
 
-IMAGE_FSTYPES += "${RK_ROOTFS_TYPE} wic"
+IMAGE_FSTYPES:append = " ${RK_ROOTFS_TYPE} wic"
 WKS_FILE ?= "generic-gptdisk.wks.in"
 
 # Some partitons, e.g. trust, are allowed to be optional.
@@ -83,9 +83,9 @@ addtask do_fixup_wks after do_write_wks_template before do_image_wic
 
 RK_POST_ROOTFS_SCRIPTS ?= ""
 RK_OVERLAY_DIRS ?= ""
-BB_HASHBASE_WHITELIST_append += " RK_POST_ROOTFS_SCRIPTS RK_OVERLAY_DIRS"
+BB_HASHBASE_WHITELIST:append = " RK_POST_ROOTFS_SCRIPTS RK_OVERLAY_DIRS"
 
-ROOTFS_POSTPROCESS_COMMAND += "do_post_rootfs;"
+ROOTFS_POSTPROCESS_COMMAND:append = " do_post_rootfs;"
 do_rootfs[depends] += "rsync-native:do_populate_sysroot"
 do_post_rootfs() {
 	# Rockchip BSP rkwifibt drivers would use custom firmware directories
@@ -110,13 +110,13 @@ do_post_rootfs() {
 	done
 }
 
-IMAGE_POSTPROCESS_COMMAND += "link_rootfs_image;"
+IMAGE_POSTPROCESS_COMMAND:append = " link_rootfs_image;"
 link_rootfs_image() {
 	ln -sf "${IMAGE_LINK_NAME}.${RK_ROOTFS_TYPE}" \
 		"${IMGDEPLOYDIR}/rootfs.img"
 }
 
-IMAGE_POSTPROCESS_COMMAND += "gen_rkparameter;"
+IMAGE_POSTPROCESS_COMMAND:append = " gen_rkparameter;"
 gen_rkparameter() {
 	if [ ! -f "${DEPLOY_DIR_IMAGE}/loader.bin" ];then
 		echo "Skip making Rockchip parameter."
@@ -156,7 +156,7 @@ gen_rkparameter() {
 	echo "uuid: rootfs=${RK_ROOTDEV_UUID}" >> "${OUT}"
 }
 
-IMAGE_POSTPROCESS_COMMAND += "gen_rkupdateimg;"
+IMAGE_POSTPROCESS_COMMAND:append = " gen_rkupdateimg;"
 do_image[depends] += "rk-binary-native:do_populate_sysroot"
 gen_rkupdateimg() {
 	if [ ! -f "${DEPLOY_DIR_IMAGE}/loader.bin" ];then
@@ -212,7 +212,7 @@ gen_rkupdateimg() {
 	rm -rf ${RK_IMAGES} update.raw.img
 }
 
-IMAGE_POSTPROCESS_COMMAND += "link_latest_image;"
+IMAGE_POSTPROCESS_COMMAND:append = " link_latest_image;"
 link_latest_image() {
 	rm -rf "${TOPDIR}/latest"
 	ln -sf "${DEPLOY_DIR_IMAGE}" "${TOPDIR}/latest"

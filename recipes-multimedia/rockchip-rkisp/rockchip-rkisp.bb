@@ -4,15 +4,13 @@
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://NOTICE;md5=9645f39e9db895a4aa6e02cb57294595"
 
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-PACKAGES += "${PN}-tests ${PN}-server ${PN}-iqfiles"
+PACKAGES:append = " ${PN}-tests ${PN}-server ${PN}-iqfiles"
 
 DEPENDS = "coreutils-native chrpath-replacement-native libdrm"
-RDEPENDS_${PN}-tests = "${PN}"
-RDEPENDS_${PN}-server = "${PN}"
-
-PV_append = "+git${SRCPV}"
+RDEPENDS:${PN}-tests = "${PN}"
+RDEPENDS:${PN}-server = "${PN}"
 
 inherit local-git
 
@@ -95,16 +93,16 @@ do_install() {
 inherit update-rc.d
 
 INITSCRIPT_PACKAGES = "${PN}-server"
-INITSCRIPT_NAME_${PN}-server = "rkisp_daemons.sh"
-INITSCRIPT_PARAMS_${PN}-server = "start 70 5 4 3 2 . stop 30 0 1 6 ."
+INITSCRIPT_NAME:${PN}-server = "rkisp_daemons.sh"
+INITSCRIPT_PARAMS:${PN}-server = "start 70 5 4 3 2 . stop 30 0 1 6 ."
 
-INSANE_SKIP_${PN} = "already-stripped ldflags"
+INSANE_SKIP:${PN} = "already-stripped ldflags"
 
-FILES_${PN}-dev = "${includedir}"
-FILES_${PN}-tests = "${bindir}/rkisp_demo"
-FILES_${PN}-server = " \
+FILES:${PN}-dev = "${includedir}"
+FILES:${PN}-tests = "${bindir}/rkisp_demo"
+FILES:${PN}-server = " \
 	${bindir}/rkisp_3A_server \
 	${sysconfdir}/init.d/ \
 "
-FILES_${PN}-iqfiles = "${sysconfdir}/iqfiles/"
-FILES_${PN} = "${libdir}"
+FILES:${PN}-iqfiles = "${sysconfdir}/iqfiles/"
+FILES:${PN} = "${libdir}"

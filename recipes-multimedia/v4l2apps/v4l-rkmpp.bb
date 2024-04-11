@@ -8,8 +8,6 @@ SECTION = "libs"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d749e86a105281d7a44c2328acebc4b0"
 
-PV_append = "+git${SRCPV}"
-
 SRCREV = "9ec6e3a8c192852f672242acdb5ec04753ae4feb"
 SRC_URI = "git://github.com/JeffyCN/libv4l-rkmpp.git;protocol=https;branch=master"
 
@@ -19,4 +17,4 @@ DEPENDS = "rockchip-mpp rockchip-librga libv4l"
 
 inherit meson pkgconfig
 
-FILES_${PN} = "${libdir}/libv4l/plugins/*.so"
+FILES:${PN} = "${libdir}/libv4l/plugins/*.so"

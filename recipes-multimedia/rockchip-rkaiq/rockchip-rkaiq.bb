@@ -4,12 +4,12 @@
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://NOTICE;md5=9645f39e9db895a4aa6e02cb57294595"
 
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-PACKAGES_append = " ${PN}-server ${PN}-iqfiles"
+PACKAGES:append = " ${PN}-server ${PN}-iqfiles"
 
 DEPENDS = "coreutils-native chrpath-replacement-native xxd-native rockchip-librga"
-RDEPENDS_${PN}-server = "${PN}"
+RDEPENDS:${PN}-server = "${PN}"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
@@ -31,7 +31,7 @@ EXTRA_OECMAKE = "     \
     -DRKAIQ_TARGET_SOC=${@d.getVar('SOC_FAMILY').replace('rk3568','rk356x')} \
 "
 
-do_generate_toolchain_file_append () {
+do_generate_toolchain_file:append () {
 	echo "set( CMAKE_SYSROOT ${STAGING_DIR_HOST} )" >> \
 		${WORKDIR}/toolchain.cmake
 	echo "set( CMAKE_SYSROOT_COMPILE ${STAGING_DIR_HOST} )" >> \
@@ -43,9 +43,11 @@ do_generate_toolchain_file_append () {
 	sed -i 's/if ( !pattr )/if ( pattr )/' ${S}/rkaiq/iq_parser/xmltags.cpp
 	sed -i '/\<prebuilts\>/d' ${S}/rkaiq_3A_server/CMakeLists.txt
 	sed -i 's/\(add_library(.* STATIC IMPORTED\))/\1 GLOBAL)/' ${S}/rkaiq/algos/CMakeLists.txt
+	sed -i 's/-Werror//' ${S}/rkaiq/cmake/CompileOptions.cmake
+	sed -i '/#include <stdlib.h>/i#include <stdio.h>' ${S}/rkaiq/ipc_server/MessageParser.hpp
 }
 
-do_install_append () {
+do_install:append () {
 	# rkaiq installed 3A server to the wrong dir.
 	[ ! -d ${D}/usr/usr ] || cp -rp ${D}/usr/usr ${D}/
 	rm -rf ${D}/usr/etc ${D}/usr/usr ${D}/usr/bin/*demo \
@@ -67,13 +69,13 @@ do_install_append () {
 inherit update-rc.d
 
 INITSCRIPT_PACKAGES = "${PN}-server"
-INITSCRIPT_NAME_${PN}-server = "rkaiq_daemons.sh"
-INITSCRIPT_PARAMS_${PN}-server = "start 70 5 4 3 2 . stop 30 0 1 6 ."
+INITSCRIPT_NAME:${PN}-server = "rkaiq_daemons.sh"
+INITSCRIPT_PARAMS:${PN}-server = "start 70 5 4 3 2 . stop 30 0 1 6 ."
 
-FILES_${PN}-dev = "${includedir}"
-FILES_${PN}-server = " \
+FILES:${PN}-dev = "${includedir}"
+FILES:${PN}-server = " \
 	${bindir}/rkaiq_3A_server \
 	${sysconfdir}/init.d/ \
 "
-FILES_${PN}-iqfiles = "${sysconfdir}/iqfiles/"
-FILES_${PN} = "${libdir}"
+FILES:${PN}-iqfiles = "${sysconfdir}/iqfiles/"
+FILES:${PN} = "${libdir}"

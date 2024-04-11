@@ -11,8 +11,6 @@ DEPENDS = "libdrm"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-PV_append = "+git${SRCPV}"
-
 inherit local-git
 
 SRC_URI = " \

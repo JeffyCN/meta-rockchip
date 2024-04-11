@@ -3,10 +3,9 @@
 
 inherit python3-dir
 
-DEPENDS += "openssl-native lz4-native ${PYTHON_PN}-native"
+DEPENDS:append = " openssl-native lz4-native ${PYTHON_PN}-native"
 
 LINUX_VERSION_EXTENSION ?= "-rockchip-${LINUX_KERNEL_TYPE}"
-PV = "${LINUX_VERSION}+git${SRCPV}"
 
 PATCHPATH = "${THISDIR}/${BPN}_${LINUX_VERSION}"
 inherit auto-patch
@@ -14,15 +13,15 @@ inherit auto-patch
 KCONFIG_MODE ?= "--alldefconfig"
 
 # Make sure we use /usr/bin/env ${PYTHON_PN} for scripts
-do_patch_append() {
+do_patch:append() {
 	for s in `grep -rIl python ${S}/scripts`; do
 		sed -i -e '1s|^#!.*python[23]*|#!/usr/bin/env ${PYTHON_PN}|' $s
 	done
 }
 
 # Hack for rockchip style images
-KERNEL_IMAGETYPES += \
-	"${@'boot.img zboot.img' if d.getVar('ROCKCHIP_KERNEL_IMAGES') == '1' else ''}"
+KERNEL_IMAGETYPES:append = \
+	"${@' boot.img zboot.img' if d.getVar('ROCKCHIP_KERNEL_IMAGES') == '1' else ''}"
 python () {
     if not d.getVar('KERNEL_DEVICETREE'):
         raise bb.parse.SkipPackage('KERNEL_DEVICETREE is not specified!')
@@ -32,7 +31,7 @@ python () {
         d.setVar('KERNEL_IMAGETYPE_FOR_MAKE', ' ' + d.getVar('KERNEL_DEVICETREE').replace('rockchip/', '').replace('.dtb', '.img'));
 }
 
-do_kernel_metadata_prepend() {
+do_kernel_metadata:prepend() {
 	# Force regenerating defconfig
 	rm -f ${WORKDIR}/defconfig
 
@@ -49,7 +48,7 @@ do_kernel_metadata_prepend() {
 }
 
 # Link rockchip style images
-do_install_prepend() {
+do_install:prepend() {
 	for image in $(ls "${B}/" | grep ".img$"); do
 		ln -rsf ${B}/${image} ${B}/arch/${ARCH}/boot/
 	done

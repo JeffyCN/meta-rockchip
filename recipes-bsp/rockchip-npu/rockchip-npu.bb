@@ -7,9 +7,7 @@ SECTION = "utils"
 LICENSE = "LICENSE.rockchip"
 LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf038f44e708bbb13e4ed9"
 
-RDEPENDS_${PN} = "bash"
-
-PV_append = "+git${SRCPV}"
+RDEPENDS:${PN} = "bash"
 
 inherit local-git
 
@@ -40,9 +38,9 @@ inherit update-rc.d
 INITSCRIPT_NAME = "rockchip-npu.sh"
 INITSCRIPT_PARAMS = "start 11 S ."
 
-INSANE_SKIP_${PN} = "already-stripped ldflags"
+INSANE_SKIP:${PN} = "already-stripped ldflags"
 
-FILES_${PN} = " \
+FILES:${PN} = " \
 	${datadir} \
 	${bindir} \
 	${sysconfdir}/init.d \

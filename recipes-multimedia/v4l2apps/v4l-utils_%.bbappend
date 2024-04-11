@@ -5,7 +5,7 @@ PATCHPATH = "${CURDIR}/${BPN}"
 
 inherit auto-patch
 
-INSANE_SKIP_libv4l += "dev-so"
+INSANE_SKIP:libv4l:append = " dev-so"
 
 # The chromium will dlopen it
-FILES_libv4l += "${libdir}/libv4l2.so"
+FILES:libv4l:append = " ${libdir}/libv4l2.so"
