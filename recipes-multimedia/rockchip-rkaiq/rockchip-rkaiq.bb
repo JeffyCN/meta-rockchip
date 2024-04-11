@@ -53,7 +53,7 @@ do_install:append () {
 	rm -rf ${D}/usr/etc ${D}/usr/usr ${D}/usr/bin/*demo \
 		${D}/usr/bin/rkaiq_tool_server
 
-	chrpath -d ${D}/usr/lib/libsmartIr.so
+	chrpath -d ${D}/${libdir}/libsmartIr.so
 
 	install -d ${D}${sysconfdir}/iqfiles
 	ln -sf isp3x ${S}/rkaiq/iqfiles/isp30
