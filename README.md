@@ -134,7 +134,7 @@ For example:
 KBUILD_DEFCONFIG = "rk3326_linux_defconfig"
 KERNEL_DEVICETREE = "rockchip/rk3326-evb-lp3-v10-linux.dtb"
 UBOOT_MACHINE = "evb-rk3326_defconfig"
-RK_WIFIBT_FIRMWARES = " \
+RK_WIFIBT_RRECOMMENDS = " \
         rkwifibt-firmware-ap6212a1-wifi \
         rkwifibt-firmware-ap6212a1-bt \
         brcm-tools \

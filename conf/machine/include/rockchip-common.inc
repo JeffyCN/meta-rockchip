@@ -3,8 +3,9 @@
 
 require conf/machine/include/soc-family.inc
 
+RK_WIFIBT_RRECOMMENDS ?= ""
 MACHINE_EXTRA_RRECOMMENDS:append = " \
-	${RK_WIFIBT_FIRMWARES} \
+	${RK_WIFIBT_RRECOMMENDS} \
 	kernel-modules \
 "
 
