@@ -3,7 +3,7 @@
 
 require conf/machine/include/rockchip-arm64-common.inc
 
-SOC_FAMILY := "px30"
+RK_SOC_FAMILY := "px30"
 
 KBUILD_DEFCONFIG := "px30_linux_defconfig"
 

@@ -3,7 +3,7 @@
 
 require conf/machine/include/rockchip-arm64-common.inc
 
-SOC_FAMILY := "rk3576"
+RK_SOC_FAMILY := "rk3576"
 
 PREFERRED_VERSION_linux-rockchip := "6.1%"
 LINUXLIBCVERSION := "6.1-custom%"

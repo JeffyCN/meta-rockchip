@@ -28,7 +28,7 @@ inherit pkgconfig cmake
 EXTRA_OECMAKE = "     \
     -DARCH=${@bb.utils.contains('TUNE_FEATURES', 'aarch64', 'aarch64', 'arm', d)} \
     -DISP_HW_VERSION=-DISP_HW_V${@d.getVar('RK_ISP_VERSION').replace('.','')} \
-    -DRKAIQ_TARGET_SOC=${@d.getVar('SOC_FAMILY').replace('rk3568','rk356x')} \
+    -DRKAIQ_TARGET_SOC=${@d.getVar('RK_SOC_FAMILY').replace('rk3568','rk356x')} \
 "
 
 do_generate_toolchain_file:append () {
