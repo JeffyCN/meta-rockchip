@@ -91,7 +91,7 @@ do_compile:append() {
 	if [ -f FlashHead.bin ];then
 		cat FlashHead.bin FlashData.bin > "${RK_IDBLOCK_IMG}"
 	else
-		./tools/mkimage -n "${SOC_FAMILY}" -T rksd -d FlashData.bin \
+		./tools/mkimage -n "${RK_SOC_FAMILY}" -T rksd -d FlashData.bin \
 			"${RK_IDBLOCK_IMG}"
 	fi
 

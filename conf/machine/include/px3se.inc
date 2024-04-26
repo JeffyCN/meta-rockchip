@@ -4,7 +4,7 @@
 require conf/machine/include/arm/armv7a/tune-cortexa7.inc
 require conf/machine/include/rockchip-common.inc
 
-SOC_FAMILY := "px3se"
+RK_SOC_FAMILY := "px3se"
 
 MALI_GPU := "utgard-400"
 MALI_VERSION := "r7p0"

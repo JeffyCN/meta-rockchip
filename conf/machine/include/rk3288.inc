@@ -4,7 +4,7 @@
 require conf/machine/include/arm/armv7a/tune-cortexa17.inc
 require conf/machine/include/rockchip-common.inc
 
-SOC_FAMILY := "rk3288"
+RK_SOC_FAMILY := "rk3288"
 
 MALI_GPU := "midgard-t76x"
 MALI_VERSION := "r18p0"

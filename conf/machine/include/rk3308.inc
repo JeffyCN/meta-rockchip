@@ -3,7 +3,7 @@
 
 require conf/machine/include/rockchip-arm64-common.inc
 
-SOC_FAMILY := "rk3308"
+RK_SOC_FAMILY := "rk3308"
 
 KBUILD_DEFCONFIG := "rk3308_linux_defconfig"
 
