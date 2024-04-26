@@ -25,6 +25,8 @@ S = "${WORKDIR}/git"
 
 inherit pkgconfig cmake
 
+RK_ISP_VERSION ?= ""
+RK_SOC_FAMILY ?= ""
 EXTRA_OECMAKE = "     \
     -DARCH=${@bb.utils.contains('TUNE_FEATURES', 'aarch64', 'aarch64', 'arm', d)} \
     -DISP_HW_VERSION=-DISP_HW_V${@d.getVar('RK_ISP_VERSION').replace('.','')} \
