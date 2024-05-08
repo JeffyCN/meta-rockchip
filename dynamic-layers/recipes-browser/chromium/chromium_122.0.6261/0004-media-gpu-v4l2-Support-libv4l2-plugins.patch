@@ -1,4 +1,4 @@
-From ea485f364b430ba0595b1f2afe661266d284367d Mon Sep 17 00:00:00 2001
+From 79045fcfd252b46b036883d5b58ba3650560099a Mon Sep 17 00:00:00 2001
 From: Damian Hobson-Garcia <dhobsong@igel.co.jp>
 Date: Wed, 21 Mar 2018 13:18:17 +0200
 Subject: [PATCH 04/16] media: gpu: v4l2: Support libv4l2 plugins

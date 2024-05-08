@@ -1,4 +1,4 @@
-From 55471b43dd94aaeea4ba115cc45b4121bde4c501 Mon Sep 17 00:00:00 2001
+From 56e342a2c788432d9efe877ced44fe5dccfbf104 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 14 Dec 2023 10:00:22 +0800
 Subject: [PATCH 01/16] HACK: media: Support V4L2 video decoder
@@ -116,10 +116,10 @@ index 961b88de5..610f14c1f 100644
  
    VideoFrame* origin_frame =
 diff --git a/media/gpu/chromeos/video_decoder_pipeline.cc b/media/gpu/chromeos/video_decoder_pipeline.cc
-index 0ad8d519a..623a3943b 100644
+index 7b31b912f..c7fd05811 100644
 --- a/media/gpu/chromeos/video_decoder_pipeline.cc
 +++ b/media/gpu/chromeos/video_decoder_pipeline.cc
-@@ -160,8 +160,12 @@ std::unique_ptr<VideoDecoder> VideoDecoderPipeline::Create(
+@@ -163,8 +163,12 @@ std::unique_ptr<VideoDecoder> VideoDecoderPipeline::Create(
      create_decoder_function_cb = base::BindOnce(&VaapiVideoDecoder::Create);
  #elif BUILDFLAG(USE_V4L2_CODEC)
      if (base::FeatureList::IsEnabled(kV4L2FlatStatelessVideoDecoder)) {
@@ -132,7 +132,7 @@ index 0ad8d519a..623a3943b 100644
      } else if (base::FeatureList::IsEnabled(kV4L2FlatStatefulVideoDecoder)) {
        create_decoder_function_cb =
            base::BindOnce(&V4L2StatefulVideoDecoder::Create);
-@@ -192,8 +196,12 @@ std::unique_ptr<VideoDecoder> VideoDecoderPipeline::CreateForTesting(
+@@ -195,8 +199,12 @@ std::unique_ptr<VideoDecoder> VideoDecoderPipeline::CreateForTesting(
    create_decoder_function_cb = base::BindOnce(&VaapiVideoDecoder::Create);
  #elif BUILDFLAG(USE_V4L2_CODEC)
    if (base::FeatureList::IsEnabled(kV4L2FlatStatelessVideoDecoder)) {
@@ -145,7 +145,7 @@ index 0ad8d519a..623a3943b 100644
    } else if (base::FeatureList::IsEnabled(kV4L2FlatStatefulVideoDecoder)) {
      create_decoder_function_cb =
          base::BindOnce(&V4L2StatefulVideoDecoder::Create);
-@@ -260,7 +268,11 @@ VideoDecoderPipeline::GetSupportedConfigs(
+@@ -263,7 +271,11 @@ VideoDecoderPipeline::GetSupportedConfigs(
  #elif BUILDFLAG(USE_V4L2_CODEC)
      case VideoDecoderType::kV4L2:
        if (base::FeatureList::IsEnabled(kV4L2FlatStatelessVideoDecoder)) {
@@ -176,10 +176,10 @@ index 27ed3a8c9..7c1d72de5 100644
    std::unique_ptr<VideoDecodeAccelerator> CreateVTVDA(
        const gpu::GpuDriverBugWorkarounds& workarounds,
 diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
-index 8a0cc8248..af1082dbd 100644
+index 12fe633ec..b6441c8aa 100644
 --- a/media/gpu/v4l2/BUILD.gn
 +++ b/media/gpu/v4l2/BUILD.gn
-@@ -18,23 +18,6 @@ source_set("v4l2") {
+@@ -17,23 +17,6 @@ source_set("v4l2") {
    sources = [
      "legacy/v4l2_video_decode_accelerator.cc",
      "legacy/v4l2_video_decode_accelerator.h",
@@ -203,7 +203,7 @@ index 8a0cc8248..af1082dbd 100644
      "v4l2_decode_surface.cc",
      "v4l2_decode_surface.h",
      "v4l2_decode_surface_handler.h",
-@@ -60,34 +43,54 @@ source_set("v4l2") {
+@@ -59,34 +42,54 @@ source_set("v4l2") {
      "v4l2_video_decoder_backend.h",
      "v4l2_video_decoder_backend_stateful.cc",
      "v4l2_video_decoder_backend_stateful.h",
@@ -277,7 +277,7 @@ index 8a0cc8248..af1082dbd 100644
 -  if (is_chromeos) {
      sources += [
        # AV1 delegate depends on header files only in ChromeOS SDK
-       "v4l2_video_decoder_delegate_av1.cc",
+       "stateless/av1_delegate.cc",
 diff --git a/media/gpu/v4l2/legacy/v4l2_video_decode_accelerator.h b/media/gpu/v4l2/legacy/v4l2_video_decode_accelerator.h
 index c7ee85009..3458a87c9 100644
 --- a/media/gpu/v4l2/legacy/v4l2_video_decode_accelerator.h
@@ -316,7 +316,7 @@ index e6eb9055c..ca9c07539 100644
    }
    return true;
 diff --git a/media/gpu/v4l2/v4l2_queue.cc b/media/gpu/v4l2/v4l2_queue.cc
-index cda6905cb..af4252319 100644
+index 16a2e68bd..ad3e57735 100644
 --- a/media/gpu/v4l2/v4l2_queue.cc
 +++ b/media/gpu/v4l2/v4l2_queue.cc
 @@ -1074,10 +1074,14 @@ V4L2Queue::V4L2Queue(const IoctlAsCallback& ioctl_cb,
@@ -374,7 +374,7 @@ index cda6905cb..af4252319 100644
  
    int ret = ioctl_cb_.Run(VIDIOC_REQBUFS, &reqbufs);
    if (ret) {
-@@ -1626,6 +1643,8 @@ absl::optional<struct v4l2_format> V4L2Queue::SetModifierFormat(
+@@ -1621,6 +1638,8 @@ absl::optional<struct v4l2_format> V4L2Queue::SetModifierFormat(
      uint64_t modifier,
      const gfx::Size& size) {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -383,7 +383,7 @@ index cda6905cb..af4252319 100644
    if (DRM_FORMAT_MOD_QCOM_COMPRESSED == modifier) {
      auto format = SetFormat(V4L2_PIX_FMT_QC08C, size, 0);
  
-@@ -1635,6 +1654,9 @@ absl::optional<struct v4l2_format> V4L2Queue::SetModifierFormat(
+@@ -1630,6 +1649,9 @@ absl::optional<struct v4l2_format> V4L2Queue::SetModifierFormat(
      return format;
    }
    return absl::nullopt;
@@ -393,7 +393,7 @@ index cda6905cb..af4252319 100644
  }
  
  bool V4L2Queue::SendStopCommand() {
-@@ -1723,6 +1745,7 @@ bool V4L2Request::ApplyCtrls(struct v4l2_ext_controls* ctrls) {
+@@ -1718,6 +1740,7 @@ bool V4L2Request::ApplyCtrls(struct v4l2_ext_controls* ctrls) {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
    DCHECK_NE(ctrls, nullptr);
  
@@ -401,7 +401,7 @@ index cda6905cb..af4252319 100644
    if (!request_fd_.is_valid()) {
      VPLOGF(1) << "Invalid request";
      return false;
-@@ -1732,12 +1755,16 @@ bool V4L2Request::ApplyCtrls(struct v4l2_ext_controls* ctrls) {
+@@ -1727,12 +1750,16 @@ bool V4L2Request::ApplyCtrls(struct v4l2_ext_controls* ctrls) {
    ctrls->request_fd = request_fd_.get();
  
    return true;
@@ -418,7 +418,7 @@ index cda6905cb..af4252319 100644
    if (!request_fd_.is_valid()) {
      VPLOGF(1) << "Invalid request";
      return false;
-@@ -1747,11 +1774,15 @@ bool V4L2Request::ApplyQueueBuffer(struct v4l2_buffer* buffer) {
+@@ -1742,11 +1769,15 @@ bool V4L2Request::ApplyQueueBuffer(struct v4l2_buffer* buffer) {
    buffer->request_fd = request_fd_.get();
  
    return true;
@@ -434,7 +434,7 @@ index cda6905cb..af4252319 100644
    if (!request_fd_.is_valid()) {
      VPLOGF(1) << "No valid request file descriptor to submit request.";
      return false;
-@@ -1763,6 +1794,9 @@ bool V4L2Request::Submit() {
+@@ -1758,6 +1789,9 @@ bool V4L2Request::Submit() {
    }
  
    return true;
@@ -444,7 +444,7 @@ index cda6905cb..af4252319 100644
  }
  
  bool V4L2Request::IsCompleted() {
-@@ -1799,6 +1833,7 @@ bool V4L2Request::WaitForCompletion(int poll_timeout_ms) {
+@@ -1794,6 +1828,7 @@ bool V4L2Request::WaitForCompletion(int poll_timeout_ms) {
  bool V4L2Request::Reset() {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
  
@@ -452,7 +452,7 @@ index cda6905cb..af4252319 100644
    if (!request_fd_.is_valid()) {
      VPLOGF(1) << "Invalid request";
      return false;
-@@ -1812,6 +1847,9 @@ bool V4L2Request::Reset() {
+@@ -1807,6 +1842,9 @@ bool V4L2Request::Reset() {
    }
  
    return true;
@@ -462,7 +462,7 @@ index cda6905cb..af4252319 100644
  }
  
  V4L2RequestRefBase::V4L2RequestRefBase(V4L2RequestRefBase&& req_base) {
-@@ -1888,6 +1926,7 @@ V4L2RequestsQueue::~V4L2RequestsQueue() {
+@@ -1883,6 +1921,7 @@ V4L2RequestsQueue::~V4L2RequestsQueue() {
  absl::optional<base::ScopedFD> V4L2RequestsQueue::CreateRequestFD() {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
  
@@ -470,7 +470,7 @@ index cda6905cb..af4252319 100644
    int request_fd;
    int ret = HANDLE_EINTR(
        ioctl(media_fd_.get(), MEDIA_IOC_REQUEST_ALLOC, &request_fd));
-@@ -1898,11 +1937,15 @@ absl::optional<base::ScopedFD> V4L2RequestsQueue::CreateRequestFD() {
+@@ -1893,11 +1932,15 @@ absl::optional<base::ScopedFD> V4L2RequestsQueue::CreateRequestFD() {
    }
  
    return base::ScopedFD(request_fd);
@@ -486,7 +486,7 @@ index cda6905cb..af4252319 100644
    V4L2Request* request_ptr =
        free_requests_.empty() ? nullptr : free_requests_.front();
    if (request_ptr && request_ptr->IsCompleted()) {
-@@ -1940,6 +1983,9 @@ absl::optional<V4L2RequestRef> V4L2RequestsQueue::GetFreeRequest() {
+@@ -1935,6 +1978,9 @@ absl::optional<V4L2RequestRef> V4L2RequestsQueue::GetFreeRequest() {
    }
  
    return V4L2RequestRef(request_ptr);
@@ -497,7 +497,7 @@ index cda6905cb..af4252319 100644
  
  void V4L2RequestsQueue::ReturnRequest(V4L2Request* request) {
 diff --git a/media/gpu/v4l2/v4l2_utils.cc b/media/gpu/v4l2/v4l2_utils.cc
-index 1fca0db48..bcd6a83f9 100644
+index c56518a31..8c6fe21e8 100644
 --- a/media/gpu/v4l2/v4l2_utils.cc
 +++ b/media/gpu/v4l2/v4l2_utils.cc
 @@ -11,6 +11,19 @@
@@ -520,7 +520,7 @@ index 1fca0db48..bcd6a83f9 100644
  #endif
  
  #include "base/containers/contains.h"
-@@ -180,7 +193,6 @@ VideoCodecProfile V4L2ProfileToVideoCodecProfile(uint32_t v4l2_codec,
+@@ -182,7 +195,6 @@ VideoCodecProfile V4L2ProfileToVideoCodecProfile(uint32_t v4l2_codec,
        }
        break;
  #endif
@@ -528,7 +528,7 @@ index 1fca0db48..bcd6a83f9 100644
      case V4L2_CID_MPEG_VIDEO_AV1_PROFILE:
        switch (v4l2_profile) {
          case V4L2_MPEG_VIDEO_AV1_PROFILE_MAIN:
-@@ -191,7 +203,6 @@ VideoCodecProfile V4L2ProfileToVideoCodecProfile(uint32_t v4l2_codec,
+@@ -193,7 +205,6 @@ VideoCodecProfile V4L2ProfileToVideoCodecProfile(uint32_t v4l2_codec,
            return AV1PROFILE_PROFILE_PRO;
        }
        break;
@@ -536,7 +536,7 @@ index 1fca0db48..bcd6a83f9 100644
    }
    return VIDEO_CODEC_PROFILE_UNKNOWN;
  }
-@@ -313,10 +324,8 @@ static const std::map<v4l2_enum_type, v4l2_enum_type>
+@@ -315,10 +326,8 @@ static const std::map<v4l2_enum_type, v4l2_enum_type>
          {V4L2_PIX_FMT_VP8_FRAME, V4L2_CID_MPEG_VIDEO_VP8_PROFILE},
          {V4L2_PIX_FMT_VP9, V4L2_CID_MPEG_VIDEO_VP9_PROFILE},
          {V4L2_PIX_FMT_VP9_FRAME, V4L2_CID_MPEG_VIDEO_VP9_PROFILE},
@@ -547,7 +547,7 @@ index 1fca0db48..bcd6a83f9 100644
  };
  
  // Default VideoCodecProfiles associated to a V4L2 Codec Control ID.
-@@ -333,9 +342,7 @@ static const std::map<v4l2_enum_type, std::vector<VideoCodecProfile>>
+@@ -335,9 +344,7 @@ static const std::map<v4l2_enum_type, std::vector<VideoCodecProfile>>
  #endif  // BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
          {V4L2_CID_MPEG_VIDEO_VP8_PROFILE, {VP8PROFILE_ANY}},
          {V4L2_CID_MPEG_VIDEO_VP9_PROFILE, {VP9PROFILE_PROFILE0}},
@@ -557,7 +557,7 @@ index 1fca0db48..bcd6a83f9 100644
  };
  
  // Correspondence from a VideoCodecProfiles to V4L2 codec described
-@@ -351,10 +358,8 @@ static const std::map<VideoCodecProfile,
+@@ -353,10 +360,8 @@ static const std::map<VideoCodecProfile,
  #endif  // BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
          {VP8PROFILE_ANY, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_VP8, FRAME)},
          {VP9PROFILE_PROFILE0, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_VP9, FRAME)},
@@ -568,7 +568,7 @@ index 1fca0db48..bcd6a83f9 100644
  };
  
  }  // namespace
-@@ -463,6 +468,13 @@ uint32_t VideoCodecProfileToV4L2PixFmt(VideoCodecProfile profile,
+@@ -465,6 +470,13 @@ uint32_t VideoCodecProfileToV4L2PixFmt(VideoCodecProfile profile,
    CHECK(base::Contains(kVideoCodecProfileToV4L2CodecPixFmt, profile))
        << "Unsupported profile: " << GetProfileName(profile);
  
@@ -627,10 +627,10 @@ index ee0dd6d89..f85fb4d15 100644
      case VideoCodec::kVP9:
        // VP8/VP9 don't need any frame splitting, use the default implementation.
 diff --git a/media/gpu/v4l2/v4l2_video_decoder.cc b/media/gpu/v4l2/v4l2_video_decoder.cc
-index 6f24d499e..a7cdda648 100644
+index 28bb415fa..cd154899d 100644
 --- a/media/gpu/v4l2/v4l2_video_decoder.cc
 +++ b/media/gpu/v4l2/v4l2_video_decoder.cc
-@@ -469,6 +469,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
+@@ -471,6 +471,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
               << " and fourcc: " << FourccToString(input_format_fourcc_);
      backend_ = std::make_unique<V4L2StatefulVideoDecoderBackend>(
          this, device_, profile_, color_space_, decoder_task_runner_);
@@ -638,19 +638,19 @@ index 6f24d499e..a7cdda648 100644
    } else {
      DCHECK_EQ(preferred_api_and_format.first, kStateless);
      VLOGF(1) << "Using a stateless API for profile: "
-@@ -476,6 +477,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
-              << " and fourcc: " << FourccToString(input_format_fourcc_);
+@@ -479,6 +480,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
      backend_ = std::make_unique<V4L2StatelessVideoDecoderBackend>(
-         this, device_, profile_, color_space_, decoder_task_runner_);
+         this, device_, profile_, color_space_, decoder_task_runner_,
+         cdm_context_ref_ ? cdm_context_ref_->GetCdmContext() : nullptr);
 +#endif
    }
  
    if (!backend_->Initialize()) {
 diff --git a/media/gpu/v4l2/v4l2_video_decoder_backend_stateful.cc b/media/gpu/v4l2/v4l2_video_decoder_backend_stateful.cc
-index 41778ce6b..2108e1918 100644
+index 49a1e17f2..0b56bc6e7 100644
 --- a/media/gpu/v4l2/v4l2_video_decoder_backend_stateful.cc
 +++ b/media/gpu/v4l2/v4l2_video_decoder_backend_stateful.cc
-@@ -752,6 +752,7 @@ bool V4L2StatefulVideoDecoderBackend::IsSupportedProfile(
+@@ -754,6 +754,7 @@ bool V4L2StatefulVideoDecoderBackend::IsSupportedProfile(
    DCHECK(device_);
    if (supported_profiles_.empty()) {
      const std::vector<uint32_t> kSupportedInputFourccs = {

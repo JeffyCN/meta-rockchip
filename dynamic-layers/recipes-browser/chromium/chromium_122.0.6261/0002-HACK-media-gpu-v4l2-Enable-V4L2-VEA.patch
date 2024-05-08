@@ -1,0 +1,45 @@
+From 3c422b36d24cf058fa87ebcfbc61b89a91a082b1 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 13 Feb 2023 15:30:55 +0800
+Subject: [PATCH 02/16] HACK: media: gpu: v4l2: Enable V4L2 VEA
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/gpu_video_encode_accelerator_factory.cc | 3 ++-
+ media/gpu/v4l2/BUILD.gn                           | 5 +++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/media/gpu/gpu_video_encode_accelerator_factory.cc b/media/gpu/gpu_video_encode_accelerator_factory.cc
+index f6c262c25..e32aa37c9 100644
+--- a/media/gpu/gpu_video_encode_accelerator_factory.cc
++++ b/media/gpu/gpu_video_encode_accelerator_factory.cc
+@@ -48,7 +48,8 @@ namespace media {
+ namespace {
+ #if BUILDFLAG(USE_V4L2_CODEC)
+ std::unique_ptr<VideoEncodeAccelerator> CreateV4L2VEA() {
+-#if BUILDFLAG(IS_CHROMEOS)
++/* HACK: Enable V4L2 VEA for v4l-rkmpp */
++#if 1 // BUILDFLAG(IS_CHROMEOS)
+   // TODO(crbug.com/901264): Encoders use hack for passing offset within
+   // a DMA-buf, which is not supported upstream.
+   return base::WrapUnique<VideoEncodeAccelerator>(
+diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
+index b6441c8aa..956cc8410 100644
+--- a/media/gpu/v4l2/BUILD.gn
++++ b/media/gpu/v4l2/BUILD.gn
+@@ -96,7 +96,12 @@ source_set("v4l2") {
+       "stateless/av1_delegate.h",
+       "v4l2_video_decoder_delegate_av1.cc",
+       "v4l2_video_decoder_delegate_av1.h",
++    ]
++  }
+ 
++  # HACK: Enable V4L2 VEA for v4l-rkmpp.
++  if (true) {
++    sources += [
+       # TODO(crbug.com/901264): Encoders use hack for passing offset
+       # within a DMA-buf, which is not supported upstream.
+       "v4l2_video_encode_accelerator.cc",
+-- 
+2.38.5
+
