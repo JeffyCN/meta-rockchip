@@ -1,4 +1,4 @@
-From 6eaa243d7e7cfd9951d15d2aff04ac9b75dda252 Mon Sep 17 00:00:00 2001
+From cf724eb07d340408cbeb5c1632aa9f8dd2f456ac Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 14 Dec 2023 10:00:22 +0800
 Subject: [PATCH 01/16] HACK: media: Support V4L2 video decoder
@@ -19,6 +19,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  .../gpu_video_decode_accelerator_factory.h    |  2 +
  media/gpu/v4l2/BUILD.gn                       | 69 ++++++++++---------
  .../legacy/v4l2_video_decode_accelerator.h    |  2 +-
+ media/gpu/v4l2/v4l2_device.cc                 |  6 +-
  media/gpu/v4l2/v4l2_queue.cc                  | 46 +++++++++++++
  media/gpu/v4l2/v4l2_utils.cc                  | 28 +++++---
  media/gpu/v4l2/v4l2_utils.h                   | 20 ++++++
@@ -26,7 +27,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  media/gpu/v4l2/v4l2_video_decoder.cc          |  2 +
  .../v4l2_video_decoder_backend_stateful.cc    |  1 +
  .../services/gpu_mojo_media_client_linux.cc   | 10 +++
- 17 files changed, 178 insertions(+), 45 deletions(-)
+ 18 files changed, 182 insertions(+), 47 deletions(-)
 
 diff --git a/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc b/components/chromeos_camera/gpu_mjpeg_decode_accelerator_factory.cc
 index 8e8ad4a84..a506284e3 100644
@@ -296,6 +297,30 @@ index c7ee85009..3458a87c9 100644
  // The MT21C software decompressor is tightly coupled to the MT8173.
  // See mt21_decompressor.h
  #define SUPPORT_MT21_PIXEL_FORMAT_SOFTWARE_DECOMPRESSION
+diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
+index e6eb9055c..ca9c07539 100644
+--- a/media/gpu/v4l2/v4l2_device.cc
++++ b/media/gpu/v4l2/v4l2_device.cc
+@@ -367,7 +367,8 @@ bool V4L2Device::SetDevicePollInterrupt() {
+   if (HANDLE_EINTR(write(device_poll_interrupt_fd_.get(), &buf, sizeof(buf))) ==
+       -1) {
+     VPLOGF(1) << "write() failed";
+-    return false;
++    // HACK: Fake success for eventfd
++    // return false;
+   }
+   return true;
+ }
+@@ -383,7 +384,8 @@ bool V4L2Device::ClearDevicePollInterrupt() {
+       return true;
+     } else {
+       VPLOGF(1) << "read() failed";
+-      return false;
++      // HACK: Fake success for eventfd
++      // return false;
+     }
+   }
+   return true;
 diff --git a/media/gpu/v4l2/v4l2_queue.cc b/media/gpu/v4l2/v4l2_queue.cc
 index cda6905cb..af4252319 100644
 --- a/media/gpu/v4l2/v4l2_queue.cc

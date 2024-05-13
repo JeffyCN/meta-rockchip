@@ -1,4 +1,4 @@
-From efb8dc61a60379b199bc5b8ba68889aa2aa675d6 Mon Sep 17 00:00:00 2001
+From c9fefe67866935c3aa42ee4a52b50a1680a48be5 Mon Sep 17 00:00:00 2001
 From: Damian Hobson-Garcia <dhobsong@igel.co.jp>
 Date: Wed, 21 Mar 2018 13:18:17 +0200
 Subject: [PATCH 04/16] media: gpu: v4l2: Support libv4l2 plugins
@@ -23,7 +23,7 @@ index 32931df37..8f1894536 100644
 +LIBV4L_PUBLIC void *v4l2_mmap(void *start, size_t length, int prot, int flags, int fd, int64_t offset);
 +LIBV4L_PUBLIC int v4l2_munmap(void *_start, size_t length);
 diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
-index e6eb9055c..0656c888c 100644
+index ca9c07539..5ec769913 100644
 --- a/media/gpu/v4l2/v4l2_device.cc
 +++ b/media/gpu/v4l2/v4l2_device.cc
 @@ -35,6 +35,21 @@
@@ -84,7 +84,7 @@ index e6eb9055c..0656c888c 100644
    munmap(addr, len);
  }
  
-@@ -900,11 +926,29 @@ bool V4L2Device::OpenDevicePath(const std::string& path, Type type) {
+@@ -902,11 +928,29 @@ bool V4L2Device::OpenDevicePath(const std::string& path, Type type) {
  
    device_fd_.reset(
        HANDLE_EINTR(open(path.c_str(), O_RDWR | O_NONBLOCK | O_CLOEXEC)));
