@@ -4,7 +4,7 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/${BPN}:"
 
 SRC_URI:append = " \
-	file://0001-basic-Allow-unknown-filesystems.patch \
+	file://0001-meson-do-not-fail-build-with-newer-kernel-headers.patch \
 "
 
 # Avoid installing hwdb
