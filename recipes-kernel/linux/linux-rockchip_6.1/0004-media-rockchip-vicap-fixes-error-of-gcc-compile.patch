@@ -1,0 +1,52 @@
+From 3490947faaf3cce588839828dd1576c0ffb8c92f Mon Sep 17 00:00:00 2001
+From: Zefa Chen <zefa.chen@rock-chips.com>
+Date: Tue, 19 Mar 2024 20:21:20 +0800
+Subject: [PATCH] media: rockchip: vicap fixes error of gcc compile
+
+drivers/media/platform/rockchip/cif/capture.c:5159:6: error: conflicting types for 'rkcif_do_stop_stream' due to enum/integer mismatch; have 'void(struct rkcif_stream *, unsigned int)' [-Werror=enum-int-mismatch]
+ 5159 | void rkcif_do_stop_stream(struct rkcif_stream *stream,
+      |      ^~~~~~~~~~~~~~~~~~~~
+In file included from drivers/media/platform/rockchip/cif/capture.c:24:
+drivers/media/platform/rockchip/cif/dev.h:949:6: note: previous declaration of 'rkcif_do_stop_stream' with type 'void(struct rkcif_stream *, enum rkcif_stream_mode)'
+  949 | void rkcif_do_stop_stream(struct rkcif_stream *stream,
+      |      ^~~~~~~~~~~~~~~~~~~~
+drivers/media/platform/rockchip/cif/capture.c:6344:5: error: conflicting types for 'rkcif_do_start_stream' due to enum/integer mismatch; have 'int(struct rkcif_stream *, unsigned int)' [-Werror=enum-int-mismatch]
+ 6344 | int rkcif_do_start_stream(struct rkcif_stream *stream, unsigned int mode)
+      |     ^~~~~~~~~~~~~~~~~~~~~
+drivers/media/platform/rockchip/cif/dev.h:947:5: note: previous declaration of 'rkcif_do_start_stream' with type 'int(struct rkcif_stream *, enum rkcif_stream_mode)'
+  947 | int rkcif_do_start_stream(struct rkcif_stream *stream,
+      |     ^~~~~~~~~~~~~~~~~~~~~
+cc1: all warnings being treated as errors
+scripts/Makefile.build:273: recipe for target 'drivers/media/platform/rockchip/cif/capture.o' failed
+
+Signed-off-by: Zefa Chen <zefa.chen@rock-chips.com>
+Change-Id: Ibbd427bf07937c655a93bf84d33f25e86fece9d0
+---
+ drivers/media/platform/rockchip/cif/capture.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/platform/rockchip/cif/capture.c b/drivers/media/platform/rockchip/cif/capture.c
+index 18b2fd93c5c6..7d7f3eac2b09 100644
+--- a/drivers/media/platform/rockchip/cif/capture.c
++++ b/drivers/media/platform/rockchip/cif/capture.c
+@@ -5435,7 +5435,7 @@ static void rkcif_detach_sync_mode(struct rkcif_device *cif_dev)
+ }
+ 
+ void rkcif_do_stop_stream(struct rkcif_stream *stream,
+-			  unsigned int mode)
++			  enum rkcif_stream_mode mode)
+ {
+ 	struct rkcif_vdev_node *node = &stream->vnode;
+ 	struct rkcif_device *dev = stream->cifdev;
+@@ -6792,7 +6792,7 @@ static void rkcif_attach_sync_mode(struct rkcif_device *cifdev)
+ 
+ static void rkcif_monitor_reset_event(struct rkcif_device *dev);
+ 
+-int rkcif_do_start_stream(struct rkcif_stream *stream, unsigned int mode)
++int rkcif_do_start_stream(struct rkcif_stream *stream, enum rkcif_stream_mode mode)
+ {
+ 	struct rkcif_vdev_node *node = &stream->vnode;
+ 	struct rkcif_device *dev = stream->cifdev;
+-- 
+2.20.1
+
