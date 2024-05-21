@@ -1,4 +1,4 @@
-From 4945731159712833666e3857e465150464c85d05 Mon Sep 17 00:00:00 2001
+From 083a40a06ee55fad80aa4000cddd93c4c293a139 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 28 Sep 2020 20:02:00 +0800
 Subject: [PATCH 09/16] media: gpu: v4l2: Fix compile error when ozone not

@@ -1,7 +1,7 @@
-From 9d5e0e053065d90ff4efcdd41f08d7345666c0de Mon Sep 17 00:00:00 2001
+From 83e445fefd49e45f37e9d1860da6a4f87725c8b7 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 7 Aug 2023 18:05:41 +0800
-Subject: [PATCH 16/16] ui: gfx: linux: Force disabling modifiers
+Subject: [PATCH 15/16] ui: gfx: linux: Force disabling modifiers
 
 It crashes somehow.
 
@@ -11,10 +11,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/ui/gfx/linux/gbm_wrapper.cc b/ui/gfx/linux/gbm_wrapper.cc
-index 14918c19c..bcfb08711 100644
+index e70f75799..d7647fc8b 100644
 --- a/ui/gfx/linux/gbm_wrapper.cc
 +++ b/ui/gfx/linux/gbm_wrapper.cc
-@@ -306,7 +306,8 @@ class Device final : public ui::GbmDevice {
+@@ -307,7 +307,8 @@ class Device final : public ui::GbmDevice {
        const gfx::Size& requested_size,
        uint32_t flags,
        const std::vector<uint64_t>& modifiers) override {

@@ -1,7 +1,7 @@
-From 657f72a2c292828a2a0d42688ea34ecd69db217d Mon Sep 17 00:00:00 2001
+From 433edd1c81906773c581d35852c428e0a4c7d04f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 7 Aug 2023 18:05:41 +0800
-Subject: [PATCH 16/16] ui: gfx: linux: Force disabling modifiers
+Subject: [PATCH 15/16] ui: gfx: linux: Force disabling modifiers
 
 It crashes somehow.
 

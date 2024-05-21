@@ -1,4 +1,4 @@
-From cc158e90b18d01806840ead3a686024e9fcd2a89 Mon Sep 17 00:00:00 2001
+From 2aa18e849863910608db9f431997e10ef6b15e7a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 20 May 2021 01:05:29 +0800
 Subject: [PATCH 10/17] ui: events: ozone: Define SW_PEN_INSERTED for old

@@ -1,4 +1,4 @@
-From 9e3d55c92aaa3117fdcbef122542a6eff92a3776 Mon Sep 17 00:00:00 2001
+From ea650e3bbd20f8a4c50157111aaf3d9ffca60ed4 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 31 May 2021 01:29:11 +0800
 Subject: [PATCH 10/16] Create new fence when there's no in-fences

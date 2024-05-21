@@ -1,4 +1,4 @@
-From c149e8e0663222a8084c8af3004181261655148a Mon Sep 17 00:00:00 2001
+From a25c0d859fe910c6533d29a4b0f15f4628c68ef8 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 22 Nov 2021 15:59:49 +0800
 Subject: [PATCH 14/17] content: gpu: Only depend dri for X11
