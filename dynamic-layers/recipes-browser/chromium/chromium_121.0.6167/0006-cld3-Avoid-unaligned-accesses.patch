@@ -1,4 +1,4 @@
-From 5228acec88d7631b834ee1d4f5f9d9359f9fa3d2 Mon Sep 17 00:00:00 2001
+From 25cd21819342abcf94740e54fe9aab16b44cbc0f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 27 Mar 2020 17:48:20 +0800
 Subject: [PATCH 06/16] cld3: Avoid unaligned accesses

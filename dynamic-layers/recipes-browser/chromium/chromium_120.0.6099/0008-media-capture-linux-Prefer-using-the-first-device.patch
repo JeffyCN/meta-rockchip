@@ -1,4 +1,4 @@
-From 6fd641ea5f5b23742cc61b708172f371c2f831c8 Mon Sep 17 00:00:00 2001
+From 938927c0c1a98ce39d67aa23ccd3e83a8e39647a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 5 Nov 2020 12:22:52 +0800
 Subject: [PATCH 08/16] media: capture: linux: Prefer using the first device

@@ -1,4 +1,4 @@
-From 68b30c25698ffba0a409633ee3f803c9698b6aa5 Mon Sep 17 00:00:00 2001
+From 108876a145d365abe842501102a888b6859e8dad Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 20 Mar 2023 15:00:44 +0800
 Subject: [PATCH 14/16] media: gpu: sandbox: Only depend dri for X11
