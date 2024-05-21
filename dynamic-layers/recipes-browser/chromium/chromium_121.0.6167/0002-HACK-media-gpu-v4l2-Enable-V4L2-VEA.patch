@@ -1,4 +1,4 @@
-From 75a7d8d8729a2f7936e56359ad60a89bde4aa0b8 Mon Sep 17 00:00:00 2001
+From 5c258237371770921896843211a55abb6436e2d5 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 13 Feb 2023 15:30:55 +0800
 Subject: [PATCH 02/16] HACK: media: gpu: v4l2: Enable V4L2 VEA

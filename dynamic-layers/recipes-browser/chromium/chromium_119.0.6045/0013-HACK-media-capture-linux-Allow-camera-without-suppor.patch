@@ -1,4 +1,4 @@
-From 471ba3a50ea03a3a4eba1d6a5e8c009f0499f4d9 Mon Sep 17 00:00:00 2001
+From 2e468f8fa0f0c1adedc494a55c5af83a47b63eec Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 31 May 2021 07:25:58 +0800
 Subject: [PATCH 13/17] HACK: media: capture: linux: Allow camera without

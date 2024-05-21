@@ -10,6 +10,12 @@ PACKAGECONFIG[use-linux-v4l2] = "use_v4l2_codec=true use_v4lplugin=true use_linu
 
 GN_ARGS:append = " fatal_linker_warnings=false"
 
+# Switch to ANGLE, since the newer ozone requires passthrough command decoder.
+# See:
+# https://issues.chromium.org/issues/40135856
+CHROMIUM_EXTRA_ARGS:remove = "--use-gl=egl"
+CHROMIUM_EXTRA_ARGS:append = " --use-gl=angle --use-angle=gles-egl --use-cmd-decoder=passthrough"
+
 CHROMIUM_EXTRA_ARGS:append = " --no-sandbox --gpu-sandbox-start-early --ignore-gpu-blacklist --ignore-gpu-blocklist --enable-accelerated-video-decode"
 
 # TODO: Revisit once VDA and VEA are not dependent on Vaapi on linux
