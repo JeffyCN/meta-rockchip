@@ -5,6 +5,7 @@ Subject: [PATCH] meson: do not fail build with newer kernel headers
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
+Upstream-Status: Backport
 
 systemd-255 is failing a build with the latest kernel headers… Let's downgrade
 this warning, because it's fine if there's a file system we don't know about
@@ -12,6 +13,10 @@ and it makes thing less brittle if we don't treat this as a hard error.
 
 (I initially conditionalized this on BUILD_MODE, but I don't think we need a
 hard error there either. A warning will be noticed and fixed.)
+
+Upstream-Status: Backport
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  src/basic/meson.build | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
