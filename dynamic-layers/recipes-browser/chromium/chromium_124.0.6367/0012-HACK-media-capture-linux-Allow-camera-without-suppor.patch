@@ -1,0 +1,35 @@
+From 188897da3adfff957d20ec8025388f58e0013a64 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 31 May 2021 07:25:58 +0800
+Subject: [PATCH 12/16] HACK: media: capture: linux: Allow camera without
+ supported format
+
+The chromium would only accept discrete frame sizes.
+
+Hack it to make Rockchip ISP camera working.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../video/linux/video_capture_device_factory_v4l2.cc        | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/media/capture/video/linux/video_capture_device_factory_v4l2.cc b/media/capture/video/linux/video_capture_device_factory_v4l2.cc
+index ca36ff01b..04349acda 100644
+--- a/media/capture/video/linux/video_capture_device_factory_v4l2.cc
++++ b/media/capture/video/linux/video_capture_device_factory_v4l2.cc
+@@ -198,10 +198,8 @@ void VideoCaptureDeviceFactoryV4L2::GetDevicesInfo(
+ 
+       VideoCaptureFormats supported_formats;
+       GetSupportedFormatsForV4L2BufferType(fd.get(), &supported_formats);
+-      if (supported_formats.empty()) {
+-        DVLOG(1) << "No supported formats: " << unique_id;
+-        continue;
+-      }
++      if (supported_formats.empty())
++        LOG(WARNING) << "No supported formats: " << unique_id;
+ 
+ 
+       // HACK: Somehow the newest chromium would prefer using the last device in some cases, e.g. apprtc
+-- 
+2.38.5
+
