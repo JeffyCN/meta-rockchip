@@ -17,7 +17,8 @@ SRC_URI = " \
 	file://rtb_fwc.h \
 "
 
-S = "${WORKDIR}"
+S = "${WORKDIR}/sources"
+UNPACKDIR = "${S}"
 
 do_install() {
 	install -d ${D}${bindir}
