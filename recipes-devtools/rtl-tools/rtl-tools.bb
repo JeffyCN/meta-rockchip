@@ -20,6 +20,8 @@ SRC_URI = " \
 S = "${WORKDIR}/sources"
 UNPACKDIR = "${S}"
 
+EXTRA_OEMAKE = 'CC="${CC} ${LDFLAGS}"'
+
 do_install() {
 	install -d ${D}${bindir}
 	install -m 0755 rtk_hciattach ${D}${bindir}
