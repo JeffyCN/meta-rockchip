@@ -87,7 +87,7 @@ do_install() {
 		${D}${includedir}/camera_engine_rkisp/interface/
 
 	install -d ${D}${sysconfdir}/init.d
-	install -m 0755 ${WORKDIR}/rkisp_daemons.sh ${D}${sysconfdir}/init.d/
+	install -m 0755 ${UNPACKDIR}/rkisp_daemons.sh ${D}${sysconfdir}/init.d/
 }
 
 inherit update-rc.d

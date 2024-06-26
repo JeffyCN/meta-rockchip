@@ -30,7 +30,7 @@ do_install () {
 	install -m 0755 bin/* ${D}${bindir}
 
 	install -d ${D}${sysconfdir}/init.d/
-	install -m 0755 ${WORKDIR}/rockchip-npu.sh ${D}${sysconfdir}/init.d/
+	install -m 0755 ${UNPACKDIR}/rockchip-npu.sh ${D}${sysconfdir}/init.d/
 }
 
 inherit update-rc.d

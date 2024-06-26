@@ -45,7 +45,7 @@ python () {
 
 do_kernel_metadata:prepend() {
 	# Force regenerating defconfig
-	rm -f ${WORKDIR}/defconfig
+	rm -f ${UNPACKDIR}/defconfig
 
 	# Support defconfig fragments
 	cd "${S}/arch/${ARCH}/configs"

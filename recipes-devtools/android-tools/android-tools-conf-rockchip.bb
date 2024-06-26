@@ -17,15 +17,15 @@ SRC_URI:append = " \
 
 do_install:append() {
 	install -d ${D}${sysconfdir}/init.d
-	install -m 0755 ${WORKDIR}/adbd.sh ${D}${sysconfdir}/init.d/adbd.sh
+	install -m 0755 ${UNPACKDIR}/adbd.sh ${D}${sysconfdir}/init.d/adbd.sh
 
 	install -d ${D}${bindir}
-	install -m 0755 ${WORKDIR}/android-gadget-setup ${D}${bindir}
-	install -m 0755 ${WORKDIR}/android-gadget-start ${D}${bindir}
-	install -m 0755 ${WORKDIR}/android-gadget-cleanup ${D}${bindir}
+	install -m 0755 ${UNPACKDIR}/android-gadget-setup ${D}${bindir}
+	install -m 0755 ${UNPACKDIR}/android-gadget-start ${D}${bindir}
+	install -m 0755 ${UNPACKDIR}/android-gadget-cleanup ${D}${bindir}
 
 	install -d ${D}${systemd_unitdir}/system/android-tools-adbd.service.d
-	install -m0644 ${WORKDIR}/10-adbd-rockchip.conf \
+	install -m0644 ${UNPACKDIR}/10-adbd-rockchip.conf \
 		${D}${systemd_unitdir}/system/android-tools-adbd.service.d
 
 	if [ "${USB_DEBUGGING_ENABLED}" = "1" ]; then

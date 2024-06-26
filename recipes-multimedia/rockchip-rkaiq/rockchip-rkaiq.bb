@@ -35,9 +35,9 @@ EXTRA_OECMAKE = "     \
 
 do_generate_toolchain_file:append () {
 	echo "set( CMAKE_SYSROOT ${STAGING_DIR_HOST} )" >> \
-		${WORKDIR}/toolchain.cmake
+		${UNPACKDIR}/toolchain.cmake
 	echo "set( CMAKE_SYSROOT_COMPILE ${STAGING_DIR_HOST} )" >> \
-		${WORKDIR}/toolchain.cmake
+		${UNPACKDIR}/toolchain.cmake
 
 	sed -i "s/\( \${CMAKE_C_COMPILER}\)/\1 -I\${CMAKE_SYSROOT}\/usr\/include/" \
 		${S}/rkaiq/iq_parser_v2/CMakeLists.txt
@@ -65,7 +65,7 @@ do_install:append () {
 		${D}${sysconfdir}/iqfiles/
 
 	install -d ${D}${sysconfdir}/init.d
-	install -m 0755 ${WORKDIR}/rkaiq_daemons.sh ${D}${sysconfdir}/init.d/
+	install -m 0755 ${UNPACKDIR}/rkaiq_daemons.sh ${D}${sysconfdir}/init.d/
 }
 
 inherit update-rc.d
