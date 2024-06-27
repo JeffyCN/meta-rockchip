@@ -1,0 +1,230 @@
+From 977f3ca318cba8e8b4716e1f93e4296693d9a9d6 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 21 Mar 2018 13:18:17 +0200
+Subject: [PATCH 04/16] media: gpu: v4l2: Support libv4l2 plugins
+
+Depends on custom libv4l2 with mmap & munmap.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/v4l2/v4l2.sig       |  2 ++
+ media/gpu/v4l2/v4l2_device.cc | 46 +++++++++++++++++++++++++++-
+ media/gpu/v4l2/v4l2_device.h  |  3 ++
+ media/gpu/v4l2/v4l2_utils.cc  | 57 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 107 insertions(+), 1 deletion(-)
+
+diff --git a/media/gpu/v4l2/v4l2.sig b/media/gpu/v4l2/v4l2.sig
+index 32931df37..8f1894536 100644
+--- a/media/gpu/v4l2/v4l2.sig
++++ b/media/gpu/v4l2/v4l2.sig
+@@ -8,3 +8,5 @@
+ LIBV4L_PUBLIC int v4l2_close(int fd);
+ LIBV4L_PUBLIC int v4l2_ioctl(int fd, unsigned long int request, ...);
+ LIBV4L_PUBLIC int v4l2_fd_open(int fd, int v4l2_flags);
++LIBV4L_PUBLIC void *v4l2_mmap(void *start, size_t length, int prot, int flags, int fd, int64_t offset);
++LIBV4L_PUBLIC int v4l2_munmap(void *_start, size_t length);
+diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
+index eea408d71..6b4ab1255 100644
+--- a/media/gpu/v4l2/v4l2_device.cc
++++ b/media/gpu/v4l2/v4l2_device.cc
+@@ -35,6 +35,21 @@
+ #include "media/gpu/v4l2/v4l2_utils.h"
+ #include "ui/gl/egl_util.h"
+ 
++// Auto-generated for dlopen libv4l2 libraries
++#include "media/gpu/v4l2/v4l2_stubs.h"
++#include "third_party/v4l-utils/lib/include/libv4l2.h"
++
++using media_gpu_v4l2::InitializeStubs;
++using media_gpu_v4l2::kModuleV4l2;
++using media_gpu_v4l2::StubPathMap;
++
++inline static constexpr char kLibV4l2Path[] =
++#if defined(__aarch64__)
++      "/usr/lib64/libv4l2.so";
++#else
++      "/usr/lib/libv4l2.so";
++#endif
++
+ namespace media {
+ 
+ namespace {
+@@ -80,6 +95,7 @@ class V4L2QueueFactory {
+ 
+ V4L2Device::V4L2Device() {
+   DETACH_FROM_SEQUENCE(client_sequence_checker_);
++  use_libv4l2_ = false;
+ }
+ 
+ V4L2Device::~V4L2Device() {
+@@ -323,6 +339,10 @@ gfx::Size V4L2Device::AllocatedSizeFromV4L2Format(
+ 
+ int V4L2Device::Ioctl(int request, void* arg) {
+   DCHECK(device_fd_.is_valid());
++
++  if (use_libv4l2_)
++    return HANDLE_EINTR(v4l2_ioctl(device_fd_.get(), request, arg));
++
+   return HANDLE_EINTR(ioctl(device_fd_.get(), request, arg));
+ }
+ 
+@@ -357,10 +377,16 @@ void* V4L2Device::Mmap(void* addr,
+                        int flags,
+                        unsigned int offset) {
+   DCHECK(device_fd_.is_valid());
++  if (use_libv4l2_)
++    return v4l2_mmap(addr, len, prot, flags, device_fd_.get(), offset);
+   return mmap(addr, len, prot, flags, device_fd_.get(), offset);
+ }
+ 
+ void V4L2Device::Munmap(void* addr, unsigned int len) {
++  if (use_libv4l2_) {
++    v4l2_munmap(addr, len);
++    return;
++  }
+   munmap(addr, len);
+ }
+ 
+@@ -906,11 +932,29 @@ bool V4L2Device::OpenDevicePath(const std::string& path, Type type) {
+ 
+   device_fd_.reset(
+       HANDLE_EINTR(open(path.c_str(), O_RDWR | O_NONBLOCK | O_CLOEXEC)));
+-  return device_fd_.is_valid();
++  if (!device_fd_.is_valid())
++    return false;
++
++  StubPathMap paths;
++  paths[kModuleV4l2].push_back(kLibV4l2Path);
++
++  static bool libv4l2_initialized = InitializeStubs(paths);
++  if (!libv4l2_initialized) {
++    VLOGF(1) << "Failed to initialize LIBV4L2 libs";
++  } else {
++    if (HANDLE_EINTR(v4l2_fd_open(device_fd_.get(), V4L2_DISABLE_CONVERSION)) !=
++            -1) {
++      DVLOGF(3) << "Using libv4l2 for " << path;
++      use_libv4l2_ = true;
++    }
++  }
++  return true;
+ }
+ 
+ void V4L2Device::CloseDevice() {
+   DVLOGF(3);
++  if (use_libv4l2_ && device_fd_.is_valid())
++    v4l2_close(device_fd_.release());
+   device_fd_.reset();
+ }
+ 
+diff --git a/media/gpu/v4l2/v4l2_device.h b/media/gpu/v4l2/v4l2_device.h
+index 291ab9d4f..deed21d1a 100644
+--- a/media/gpu/v4l2/v4l2_device.h
++++ b/media/gpu/v4l2/v4l2_device.h
+@@ -305,6 +305,9 @@ class MEDIA_GPU_EXPORT V4L2Device
+   // Callback to use for allocating secure buffers.
+   AllocateSecureBufferAsCallback secure_allocate_cb_;
+ 
++  // Use libv4l2 when operating |device_fd_|.
++  bool use_libv4l2_;
++
+   SEQUENCE_CHECKER(client_sequence_checker_);
+ };
+ 
+diff --git a/media/gpu/v4l2/v4l2_utils.cc b/media/gpu/v4l2/v4l2_utils.cc
+index a9c8189cb..7b6d7caba 100644
+--- a/media/gpu/v4l2/v4l2_utils.cc
++++ b/media/gpu/v4l2/v4l2_utils.cc
+@@ -57,8 +57,27 @@ enum v4l2_mpeg_video_av1_profile {
+ #define MAKE_V4L2_CODEC_PAIR(codec, suffix) \
+   std::make_pair(codec##_##suffix, codec)
+ 
++// Auto-generated for dlopen libv4l2 libraries
++#include "media/gpu/v4l2/v4l2_stubs.h"
++#include "third_party/v4l-utils/lib/include/libv4l2.h"
++
++using media_gpu_v4l2::InitializeStubs;
++using media_gpu_v4l2::kModuleV4l2;
++using media_gpu_v4l2::StubPathMap;
++
++inline static constexpr char kLibV4l2Path[] =
++#if defined(__aarch64__)
++      "/usr/lib64/libv4l2.so";
++#else
++      "/usr/lib/libv4l2.so";
++#endif
++
++static bool use_libv4l2_ = false;
++
+ namespace {
+ int HandledIoctl(int fd, int request, void* arg) {
++  if (use_libv4l2_)
++    return HANDLE_EINTR(v4l2_ioctl(fd, request, arg));
+   return HANDLE_EINTR(ioctl(fd, request, arg));
+ }
+ }  // namespace
+@@ -520,6 +539,21 @@ std::optional<SupportedVideoDecoderConfigs> GetSupportedV4L2DecoderConfigs() {
+     return std::nullopt;
+   }
+ 
++  StubPathMap paths;
++  paths[kModuleV4l2].push_back(kLibV4l2Path);
++
++  use_libv4l2_ = false;
++  static bool libv4l2_initialized = InitializeStubs(paths);
++  if (!libv4l2_initialized) {
++    VLOGF(1) << "Failed to initialize LIBV4L2 libs";
++  } else {
++    if (HANDLE_EINTR(v4l2_fd_open(device_fd.get(), V4L2_DISABLE_CONVERSION)) !=
++            -1) {
++      DVLOGF(3) << "Using libv4l2 for " << kVideoDeviceDriverPath;
++      use_libv4l2_ = true;
++    }
++  }
++
+   std::vector<uint32_t> v4l2_codecs = EnumerateSupportedPixFmts(
+       base::BindRepeating(&HandledIoctl, device_fd.get()),
+       V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+@@ -546,6 +580,10 @@ std::optional<SupportedVideoDecoderConfigs> GetSupportedV4L2DecoderConfigs() {
+     }
+   }
+ 
++  if (use_libv4l2_ && device_fd.is_valid())
++    v4l2_close(device_fd.release());
++  device_fd.reset();
++
+ #if DCHECK_IS_ON()
+   for (const auto& config : supported_media_configs) {
+     DVLOGF(3) << "Enumerated " << GetProfileName(config.profile_min) << " ("
+@@ -565,10 +603,29 @@ bool IsV4L2DecoderStateful() {
+     return false;
+   }
+ 
++  StubPathMap paths;
++  paths[kModuleV4l2].push_back(kLibV4l2Path);
++
++  use_libv4l2_ = false;
++  static bool libv4l2_initialized = InitializeStubs(paths);
++  if (!libv4l2_initialized) {
++    VLOGF(1) << "Failed to initialize LIBV4L2 libs";
++  } else {
++    if (HANDLE_EINTR(v4l2_fd_open(device_fd.get(), V4L2_DISABLE_CONVERSION)) !=
++            -1) {
++      DVLOGF(3) << "Using libv4l2 for " << kVideoDeviceDriverPath;
++      use_libv4l2_ = true;
++    }
++  }
++
+   std::vector<uint32_t> v4l2_codecs = EnumerateSupportedPixFmts(
+       base::BindRepeating(&HandledIoctl, device_fd.get()),
+       V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+ 
++  if (use_libv4l2_ && device_fd.is_valid())
++    v4l2_close(device_fd.release());
++  device_fd.reset();
++
+   // V4L2 stateful formats (don't end up with _SLICE or _FRAME) supported.
+   constexpr std::array<uint32_t, 4> kSupportedStatefulInputCodecs = {
+       V4L2_PIX_FMT_H264,
+-- 
+2.38.5
+
