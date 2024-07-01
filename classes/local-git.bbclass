@@ -1,7 +1,7 @@
 # Copyright (C) 2021, Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-python () {
+do_fetch:prepend () {
     from bb.fetch2 import git
     from bb.fetch2 import Fetch
     from bb.fetch2 import runfetchcmd
