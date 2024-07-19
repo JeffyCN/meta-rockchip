@@ -72,7 +72,11 @@ All supported machines can be found in meta-rockchip/conf/machine.
 
 ### II. Building meta-rockchip BSP Layers
 
-You should then be able to build a image as such:
+You should then be able to build a image with "rockchip-image" enabled in the local.conf file:
+
+```makefile
+INHERIT:append = " rockchip-image"
+```
 
 ```shell
 $ bitbake core-image-minimal
