@@ -3,6 +3,7 @@
 
 require conf/machine/include/arm/armv7a/tune-cortexa17.inc
 require conf/machine/include/rockchip-common.inc
+require conf/machine/include/mali.inc
 
 RK_SOC_FAMILY := "rk3288"
 
