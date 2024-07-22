@@ -2,6 +2,7 @@
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 require conf/machine/include/rockchip-arm64-common.inc
+require conf/machine/include/mali.inc
 
 RK_SOC_FAMILY := "rk3568"
 
