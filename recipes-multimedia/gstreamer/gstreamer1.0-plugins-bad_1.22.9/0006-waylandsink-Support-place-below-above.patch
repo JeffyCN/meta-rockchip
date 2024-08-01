@@ -1,7 +1,7 @@
-From f21e9716ad954a118c112c2f576ba53f522064a3 Mon Sep 17 00:00:00 2001
+From a2448de2e7309ea4711780d8a664c917bfd19827 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 15 Jun 2020 10:01:54 +0800
-Subject: [PATCH 06/45] waylandsink: Support place below/above
+Subject: [PATCH 06/49] waylandsink: Support place below/above
 
 Set environment WAYLANDSINK_PLACE_ABOVE=1 to place it above parent.
 
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 7 insertions(+)
 
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index 0023d4e..78a72b5 100644
+index 0023d4ea..78a72b52 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -24,6 +24,8 @@

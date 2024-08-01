@@ -1,0 +1,246 @@
+From 5fb8dc98c996741aaf34bc47d243084f22f0747d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 25 Feb 2022 17:48:58 +0800
+Subject: [PATCH 37/49] kmssink: Support setting prefered frame syncing mode
+
+Tested with:
+gst-launch-1.0 videotestsrc ! kmssink sync-mode=vblank
+gst-launch-1.0 videotestsrc ! kmssink sync-mode=none
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 88 ++++++++++++++++++++++++++++++++++++--------
+ sys/kms/gstkmssink.h | 10 +++++
+ 2 files changed, 83 insertions(+), 15 deletions(-)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 187b094a..88fc30db 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -106,11 +106,14 @@ enum
+   PROP_FD,
+   PROP_SKIP_VSYNC,
+   PROP_FORCE_ASPECT_RATIO,
++  PROP_SYNC_MODE,
+   PROP_N,
+ };
+ 
+ static GParamSpec *g_properties[PROP_N] = { NULL, };
+ 
++#define DEFAULT_SYNC_MODE GST_KMS_SYNC_AUTO
++
+ #ifdef HAVE_DRM_HDR
+ enum hdmi_metadata_type
+ {
+@@ -1383,8 +1386,6 @@ gst_kms_sink_start (GstBaseSink * bsink)
+   self->pending_rect = self->render_rect;
+   GST_OBJECT_UNLOCK (self);
+ 
+-  self->buffer_id = crtc->buffer_id;
+-
+   self->mm_width = conn->mmWidth;
+   self->mm_height = conn->mmHeight;
+ 
+@@ -1878,7 +1879,7 @@ static gboolean
+ gst_kms_sink_sync (GstKMSSink * self)
+ {
+   gint ret;
+-  gboolean waiting;
++  gboolean waiting, pageflip;
+   drmEventContext evctxt = {
+     .version = DRM_EVENT_CONTEXT_VERSION,
+     .page_flip_handler = sync_handler,
+@@ -1897,13 +1898,36 @@ gst_kms_sink_sync (GstKMSSink * self)
+   else if (self->pipe > 1)
+     vbl.request.type |= self->pipe << DRM_VBLANK_HIGH_CRTC_SHIFT;
+ 
++  if (self->sync_mode == GST_KMS_SYNC_FLIP) {
++    pageflip = TRUE;
++  } else if (self->sync_mode == GST_KMS_SYNC_VBLANK) {
++    pageflip = FALSE;
++  } else if (self->sync_mode == GST_KMS_SYNC_AUTO) {
++    pageflip = self->modesetting_enabled;
++  } else {
++    return TRUE;
++  }
++
+   waiting = TRUE;
+-  if (!self->has_async_page_flip && !self->modesetting_enabled) {
++  if (!pageflip) {
+     ret = drmWaitVBlank (self->fd, &vbl);
+     if (ret)
+       goto vblank_failed;
+   } else {
+-    ret = drmModePageFlip (self->fd, self->crtc_id, self->buffer_id,
++    guint32 buffer_id;
++
++    if (self->plane_id == self->primary_plane_id) {
++      buffer_id = self->buffer_id;
++    } else {
++      drmModeCrtc *crtc = drmModeGetCrtc (self->fd, self->crtc_id);
++      if (!crtc)
++        goto pageflip_failed;
++
++      buffer_id = crtc->buffer_id;
++      drmModeFreeCrtc (crtc);
++    }
++
++    ret = drmModePageFlip (self->fd, self->crtc_id, buffer_id,
+         DRM_MODE_PAGE_FLIP_EVENT, &waiting);
+     if (ret)
+       goto pageflip_failed;
+@@ -1932,7 +1956,9 @@ pageflip_failed:
+   {
+     GST_WARNING_OBJECT (self, "drmModePageFlip failed: %s (%d)",
+         g_strerror (errno), errno);
+-    return FALSE;
++
++    self->sync_mode = GST_KMS_SYNC_VBLANK;
++    return gst_kms_sink_sync (self);
+   }
+ event_failed:
+   {
+@@ -2194,6 +2220,8 @@ gst_kms_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+ 
+   res = GST_FLOW_ERROR;
+ 
++  self->buffer_id = 0;
++
+   if (buf) {
+     buffer = gst_kms_sink_get_input_buffer (self, buf);
+     vinfo = &self->vinfo;
+@@ -2221,11 +2249,6 @@ gst_kms_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+   GST_TRACE_OBJECT (self, "displaying fb %d", fb_id);
+ 
+   GST_OBJECT_LOCK (self);
+-  if (self->modesetting_enabled) {
+-    self->buffer_id = fb_id;
+-    goto sync_frame;
+-  }
+-
+   if ((crop = gst_buffer_get_video_crop_meta (buffer))) {
+     GstVideoInfo cropped_vinfo = *vinfo;
+ 
+@@ -2298,12 +2321,12 @@ retry_set_plane:
+     goto set_plane_failed;
+   }
+ 
++  self->buffer_id = fb_id;
++
+ sync_frame:
+   /* Wait for the previous frame to complete redraw */
+-  if (!self->skip_vsync && !gst_kms_sink_sync (self)) {
+-    GST_OBJECT_UNLOCK (self);
+-    goto bail;
+-  }
++  if (!self->skip_vsync && self->sync_mode != GST_KMS_SYNC_NONE)
++      gst_kms_sink_sync (self);
+ 
+   /* Save the rendered buffer and its metadata in case a redraw is needed */
+   if (buffer != self->last_buffer) {
+@@ -2510,6 +2533,9 @@ gst_kms_sink_set_property (GObject * object, guint prop_id,
+     case PROP_FORCE_ASPECT_RATIO:
+       sink->keep_aspect = g_value_get_boolean (value);
+       break;
++    case PROP_SYNC_MODE:
++      sink->sync_mode = g_value_get_enum (value);
++      break;
+     default:
+       if (!gst_video_overlay_set_property (object, PROP_N, prop_id, value))
+         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+@@ -2572,6 +2598,9 @@ gst_kms_sink_get_property (GObject * object, guint prop_id,
+     case PROP_FORCE_ASPECT_RATIO:
+       g_value_set_boolean (value, sink->keep_aspect);
+       break;
++    case PROP_SYNC_MODE:
++      g_value_set_enum (value, sink->sync_mode);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -2604,11 +2633,15 @@ gst_kms_sink_init (GstKMSSink * sink)
+   sink->saved_zpos = -1;
+   sink->can_scale = TRUE;
+   sink->keep_aspect = TRUE;
++  sink->sync_mode = DEFAULT_SYNC_MODE;
+   gst_poll_fd_init (&sink->pollfd);
+   sink->poll = gst_poll_new (TRUE);
+   gst_video_info_init (&sink->vinfo);
+   sink->skip_vsync = FALSE;
+ 
++  if (g_getenv ("KMSSINK_DISABLE_VSYNC"))
++    sink->skip_vsync = TRUE;
++
+ #ifdef HAVE_DRM_HDR
+   sink->no_infoframe = FALSE;
+   sink->has_hdr_info = FALSE;
+@@ -2621,6 +2654,25 @@ gst_kms_sink_init (GstKMSSink * sink)
+ #endif
+ }
+ 
++#define GST_TYPE_KMS_SYNC_MODE (gst_kms_sync_mode_get_type ())
++static GType
++gst_kms_sync_mode_get_type (void)
++{
++  static GType mode = 0;
++
++  if (!mode) {
++    static const GEnumValue modes[] = {
++      {GST_KMS_SYNC_AUTO, "Sync with page flip or vblank event", "auto"},
++      {GST_KMS_SYNC_FLIP, "Sync with page flip event", "flip"},
++      {GST_KMS_SYNC_VBLANK, "Sync with vblank event", "vblank"},
++      {GST_KMS_SYNC_NONE, "Ignore syncing", "none"},
++      {0, NULL, NULL}
++    };
++    mode = g_enum_register_static ("GstKMSSyncMode", modes);
++  }
++  return mode;
++}
++
+ static void
+ gst_kms_sink_class_init (GstKMSSinkClass * klass)
+ {
+@@ -2817,6 +2869,12 @@ gst_kms_sink_class_init (GstKMSSinkClass * klass)
+       "When enabled, scaling will respect original aspect ratio", TRUE,
+       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+ 
++  g_properties[PROP_SYNC_MODE] =
++      g_param_spec_enum ("sync-mode", "Sync mode",
++      "Preferred frame syncing mode",
++      GST_TYPE_KMS_SYNC_MODE, DEFAULT_SYNC_MODE,
++      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
++
+   g_object_class_install_properties (gobject_class, PROP_N, g_properties);
+ 
+   gst_video_overlay_install_properties (gobject_class, PROP_N);
+diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
+index 1d5bd58c..5ce1e55d 100644
+--- a/sys/kms/gstkmssink.h
++++ b/sys/kms/gstkmssink.h
+@@ -45,6 +45,14 @@ G_BEGIN_DECLS
+ typedef struct _GstKMSSink GstKMSSink;
+ typedef struct _GstKMSSinkClass GstKMSSinkClass;
+ 
++typedef enum
++{
++  GST_KMS_SYNC_AUTO = 0,
++  GST_KMS_SYNC_FLIP = 1,
++  GST_KMS_SYNC_VBLANK = 2,
++  GST_KMS_SYNC_NONE = 3,
++} GstKMSSyncMode;
++
+ struct _GstKMSSink {
+   GstVideoSink videosink;
+ 
+@@ -115,6 +123,8 @@ struct _GstKMSSink {
+   guintptr window_handle;
+ 
+   gboolean keep_aspect;
++
++  GstKMSSyncMode sync_mode;
+ };
+ 
+ struct _GstKMSSinkClass {
+-- 
+2.20.1
+

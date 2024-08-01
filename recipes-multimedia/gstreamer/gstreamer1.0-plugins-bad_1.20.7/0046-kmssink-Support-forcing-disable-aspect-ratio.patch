@@ -1,0 +1,70 @@
+From e0f9778a6c2efef542eef8c3d2b10350f621e177 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 30 May 2024 17:53:49 +0800
+Subject: [PATCH 46/46] kmssink: Support forcing disable aspect ratio
+
+Tested on RK3588 EVB with:
+export KMSSINK_IGNORE_ASPECT=1
+gst-launch-1.0 videotestsrc ! kmssink render-rectangle='<0, 0, 500, 500>'
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 8 ++++++--
+ sys/kms/gstkmssink.h | 1 +
+ 2 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index a658c1ea..17bdfcf5 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -1392,7 +1392,7 @@ gst_kms_sink_calculate_display_ratio (GstKMSSink * self, GstVideoInfo * vinfo,
+   video_par_n = GST_VIDEO_INFO_PAR_N (vinfo);
+   video_par_d = GST_VIDEO_INFO_PAR_D (vinfo);
+ 
+-  if (self->can_scale && self->keep_aspect) {
++  if (self->can_scale && self->keep_aspect && !self->force_ignore_aspect) {
+     gst_video_calculate_device_ratio (self->hdisplay, self->vdisplay,
+         self->mm_width, self->mm_height, &dpy_par_n, &dpy_par_d);
+   } else {
+@@ -2004,7 +2004,7 @@ retry_set_plane:
+   result.x += self->render_rect.x;
+   result.y += self->render_rect.y;
+ 
+-  if (self->can_scale && !self->keep_aspect)
++  if (self->can_scale && (!self->keep_aspect || self->force_ignore_aspect))
+     result = self->render_rect;
+ 
+   /* Restore the real source size */
+@@ -2330,6 +2330,7 @@ gst_kms_sink_init (GstKMSSink * sink)
+   sink->plane_id = -1;
+   sink->saved_zpos = -1;
+   sink->can_scale = TRUE;
++  sink->force_ignore_aspect = FALSE;
+   sink->keep_aspect = TRUE;
+   sink->sync_mode = DEFAULT_SYNC_MODE;
+   gst_poll_fd_init (&sink->pollfd);
+@@ -2337,6 +2338,9 @@ gst_kms_sink_init (GstKMSSink * sink)
+   gst_video_info_init (&sink->vinfo);
+   sink->skip_vsync = FALSE;
+ 
++  if (g_getenv ("KMSSINK_IGNORE_ASPECT"))
++    sink->force_ignore_aspect = TRUE;
++
+   if (g_getenv ("KMSSINK_DISABLE_VSYNC"))
+     sink->skip_vsync = TRUE;
+ }
+diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
+index f20246b0..bfc98cf4 100644
+--- a/sys/kms/gstkmssink.h
++++ b/sys/kms/gstkmssink.h
+@@ -110,6 +110,7 @@ struct _GstKMSSink {
+   guintptr window_handle;
+ 
+   gboolean keep_aspect;
++  gboolean force_ignore_aspect;
+   gboolean fullscreen;
+ 
+   GstKMSSyncMode sync_mode;
+-- 
+2.20.1
+
