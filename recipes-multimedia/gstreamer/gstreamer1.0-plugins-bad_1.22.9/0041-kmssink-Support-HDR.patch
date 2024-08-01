@@ -1,0 +1,406 @@
+From 13be1dc356b50f4f2d079b8926cd90210cc06a05 Mon Sep 17 00:00:00 2001
+From: Jiajian Wu <jair.wu@rock-chips.com>
+Date: Mon, 3 Jul 2023 15:26:53 +0800
+Subject: [PATCH 41/49] kmssink: Support HDR
+
+Signed-off-by: Jiajian Wu <jair.wu@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 206 +++++++++++++++++++++++++++++++++++++++----
+ sys/kms/gstkmssink.h |   7 ++
+ 2 files changed, 195 insertions(+), 18 deletions(-)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 5b2ae38e..4883c3e5 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -57,6 +57,7 @@
+ #include <xf86drmMode.h>
+ #include <drm_fourcc.h>
+ #include <string.h>
++#include <linux/videodev2.h>
+ 
+ #include "gstkmssink.h"
+ #include "gstkmsutils.h"
+@@ -109,6 +110,8 @@ enum
+   PROP_FORCE_ASPECT_RATIO,
+   PROP_SYNC_MODE,
+   PROP_FULLSCREEN,
++  PROP_HDR_EN,
++  PROP_REQUIRED_CLL,
+   PROP_N,
+ };
+ 
+@@ -128,6 +131,13 @@ enum hdmi_eotf
+   HDMI_EOTF_SMPTE_ST2084,
+   HDMI_EOTF_BT_2100_HLG,
+ };
++/* define in include/uapi/drm/rockchip_drm.h */
++enum rockchip_crtc_feture
++{
++  ROCKCHIP_DRM_CRTC_FEATURE_ALPHA_SCALE,
++  ROCKCHIP_DRM_CRTC_FEATURE_HDR10,
++  ROCKCHIP_DRM_CRTC_FEATURE_NEXT_HDR,
++};
+ 
+ static void
+ gst_kms_populate_infoframe (struct hdr_output_metadata *pinfo_frame,
+@@ -178,11 +188,104 @@ gst_kms_populate_infoframe (struct hdr_output_metadata *pinfo_frame,
+   pinfo_frame->hdmi_metadata_type1.white_point.y = p_hdr_minfo->white_point.y;
+ }
+ 
++static void
++gst_kms_add_plane_properties (GstKMSSink * self, drmModeAtomicReq *req, gboolean clear_it_out)
++{
++  drmModeObjectPropertiesPtr props = NULL;
++  int zpos_idx = -1;
++  int eotf = HDMI_EOTF_TRADITIONAL_GAMMA_SDR;
++  int colorspace = V4L2_COLORSPACE_DEFAULT;
++  int ret;
++
++  props =
++    drmModeObjectGetProperties (self->fd, self->plane_id, DRM_MODE_OBJECT_PLANE);
++  if (!props)
++    return;
++
++  for (int i = 0;
++      i < props->count_props && (self->eotfPropID == 0
++          || self->colorSpacePropID == 0
++          || self->zposPropID == 0); i++) {
++    drmModePropertyPtr pprop = drmModeGetProperty (self->fd, props->props[i]);
++
++    if (pprop) {
++      if(!strncmp ("EOTF", pprop->name, strlen ("EOTF"))) {
++        self->eotfPropID = pprop->prop_id;
++      } else if(!strncmp ("COLOR_SPACE", pprop->name, strlen ("COLOR_SPACE"))) {
++        self->colorSpacePropID = pprop->prop_id;
++      } else if(!strncmp ("zpos", pprop->name, strlen ("zpos"))
++                    || !strncmp ("ZPOS", pprop->name, strlen ("ZPOS"))) {
++        self->zposPropID = pprop->prop_id;
++        zpos_idx = i;
++      }
++    }
++    drmModeFreeProperty (pprop);
++  }
++
++  if (self->eotfPropID == 0 || self->colorSpacePropID == 0
++      || self->zposPropID == 0) {
++    GST_ERROR_OBJECT (self, "cannot find eotf | colorspace | zpos");
++    goto out;
++  }
++
++  eotf = self->colorimetry;
++  colorspace = self->colorspace;
++
++  drmModeAtomicAddProperty(req, self->plane_id, self->eotfPropID,
++    clear_it_out ? HDMI_EOTF_TRADITIONAL_GAMMA_SDR : eotf);
++  drmModeAtomicAddProperty(req, self->plane_id, self->colorSpacePropID,
++    clear_it_out ? V4L2_COLORSPACE_DEFAULT : colorspace);
++
++  if (clear_it_out) {
++    if (self->saved_zpos >= 0)
++      drmModeAtomicAddProperty(req, self->plane_id, self->zposPropID,
++          self->saved_zpos);
++  } else {
++    if (self->saved_zpos < 0)
++      self->saved_zpos = props->prop_values[zpos_idx];
++    drmModeAtomicAddProperty(req, self->plane_id, self->zposPropID, 0);
++  }
++
++out:
++  drmModeFreeObjectProperties (props);
++}
++
++static int
++gst_kms_check_crtc_hdr_support (GstKMSSink * self)
++{
++  drmModeObjectPropertiesPtr props = NULL;
++  drmModePropertyPtr prop = NULL;
++  uint32_t val = 0;
++
++  props = drmModeObjectGetProperties (self->fd, self->crtc_id,
++      DRM_MODE_OBJECT_CRTC);
++  if (!props)
++    return FALSE;
++
++  for (int i = 0; i < props->count_props; i++) {
++    prop = drmModeGetProperty (self->fd, props->props[i]);
++    if (prop) {
++      if (!strcmp (prop->name, "FEATURE")) {
++        val = props->prop_values[i];
++        break;
++      }
++    }
++    drmModeFreeProperty (prop);
++    prop = NULL;
++  }
++
++  drmModeFreeProperty (prop);
++  drmModeFreeObjectProperties (props);
++
++  return (val & (1 << ROCKCHIP_DRM_CRTC_FEATURE_HDR10));
++}
++
+ static void
+ gst_kms_push_hdr_infoframe (GstKMSSink * self, gboolean clear_it_out)
+ {
+   struct hdr_output_metadata info_frame;
+   drmModeObjectPropertiesPtr props;
++  drmModeAtomicReq *req;
+   uint32_t hdrBlobID;
+   int drm_fd = self->fd;
+   uint32_t conn_id = self->conn_id;
+@@ -193,9 +296,19 @@ gst_kms_push_hdr_infoframe (GstKMSSink * self, gboolean clear_it_out)
+     return;
+   }
+ 
++  if (gst_kms_check_crtc_hdr_support (self) == FALSE) {
++    GST_WARNING_OBJECT (self, "No HDR support on CRTC %d", self->crtc_id);
++    self->has_sent_hdrif = TRUE;
++    return;
++  }
++
++  if (drmSetClientCap (drm_fd, DRM_CLIENT_CAP_ATOMIC, 1))
++    return;
++
+   /* Check to see if the connection has the HDR_OUTPUT_METADATA property if
+    * we haven't already found it */
+-  if (self->hdrPropID == 0 || self->edidPropID == 0) {
++  if (self->hdrPropID == 0 || self->edidPropID == 0
++      || self->connColorSpacePropID == 0) {
+     props =
+         drmModeObjectGetProperties (drm_fd, conn_id, DRM_MODE_OBJECT_CONNECTOR);
+ 
+@@ -208,7 +321,7 @@ gst_kms_push_hdr_infoframe (GstKMSSink * self, gboolean clear_it_out)
+     struct gst_kms_hdr_static_metadata hdr_edid_info = { 0, 0, 0, 0, 0 };
+     for (uint32_t i = 0;
+         i < props->count_props && (self->hdrPropID == 0
+-            || self->edidPropID == 0); i++) {
++            || self->edidPropID == 0 || self->connColorSpacePropID == 0); i++) {
+       drmModePropertyPtr pprop = drmModeGetProperty (drm_fd, props->props[i]);
+ 
+       if (pprop) {
+@@ -219,6 +332,12 @@ gst_kms_push_hdr_infoframe (GstKMSSink * self, gboolean clear_it_out)
+           GST_DEBUG_OBJECT (self, "HDR prop ID = %d", self->hdrPropID);
+         }
+ 
++        if (!strncmp ("Colorspace", pprop->name,
++                strlen ("Colorspace"))) {
++          self->connColorSpacePropID = pprop->prop_id;
++          GST_DEBUG_OBJECT (self, "Colorspace prop ID = %d", self->connColorSpacePropID);
++        }
++
+         if (!strncmp ("EDID", pprop->name, strlen ("EDID"))) {
+           self->edidPropID = pprop->prop_id;
+ 
+@@ -251,6 +370,7 @@ gst_kms_push_hdr_infoframe (GstKMSSink * self, gboolean clear_it_out)
+     drmModeFreeObjectProperties (props);
+ 
+     if (self->hdrPropID == 0 || self->edidPropID == 0
++        || self->connColorSpacePropID == 0
+         || hdr_edid_info.eotf == 0) {
+       GST_DEBUG_OBJECT (self, "No HDR support on target display");
+       self->no_infoframe = TRUE;
+@@ -269,23 +389,33 @@ gst_kms_push_hdr_infoframe (GstKMSSink * self, gboolean clear_it_out)
+   gst_kms_populate_infoframe (&info_frame, &self->hdr_minfo, &self->hdr_cll,
+       self->colorimetry, clear_it_out);
+ 
+-  /* Use non-atomic property setting */
+   ret = drmModeCreatePropertyBlob (drm_fd, &info_frame,
+       sizeof (struct hdr_output_metadata), &hdrBlobID);
+-  if (!ret) {
+-    ret =
+-        drmModeObjectSetProperty (drm_fd, conn_id, DRM_MODE_OBJECT_CONNECTOR,
+-        self->hdrPropID, hdrBlobID);
+-    if (ret) {
+-      GST_ERROR_OBJECT (self, "drmModeObjectSetProperty result %d %d %s", ret,
+-          errno, g_strerror (errno));
+-    }
+-    drmModeDestroyPropertyBlob (drm_fd, hdrBlobID);
+-  } else {
++  if (ret) {
+     GST_ERROR_OBJECT (self, "Failed to drmModeCreatePropertyBlob %d %s", errno,
+         g_strerror (errno));
++    goto err_out;
+   }
+ 
++  req = drmModeAtomicAlloc();
++  if (!req) {
++    GST_ERROR_OBJECT (self, "drmModeAtomicAlloc failed");
++    drmModeDestroyPropertyBlob (drm_fd, hdrBlobID);
++    goto err_out;
++  }
++
++  drmModeAtomicAddProperty(req, conn_id, self->connColorSpacePropID,
++                           clear_it_out ? 0 : self->colorspace);
++  drmModeAtomicAddProperty(req, conn_id, self->hdrPropID, hdrBlobID);
++  gst_kms_add_plane_properties(self, req, clear_it_out);
++  ret = drmModeAtomicCommit(drm_fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET, NULL);
++  if (ret)
++    GST_WARNING_OBJECT (self, "drmModeAtomicCommit failed %d", ret);
++  drmModeAtomicFree(req);
++
++  drmModeDestroyPropertyBlob (drm_fd, hdrBlobID);
++
++err_out:
+   if (!ret) {
+     GST_INFO ("Set HDR Infoframe on connector %d", conn_id);
+     self->has_sent_hdrif = TRUE;        // Hooray!
+@@ -317,6 +447,7 @@ gst_kms_sink_set_hdr10_caps (GstKMSSink * self, GstCaps * caps)
+     switch (colorimetry.transfer) {
+       case GST_VIDEO_TRANSFER_SMPTE2084:
+         self->colorimetry = HDMI_EOTF_SMPTE_ST2084;
++        self->colorspace = V4L2_COLORSPACE_BT2020;
+         has_hdr_eotf = TRUE;
+         GST_DEBUG ("Got HDR transfer value GST_VIDEO_TRANSFER_SMPTE2084: %u",
+             self->colorimetry);
+@@ -324,12 +455,14 @@ gst_kms_sink_set_hdr10_caps (GstKMSSink * self, GstCaps * caps)
+       case GST_VIDEO_TRANSFER_BT2020_10:
+       case GST_VIDEO_TRANSFER_ARIB_STD_B67:
+         self->colorimetry = HDMI_EOTF_BT_2100_HLG;
++        self->colorspace = V4L2_COLORSPACE_BT2020;
+         has_hdr_eotf = TRUE;
+         GST_DEBUG ("Got HDR transfer value HDMI_EOTF_BT_2100_HLG: %u",
+             self->colorimetry);
+         break;
+       case GST_VIDEO_TRANSFER_BT709:
+         self->colorimetry = HDMI_EOTF_TRADITIONAL_GAMMA_SDR;
++        self->colorspace = V4L2_COLORSPACE_DEFAULT;
+         GST_DEBUG ("Got HDR transfer value GST_VIDEO_TRANSFER_BT709, "
+             "not HDR: %u", self->colorimetry);
+         break;
+@@ -337,6 +470,7 @@ gst_kms_sink_set_hdr10_caps (GstKMSSink * self, GstCaps * caps)
+         /* not an HDMI and/or HDR colorimetry, we will ignore */
+         GST_DEBUG ("Unsupported transfer function, no HDR: %u",
+             colorimetry.transfer);
++        self->colorspace = V4L2_COLORSPACE_DEFAULT;
+         self->no_infoframe = TRUE;
+         self->has_hdr_info = FALSE;
+         break;
+@@ -396,8 +530,10 @@ gst_kms_sink_set_hdr10_caps (GstKMSSink * self, GstCaps * caps)
+       GST_WARNING ("Missing content light level info");
+     }
+ 
+-    self->no_infoframe = TRUE;
+-    self->has_hdr_info = FALSE;
++    if (self->required_cll) {
++      self->no_infoframe = TRUE;
++      self->has_hdr_info = FALSE;
++    }
+   }
+ 
+   /* need all caps set */
+@@ -405,9 +541,10 @@ gst_kms_sink_set_hdr10_caps (GstKMSSink * self, GstCaps * caps)
+     GST_ELEMENT_WARNING (self, STREAM, FORMAT,
+         ("Stream doesn't have all HDR components needed"),
+         ("Check stream caps"));
+-
+-    self->no_infoframe = TRUE;
+-    self->has_hdr_info = FALSE;
++    if (has_hdr_eotf && !has_cll && self->required_cll) {
++      self->no_infoframe = TRUE;
++      self->has_hdr_info = FALSE;
++    }
+   }
+ }
+ 
+@@ -1533,6 +1670,10 @@ gst_kms_sink_stop (GstBaseSink * bsink)
+     self->saved_zpos = -1;
+   }
+ 
++#ifdef HAVE_DRM_HDR
++  /* Clear the HDR infoframes */
++  gst_kms_push_hdr_infoframe (self, TRUE);
++#endif
+   gst_buffer_replace (&self->last_buffer, NULL);
+   gst_caps_replace (&self->allowed_caps, NULL);
+   gst_object_replace ((GstObject **) & self->pool, NULL);
+@@ -2600,6 +2741,12 @@ gst_kms_sink_set_property (GObject * object, guint prop_id,
+     case PROP_FULLSCREEN:
+       sink->fullscreen = g_value_get_boolean (value);
+       break;
++    case PROP_HDR_EN:
++      sink->hdr_en = g_value_get_boolean (value);
++      break;
++    case PROP_REQUIRED_CLL:
++      sink->required_cll = g_value_get_boolean (value);
++      break;
+     default:
+       if (!gst_video_overlay_set_property (object, PROP_N, prop_id, value))
+         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+@@ -2668,6 +2815,12 @@ gst_kms_sink_get_property (GObject * object, guint prop_id,
+     case PROP_FULLSCREEN:
+       g_value_set_boolean (value, sink->fullscreen);
+       break;
++    case PROP_HDR_EN:
++      g_value_set_boolean (value, sink->hdr_en);
++      break;
++    case PROP_REQUIRED_CLL:
++      g_value_set_boolean (value, sink->required_cll);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -2710,12 +2863,19 @@ gst_kms_sink_init (GstKMSSink * sink)
+     sink->skip_vsync = TRUE;
+ 
+ #ifdef HAVE_DRM_HDR
++  sink->hdr_en = TRUE;
++  sink->required_cll = FALSE;
+   sink->no_infoframe = FALSE;
+   sink->has_hdr_info = FALSE;
+   sink->has_sent_hdrif = FALSE;
+   sink->edidPropID = 0;
+   sink->hdrPropID = 0;
++  sink->connColorSpacePropID = 0;
++  sink->eotfPropID = 0;
++  sink->colorSpacePropID = 0;
++  sink->zposPropID = 0;
+   sink->colorimetry = HDMI_EOTF_TRADITIONAL_GAMMA_SDR;
++  sink->colorspace = V4L2_COLORSPACE_DEFAULT;
+   gst_video_mastering_display_info_init (&sink->hdr_minfo);
+   gst_video_content_light_level_init (&sink->hdr_cll);
+ #endif
+@@ -2947,6 +3107,16 @@ gst_kms_sink_class_init (GstKMSSinkClass * klass)
+       "Force showing fullscreen", FALSE,
+       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+ 
++  g_properties[PROP_HDR_EN] =
++    g_param_spec_boolean ("hdr-enable", "HDR enable",
++    "Enable HDR", TRUE,
++    G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
++
++  g_properties[PROP_REQUIRED_CLL] =
++    g_param_spec_boolean ("required-cll", "HDR cll is required",
++    "Content light level information is required", FALSE,
++    G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
++
+   g_object_class_install_properties (gobject_class, PROP_N, g_properties);
+ 
+   gst_video_overlay_install_properties (gobject_class, PROP_N);
+diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
+index 5c4065a8..80b5c3e8 100644
+--- a/sys/kms/gstkmssink.h
++++ b/sys/kms/gstkmssink.h
+@@ -111,12 +111,19 @@ struct _GstKMSSink {
+ 
+ #ifdef HAVE_DRM_HDR
+   /* HDR mastering related structure */
++  gboolean hdr_en;
++  gboolean required_cll;
+   gboolean no_infoframe;
+   gboolean has_hdr_info;
+   gboolean has_sent_hdrif;
+   guint32 edidPropID;
+   guint32 hdrPropID;
++  guint32 connColorSpacePropID;
++  guint32 eotfPropID;
++  guint32 colorSpacePropID;
++  guint32 zposPropID;
+   gchar colorimetry;
++  gchar colorspace;
+   GstVideoMasteringDisplayInfo hdr_minfo;
+   GstVideoContentLightLevel hdr_cll;
+ #endif
+-- 
+2.20.1
+

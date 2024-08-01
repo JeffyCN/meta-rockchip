@@ -1,7 +1,7 @@
 From 8e0d9482e15f7e6d68e8737cb8cec51f0b895206 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 15 Jun 2020 10:01:54 +0800
-Subject: [PATCH 07/43] waylandsink: Support place below/above
+Subject: [PATCH 07/46] waylandsink: Support place below/above
 
 Set environment WAYLANDSINK_PLACE_ABOVE=1 to place it above parent.
 
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 7 insertions(+)
 
 diff --git a/ext/wayland/wlwindow.c b/ext/wayland/wlwindow.c
-index 66df0fc..57b5491 100644
+index 66df0fce..57b5491a 100644
 --- a/ext/wayland/wlwindow.c
 +++ b/ext/wayland/wlwindow.c
 @@ -24,6 +24,8 @@

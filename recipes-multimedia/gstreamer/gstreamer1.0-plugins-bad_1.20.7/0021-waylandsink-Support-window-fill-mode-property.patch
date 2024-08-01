@@ -1,7 +1,7 @@
 From ad425f8c58fa57a975a0ddc4c3026059e4c9ab53 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 30 Mar 2021 07:08:06 +0800
-Subject: [PATCH 21/43] waylandsink: Support window fill-mode property
+Subject: [PATCH 21/46] waylandsink: Support window fill-mode property
 
 Tested with:
 gst-launch-1.0 videotestsrc ! waylandsink fullscreen=1 fill-mode=crop
@@ -15,7 +15,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  4 files changed, 92 insertions(+), 1 deletion(-)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index ff79ddf..24fd7bd 100644
+index ff79ddf5..24fd7bdc 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
 @@ -66,9 +66,12 @@ enum
@@ -133,7 +133,7 @@ index ff79ddf..24fd7bd 100644
  }
  
 diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
-index f798969..6fd77e8 100644
+index f798969c..6fd77e8d 100644
 --- a/ext/wayland/gstwaylandsink.h
 +++ b/ext/wayland/gstwaylandsink.h
 @@ -64,6 +64,7 @@ struct _GstWaylandSink
@@ -145,7 +145,7 @@ index f798969..6fd77e8 100644
    gchar *display_name;
  
 diff --git a/ext/wayland/wlwindow.c b/ext/wayland/wlwindow.c
-index 58e65dd..f4e7ca9 100644
+index 58e65dd8..f4e7ca9a 100644
 --- a/ext/wayland/wlwindow.c
 +++ b/ext/wayland/wlwindow.c
 @@ -467,7 +467,33 @@ gst_wl_window_resize_video_surface (GstWlWindow * window, gboolean commit)
@@ -184,7 +184,7 @@ index 58e65dd..f4e7ca9 100644
    } else {
      gst_video_sink_center_rect (src, dst, &res, FALSE);
 diff --git a/ext/wayland/wlwindow.h b/ext/wayland/wlwindow.h
-index 6fb8285..35d9d3c 100644
+index 6fb82855..35d9d3ca 100644
 --- a/ext/wayland/wlwindow.h
 +++ b/ext/wayland/wlwindow.h
 @@ -37,6 +37,13 @@ G_BEGIN_DECLS

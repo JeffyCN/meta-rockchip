@@ -1,7 +1,7 @@
 From 2303a70d0d5d1083351e5f51d08648845fb4345e Mon Sep 17 00:00:00 2001
 From: Arun Raghavan <arun@asymptotic.io>
 Date: Wed, 2 Dec 2020 18:31:44 -0500
-Subject: [PATCH 01/45] webrtcdsp: Update code for webrtc-audio-processing-1
+Subject: [PATCH 01/49] webrtcdsp: Update code for webrtc-audio-processing-1
 
 Updated API usage appropriately, and now we have a versioned package to
 track breaking vs. non-breaking updates.
@@ -27,7 +27,7 @@ Upstream: https://gitlab.freedesktop.org/gstreamer/gstreamer/-/commit/d5755744c3
  4 files changed, 164 insertions(+), 207 deletions(-)
 
 diff --git a/ext/webrtcdsp/gstwebrtcdsp.cpp b/ext/webrtcdsp/gstwebrtcdsp.cpp
-index 7ee0948..c9a7cda 100644
+index 7ee09488..c9a7cdae 100644
 --- a/ext/webrtcdsp/gstwebrtcdsp.cpp
 +++ b/ext/webrtcdsp/gstwebrtcdsp.cpp
 @@ -71,9 +71,7 @@
@@ -664,7 +664,7 @@ index 7ee0948..c9a7cda 100644
    gst_type_mark_as_plugin_api (GST_TYPE_WEBRTC_GAIN_CONTROL_MODE, (GstPluginAPIFlags) 0);
    gst_type_mark_as_plugin_api (GST_TYPE_WEBRTC_NOISE_SUPPRESSION_LEVEL, (GstPluginAPIFlags) 0);
 diff --git a/ext/webrtcdsp/gstwebrtcechoprobe.cpp b/ext/webrtcdsp/gstwebrtcechoprobe.cpp
-index acdb3d8..8e8ca06 100644
+index acdb3d8a..8e8ca064 100644
 --- a/ext/webrtcdsp/gstwebrtcechoprobe.cpp
 +++ b/ext/webrtcdsp/gstwebrtcechoprobe.cpp
 @@ -33,7 +33,8 @@
@@ -823,7 +823,7 @@ index acdb3d8..8e8ca06 100644
  
    return delay;
 diff --git a/ext/webrtcdsp/gstwebrtcechoprobe.h b/ext/webrtcdsp/gstwebrtcechoprobe.h
-index 36fd34f..488c0e9 100644
+index 36fd34f1..488c0e95 100644
 --- a/ext/webrtcdsp/gstwebrtcechoprobe.h
 +++ b/ext/webrtcdsp/gstwebrtcechoprobe.h
 @@ -45,6 +45,12 @@ G_BEGIN_DECLS
@@ -857,7 +857,7 @@ index 36fd34f..488c0e9 100644
  G_END_DECLS
  #endif /* __GST_WEBRTC_ECHO_PROBE_H__ */
 diff --git a/ext/webrtcdsp/meson.build b/ext/webrtcdsp/meson.build
-index 5aeae69..09565e2 100644
+index 5aeae69a..09565e27 100644
 --- a/ext/webrtcdsp/meson.build
 +++ b/ext/webrtcdsp/meson.build
 @@ -4,7 +4,7 @@ webrtc_sources = [

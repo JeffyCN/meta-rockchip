@@ -1,0 +1,2695 @@
+From b03713ab928bdaaf09722c7fff17bd5dfdc7a7bd Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 21 Jun 2024 14:49:54 +0800
+Subject: [PATCH 49/49] uvcgadget: Port from 1.24.5
+
+Based on:
+3c66f10e21 Release 1.24.5
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ meson_options.txt          |    1 +
+ sys/meson.build            |    1 +
+ sys/uvcgadget/configfs.c   | 1006 ++++++++++++++++++++++++++++++++++++
+ sys/uvcgadget/configfs.h   |  119 +++++
+ sys/uvcgadget/gstuvcsink.c |  942 +++++++++++++++++++++++++++++++++
+ sys/uvcgadget/gstuvcsink.h |   79 +++
+ sys/uvcgadget/meson.build  |   40 ++
+ sys/uvcgadget/uvc.c        |  420 +++++++++++++++
+ 8 files changed, 2608 insertions(+)
+ create mode 100644 sys/uvcgadget/configfs.c
+ create mode 100644 sys/uvcgadget/configfs.h
+ create mode 100644 sys/uvcgadget/gstuvcsink.c
+ create mode 100644 sys/uvcgadget/gstuvcsink.h
+ create mode 100644 sys/uvcgadget/meson.build
+ create mode 100644 sys/uvcgadget/uvc.c
+
+diff --git a/meson_options.txt b/meson_options.txt
+index 55f8e9e0..cf0841c4 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -183,6 +183,7 @@ option('zxing', type : 'feature', value : 'auto', description : 'Barcode image s
+ option('wpe', type : 'feature', value : 'auto', description : 'WPE Web browser plugin')
+ option('magicleap', type : 'feature', value : 'auto', description : 'Magic Leap platform support')
+ option('v4l2codecs', type : 'feature', value : 'auto', description : 'Video4Linux Stateless CODECs support')
++option('uvcgadget', type : 'feature', value : 'auto', description : 'uvc video gadget plugin')
+ option('isac', type : 'feature', value : 'auto', description : 'iSAC plugin')
+ 
+ # HLS plugin options
+diff --git a/sys/meson.build b/sys/meson.build
+index cfe17782..2ad1b228 100644
+--- a/sys/meson.build
++++ b/sys/meson.build
+@@ -22,6 +22,7 @@ subdir('shm')
+ subdir('tinyalsa')
+ subdir('uvch264')
+ subdir('v4l2codecs')
++subdir('uvcgadget')
+ subdir('va')
+ subdir('wasapi')
+ subdir('wasapi2')
+diff --git a/sys/uvcgadget/configfs.c b/sys/uvcgadget/configfs.c
+new file mode 100644
+index 00000000..e611e82e
+--- /dev/null
++++ b/sys/uvcgadget/configfs.c
+@@ -0,0 +1,1006 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++/*
++ * ConfigFS Gadget device handling
++ *
++ * Copyright (C) 2018 Kieran Bingham
++ *
++ * Contact: Kieran Bingham <kieran.bingham@ideasonboard.com>
++ */
++
++/* To provide asprintf from the GNU library. */
++#define _GNU_SOURCE
++
++#include <dirent.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <glob.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++
++#include "linux/videodev2.h"
++
++#include "configfs.h"
++
++/* ------------------------------------------------------------------------
++ * GUIDs and formats
++ */
++
++#define UVC_GUID_FORMAT_MJPEG \
++	{ 'M',  'J',  'P',  'G', 0x00, 0x00, 0x10, 0x00, \
++	 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}
++#define UVC_GUID_FORMAT_YUY2 \
++	{ 'Y',  'U',  'Y',  '2', 0x00, 0x00, 0x10, 0x00, \
++	 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}
++
++struct uvc_function_format_info
++{
++  uint8_t guid[16];
++  uint32_t fcc;
++};
++
++static struct uvc_function_format_info uvc_formats[] = {
++  {
++        .guid = UVC_GUID_FORMAT_YUY2,
++        .fcc = V4L2_PIX_FMT_YUYV,
++      },
++  {
++        .guid = UVC_GUID_FORMAT_MJPEG,
++        .fcc = V4L2_PIX_FMT_MJPEG,
++      },
++};
++
++/* -----------------------------------------------------------------------------
++ * Path handling and support
++ */
++
++static char *
++path_join (const char *dirname, const char *name)
++{
++  char *path;
++  int ret;
++
++  ret = asprintf (&path, "%s/%s", dirname, name);
++
++  /*
++   * asprintf returns -1 on allocation or other errors, leaving 'path'
++   * undefined. We shouldn't even call free(path) here. We want to return
++   * NULL on error, so we must manually set it.
++   */
++  if (ret < 0)
++    path = NULL;
++
++  return path;
++}
++
++static char *
++path_glob_first_match (const char *g)
++{
++  glob_t globbuf;
++  char *match = NULL;
++
++  glob (g, 0, NULL, &globbuf);
++
++  if (globbuf.gl_pathc)
++    match = strdup (globbuf.gl_pathv[0]);
++
++  globfree (&globbuf);
++
++  return match;
++}
++
++/*
++ * Find and return the full path of the first directory entry that satisfies
++ * the match function.
++ */
++static char *
++dir_first_match (const char *dir, int (*match) (const struct dirent *))
++{
++  struct dirent **entries;
++  unsigned int i;
++  int n_entries;
++  char *path;
++
++  n_entries = scandir (dir, &entries, match, alphasort);
++  if (n_entries < 0)
++    return NULL;
++
++  if (n_entries == 0) {
++    free (entries);
++    return NULL;
++  }
++
++  path = path_join (dir, entries[0]->d_name);
++
++  for (i = 0; i < (unsigned int) n_entries; ++i)
++    free (entries[i]);
++
++  free (entries);
++
++  return path;
++}
++
++/* -----------------------------------------------------------------------------
++ * Attribute handling
++ */
++
++static int
++attribute_read (const char *path, const char *file, void *buf, unsigned int len)
++{
++  char *f;
++  int ret;
++  int fd;
++
++  f = path_join (path, file);
++  if (!f)
++    return -ENOMEM;
++
++  fd = open (f, O_RDONLY);
++  free (f);
++  if (fd == -1) {
++    printf ("Failed to open attribute %s: %s\n", file, strerror (errno));
++    return -ENOENT;
++  }
++
++  ret = read (fd, buf, len);
++  close (fd);
++
++  if (ret < 0) {
++    printf ("Failed to read attribute %s: %s\n", file, strerror (errno));
++    return -ENODATA;
++  }
++
++  return len;
++}
++
++static int
++attribute_read_uint (const char *path, const char *file, unsigned int *val)
++{
++  /* 4,294,967,295 */
++  char buf[11];
++  char *endptr;
++  int ret;
++
++  ret = attribute_read (path, file, buf, sizeof (buf) - 1);
++  if (ret < 0)
++    return ret;
++
++  buf[ret] = '\0';
++
++  errno = 0;
++
++  /* base 0: Autodetect hex, octal, decimal. */
++  *val = strtoul (buf, &endptr, 0);
++  if (errno)
++    return -errno;
++
++  if (endptr == buf)
++    return -ENODATA;
++
++  return 0;
++}
++
++static char *
++attribute_read_str (const char *path, const char *file)
++{
++  char buf[1024];
++  char *p;
++  int ret;
++
++  ret = attribute_read (path, file, buf, sizeof (buf) - 1);
++  if (ret < 0)
++    return NULL;
++
++  buf[ret] = '\0';
++
++  p = strrchr (buf, '\n');
++  if (p != buf)
++    *p = '\0';
++
++  return strdup (buf);
++}
++
++/* -----------------------------------------------------------------------------
++ * UDC parsing
++ */
++
++/*
++ * udc_find_video_device - Find the video device node for a UVC function
++ * @udc: The UDC name
++ * @function: The UVC function name
++ *
++ * This function finds the video device node corresponding to a UVC function as
++ * specified by a @function name and @udc name.
++ *
++ * The @function parameter specifies the name of the USB function, usually in
++ * the form "uvc.%u". If NULL the first function found will be used.
++ *
++ * The @udc parameter specifies the name of the UDC. If NULL any UDC that
++ * contains a function matching the @function name will be used.
++ *
++ * Return a pointer to a newly allocated string containing the video device node
++ * full path if the function is found. Otherwise return NULL. The returned
++ * pointer must be freed by the caller with a call to free().
++ */
++static char *
++udc_find_video_device (const char *udc, const char *function)
++{
++  char *vpath;
++  char *video = NULL;
++  glob_t globbuf;
++  unsigned int i;
++  int ret;
++
++  ret = asprintf (&vpath,
++      "/sys/class/udc/%s/device/gadget*/video4linux/video*", udc ? udc : "*");
++  if (!ret)
++    return NULL;
++
++  glob (vpath, 0, NULL, &globbuf);
++  free (vpath);
++
++  for (i = 0; i < globbuf.gl_pathc; ++i) {
++    char *config;
++    bool match;
++
++    /* Match on the first if no search string. */
++    if (!function)
++      break;
++
++    config = attribute_read_str (globbuf.gl_pathv[i], "function_name");
++    match = strcmp (function, config) == 0;
++
++    free (config);
++
++    if (match)
++      break;
++  }
++
++  if (i < globbuf.gl_pathc) {
++    gchar *v = g_path_get_basename (globbuf.gl_pathv[i]);
++
++    video = path_join ("/dev", v);
++    g_free (v);
++  }
++
++  globfree (&globbuf);
++
++  return video;
++}
++
++/* -----------------------------------------------------------------------------
++ * Legacy g_webcam support
++ */
++
++static const struct uvc_function_config g_webcam_config = {
++  .control = {
++        .intf = {
++              .bInterfaceNumber = 0,
++            },
++      },
++  .streaming = {
++        .intf = {
++              .bInterfaceNumber = 1,
++            },
++        .ep = {
++              .bInterval = 1,
++              .bMaxBurst = 0,
++              .wMaxPacketSize = 1024,
++            },
++        .num_formats = 2,
++        .formats = (struct uvc_function_config_format[]) {
++              {
++                    .index = 1,
++                    .guid = UVC_GUID_FORMAT_YUY2,
++                    .fcc = V4L2_PIX_FMT_YUYV,
++                    .num_frames = 2,
++                    .frames = (struct uvc_function_config_frame[]) {
++                          {
++                                .index = 1,
++                                .width = 640,
++                                .height = 360,
++                                .num_intervals = 3,
++                                .intervals = (unsigned int[]) {
++                                      666666,
++                                      10000000,
++                                      50000000,
++                                    },
++                              }, {
++                                .index = 2,
++                                .width = 1280,
++                                .height = 720,
++                                .num_intervals = 1,
++                                .intervals = (unsigned int[]) {
++                                      50000000,
++                                    },
++                              },
++                        },
++                  }, {
++                    .index = 2,
++                    .guid = UVC_GUID_FORMAT_MJPEG,
++                    .fcc = V4L2_PIX_FMT_MJPEG,
++                    .num_frames = 2,
++                    .frames = (struct uvc_function_config_frame[]) {
++                          {
++                                .index = 1,
++                                .width = 640,
++                                .height = 360,
++                                .num_intervals = 3,
++                                .intervals = (unsigned int[]) {
++                                      666666,
++                                      10000000,
++                                      50000000,
++                                    },
++                              }, {
++                                .index = 2,
++                                .width = 1280,
++                                .height = 720,
++                                .num_intervals = 1,
++                                .intervals = (unsigned int[]) {
++                                      50000000,
++                                    },
++                              },
++                        },
++                  },
++            },
++      },
++};
++
++static void *
++memdup (const void *src, size_t size)
++{
++  void *dst;
++
++  dst = malloc (size);
++  if (!dst)
++    return NULL;
++  memcpy (dst, src, size);
++  return dst;
++}
++
++static int
++parse_legacy_g_webcam (const char *udc, struct uvc_function_config *fc)
++{
++  unsigned int i, j;
++  size_t size;
++
++  *fc = g_webcam_config;
++
++  /*
++   * We need to duplicate all sub-structures as the
++   * configfs_free_uvc_function() function expects them to be dynamically
++   * allocated.
++   */
++  size = sizeof *fc->streaming.formats * fc->streaming.num_formats;
++  fc->streaming.formats = memdup (fc->streaming.formats, size);
++
++  for (i = 0; i < fc->streaming.num_formats; ++i) {
++    struct uvc_function_config_format *format = &fc->streaming.formats[i];
++
++    size = sizeof *format->frames * format->num_frames;
++    format->frames = memdup (format->frames, size);
++
++    for (j = 0; j < format->num_frames; ++j) {
++      struct uvc_function_config_frame *frame = &format->frames[j];
++
++      size = sizeof *frame->intervals * frame->num_intervals;
++      frame->intervals = memdup (frame->intervals, size);
++    }
++  }
++
++  fc->video = udc_find_video_device (udc, NULL);
++
++  return fc->video ? 0 : -ENODEV;
++}
++
++/* -----------------------------------------------------------------------------
++ * ConfigFS support
++ */
++
++/*
++ * configfs_mount_point - Identify the ConfigFS mount location
++ *
++ * Return a pointer to a newly allocated string containing the fully qualified
++ * path to the ConfigFS mount point if located. Returns NULL if the ConfigFS
++ * mount point can not be identified.
++ */
++static char *
++configfs_mount_point (void)
++{
++  FILE *mounts;
++  char *line = NULL;
++  char *path = NULL;
++  size_t len = 0;
++
++  mounts = fopen ("/proc/mounts", "r");
++  if (mounts == NULL)
++    return NULL;
++
++  while (getline (&line, &len, mounts) != -1) {
++    if (strstr (line, "configfs")) {
++      char *saveptr;
++      char *token;
++
++      /* Obtain the second token. */
++      token = strtok_r (line, " ", &saveptr);
++      token = strtok_r (NULL, " ", &saveptr);
++
++      if (token)
++        path = strdup (token);
++
++      break;
++    }
++  }
++
++  free (line);
++  fclose (mounts);
++
++  return path;
++}
++
++/*
++ * configfs_find_uvc_function - Find the ConfigFS full path for a UVC function
++ * @function: The UVC function name
++ *
++ * Return a pointer to a newly allocated string containing the full ConfigFS
++ * path to the function if the function is found. Otherwise return NULL. The
++ * returned pointer must be freed by the caller with a call to free().
++ */
++static char *
++configfs_find_uvc_function (const char *function)
++{
++  const char *target = function ? function : "*";
++  const char *format;
++  char *configfs;
++  char *func_path;
++  char *path;
++  int ret;
++
++  configfs = configfs_mount_point ();
++  if (!configfs)
++    printf ("Failed to locate configfs mount point, using default\n");
++
++  /*
++   * The function description can be provided as a path from the
++   * usb_gadget root "g1/functions/uvc.0", or if there is no ambiguity
++   * over the gadget name, a shortcut "uvc.0" can be provided.
++   */
++  if (!strchr (target, '/'))
++    format = "%s/usb_gadget/*/functions/%s";
++  else
++    format = "%s/usb_gadget/%s";
++
++  ret = asprintf (&path, format, configfs ? configfs : "/sys/kernel/config",
++      target);
++  free (configfs);
++  if (!ret)
++    return NULL;
++
++  func_path = path_glob_first_match (path);
++  free (path);
++
++  return func_path;
++}
++
++/*
++ * configfs_free_uvc_function - Free a uvc_function_config object
++ * @fc: The uvc_function_config to be freed
++ *
++ * Free the given @fc function previously allocated by a call to
++ * configfs_parse_uvc_function().
++ */
++void
++configfs_free_uvc_function (struct uvc_function_config *fc)
++{
++  unsigned int i, j;
++
++  free (fc->udc);
++  free (fc->video);
++
++  for (i = 0; i < fc->streaming.num_formats; ++i) {
++    struct uvc_function_config_format *format = &fc->streaming.formats[i];
++
++    for (j = 0; j < format->num_frames; ++j) {
++      struct uvc_function_config_frame *frame = &format->frames[j];
++
++      free (frame->intervals);
++    }
++
++    free (format->frames);
++  }
++
++  free (fc->streaming.formats);
++  free (fc);
++}
++
++#define configfs_parse_child(parent, child, cfg, parse)			\
++({									\
++	char *__path;							\
++	int __ret;							\
++									\
++	__path = path_join((parent), (child));				\
++	if (__path) {							\
++		__ret = parse(__path, (cfg));				\
++		free(__path);						\
++	} else {							\
++		__ret = -ENOMEM;					\
++	}								\
++									\
++	__ret;								\
++})
++
++static int
++configfs_parse_interface (const char *path,
++    struct uvc_function_config_interface *cfg)
++{
++  int ret;
++
++  ret = attribute_read_uint (path, "bInterfaceNumber", &cfg->bInterfaceNumber);
++
++  return ret;
++}
++
++static int
++configfs_parse_control (const char *path,
++    struct uvc_function_config_control *cfg)
++{
++  int ret;
++
++  ret = configfs_parse_interface (path, &cfg->intf);
++
++  return ret;
++}
++
++static int
++configfs_parse_streaming_frame (const char *path,
++    struct uvc_function_config_frame *frame)
++{
++  char *intervals;
++  char *p;
++  int ret = 0;
++
++  ret = ret ? : attribute_read_uint (path, "bFrameIndex", &frame->index);
++  ret = ret ? : attribute_read_uint (path, "wWidth", &frame->width);
++  ret = ret ? : attribute_read_uint (path, "wHeight", &frame->height);
++  ret = ret ? : attribute_read_uint (path, "dwMaxVideoFrameBufferSize",
++      &frame->maxvideofbsize);
++  if (ret)
++    return ret;
++
++  intervals = attribute_read_str (path, "dwFrameInterval");
++  if (!intervals)
++    return -EINVAL;
++
++  for (p = intervals; *p;) {
++    unsigned int interval;
++    unsigned int *mem;
++    char *endp;
++    size_t size;
++
++    interval = strtoul (p, &endp, 10);
++    if (*endp != '\0' && *endp != '\n') {
++      ret = -EINVAL;
++      break;
++    }
++
++    p = *endp ? endp + 1 : endp;
++
++    size = sizeof *frame->intervals * (frame->num_intervals + 1);
++    mem = realloc (frame->intervals, size);
++    if (!mem) {
++      ret = -ENOMEM;
++      break;
++    }
++
++    frame->intervals = mem;
++    frame->intervals[frame->num_intervals++] = interval;
++  }
++
++  free (intervals);
++
++  return ret;
++}
++
++static int
++frame_filter (const struct dirent *ent)
++{
++  /* Accept all directories but "." and "..". */
++  if (ent->d_type != DT_DIR)
++    return 0;
++  if (!strcmp (ent->d_name, "."))
++    return 0;
++  if (!strcmp (ent->d_name, ".."))
++    return 0;
++  return 1;
++}
++
++static int
++frame_compare (const void *a, const void *b)
++{
++  const struct uvc_function_config_frame *fa = a;
++  const struct uvc_function_config_frame *fb = b;
++
++  if (fa->index < fb->index)
++    return -1;
++  else if (fa->index == fb->index)
++    return 0;
++  else
++    return 1;
++}
++
++static int
++configfs_parse_streaming_format (const char *path,
++    struct uvc_function_config_format *format)
++{
++  struct dirent **entries;
++  char link_target[1024];
++  char *segment;
++  unsigned int i;
++  int n_entries;
++  int ret;
++
++  ret = attribute_read_uint (path, "bFormatIndex", &format->index);
++  if (ret < 0)
++    return ret;
++
++  ret = readlink (path, link_target, sizeof (link_target) - 1);
++  if (ret < 0)
++    return ret;
++
++  link_target[ret] = '\0';
++
++  /*
++   * Extract the second-to-last path component of the link target,
++   * which contains the format descriptor type name as exposed by
++   * the UVC function driver.
++   */
++  segment = strrchr (link_target, '/');
++  if (!segment)
++    return -EINVAL;
++  *segment = '\0';
++  segment = strrchr (link_target, '/');
++  if (!segment)
++    return -EINVAL;
++  segment++;
++
++  if (!strcmp (segment, "mjpeg")) {
++    static const uint8_t guid[16] = UVC_GUID_FORMAT_MJPEG;
++    memcpy (format->guid, guid, 16);
++  } else if (!strcmp (segment, "uncompressed")) {
++    ret = attribute_read (path, "guidFormat", format->guid,
++        sizeof (format->guid));
++    if (ret < 0)
++      return ret;
++  } else {
++    return -EINVAL;
++  }
++
++  for (i = 0; i < G_N_ELEMENTS (uvc_formats); ++i) {
++    if (!memcmp (uvc_formats[i].guid, format->guid, 16)) {
++      format->fcc = uvc_formats[i].fcc;
++      break;
++    }
++  }
++
++  /* Find all entries corresponding to a frame and parse them. */
++  n_entries = scandir (path, &entries, frame_filter, alphasort);
++  if (n_entries < 0)
++    return -errno;
++
++  if (n_entries == 0) {
++    free (entries);
++    return -EINVAL;
++  }
++
++  format->num_frames = n_entries;
++  format->frames = calloc (sizeof *format->frames, format->num_frames);
++  if (!format->frames)
++    return -ENOMEM;
++
++  for (i = 0; i < (unsigned int) n_entries; ++i) {
++    char *frame;
++
++    frame = path_join (path, entries[i]->d_name);
++    if (!frame) {
++      ret = -ENOMEM;
++      goto done;
++    }
++
++    ret = configfs_parse_streaming_frame (frame, &format->frames[i]);
++    free (frame);
++    if (ret < 0)
++      goto done;
++  }
++
++  /* Sort the frames by index. */
++  qsort (format->frames, format->num_frames, sizeof *format->frames,
++      frame_compare);
++
++done:
++  for (i = 0; i < (unsigned int) n_entries; ++i)
++    free (entries[i]);
++  free (entries);
++
++  return ret;
++}
++
++static int
++format_filter (const struct dirent *ent)
++{
++  char *path;
++  bool valid;
++
++  /*
++   * Accept all links that point to a directory containing a
++   * "bFormatIndex" file.
++   */
++  if (ent->d_type != DT_LNK)
++    return 0;
++
++  /* HACK: Support mjpeg and uncompressed only */
++  if (strcmp(ent->d_name, "m") && strcmp(ent->d_name, "u"))
++    return 0;
++
++  path = path_join (ent->d_name, "bFormatIndex");
++  if (!path)
++    return 0;
++
++  valid = access (path, R_OK);
++  free (path);
++  return valid;
++}
++
++static int
++format_compare (const void *a, const void *b)
++{
++  const struct uvc_function_config_format *fa = a;
++  const struct uvc_function_config_format *fb = b;
++
++  if (fa->index < fb->index)
++    return -1;
++  else if (fa->index == fb->index)
++    return 0;
++  else
++    return 1;
++}
++
++static int
++configfs_parse_streaming_header (const char *path,
++    struct uvc_function_config_streaming *cfg)
++{
++  struct dirent **entries;
++  unsigned int i;
++  int n_entries;
++  int ret;
++
++  /* Find all entries corresponding to a format and parse them. */
++  n_entries = scandir (path, &entries, format_filter, alphasort);
++  if (n_entries < 0)
++    return -errno;
++
++  if (n_entries == 0) {
++    free (entries);
++    return -EINVAL;
++  }
++
++  cfg->num_formats = n_entries;
++  cfg->formats = calloc (sizeof *cfg->formats, cfg->num_formats);
++  if (!cfg->formats)
++    return -ENOMEM;
++
++  for (i = 0; i < (unsigned int) n_entries; ++i) {
++    char *format;
++
++    format = path_join (path, entries[i]->d_name);
++    if (!format) {
++      ret = -ENOMEM;
++      goto done;
++    }
++
++    ret = configfs_parse_streaming_format (format, &cfg->formats[i]);
++    free (format);
++    if (ret < 0)
++      goto done;
++  }
++
++  /* Sort the formats by index. */
++  qsort (cfg->formats, cfg->num_formats, sizeof *cfg->formats, format_compare);
++
++done:
++  for (i = 0; i < (unsigned int) n_entries; ++i)
++    free (entries[i]);
++  free (entries);
++
++  return ret;
++}
++
++static int
++link_filter (const struct dirent *ent)
++{
++  /* Accept all links. */
++  return ent->d_type == DT_LNK;
++}
++
++static int
++configfs_parse_streaming (const char *path,
++    struct uvc_function_config_streaming *cfg)
++{
++  char *header;
++  char *class;
++  int ret;
++
++  ret = configfs_parse_interface (path, &cfg->intf);
++  if (ret < 0)
++    return ret;
++
++  /*
++   * Handle the high-speed class descriptors only for now. Find the first
++   * link to the class descriptors.
++   */
++  class = path_join (path, "class/hs");
++  if (!class)
++    return -ENOMEM;
++
++  header = dir_first_match (class, link_filter);
++  free (class);
++  if (!header)
++    return -EINVAL;
++
++  ret = configfs_parse_streaming_header (header, cfg);
++  free (header);
++  return ret;
++}
++
++static int
++configfs_parse_uvc (const char *fpath, struct uvc_function_config *fc)
++{
++  int ret = 0;
++
++  ret = ret ? : configfs_parse_child (fpath, "control", &fc->control,
++      configfs_parse_control);
++  ret = ret ? : configfs_parse_child (fpath, "streaming", &fc->streaming,
++      configfs_parse_streaming);
++
++  /*
++   * These parameters should be part of the streaming interface in
++   * ConfigFS, but for legacy reasons they are located directly in the
++   * function directory.
++   */
++  ret = ret ? : attribute_read_uint (fpath, "streaming_interval",
++      &fc->streaming.ep.bInterval);
++  ret = ret ? : attribute_read_uint (fpath, "streaming_maxburst",
++      &fc->streaming.ep.bMaxBurst);
++  ret = ret ? : attribute_read_uint (fpath, "streaming_maxpacket",
++      &fc->streaming.ep.wMaxPacketSize);
++
++  return ret;
++}
++
++/*
++ * configfs_parse_uvc_function - Parse a UVC function configuration in ConfigFS
++ * @function: The function name
++ *
++ * This function locates and parse the configuration of a UVC function in
++ * ConfigFS as specified by the @function name argument. The function name can
++ * be fully qualified with a gadget name (e.g. "g%u/functions/uvc.%u"), or as a
++ * shortcut can be an unqualified function name (e.g. "uvc.%u"). When the
++ * function name is unqualified, the first function matching the name in any
++ * UDC will be returned.
++ *
++ * Return a pointer to a newly allocated UVC function configuration structure
++ * that contains configuration parameters for the function, if the function is
++ * found. Otherwise return NULL. The returned pointer must be freed by the
++ * caller with a call to free().
++ */
++struct uvc_function_config *
++configfs_parse_uvc_function (const char *function)
++{
++  struct uvc_function_config *fc;
++  char *fpath;
++  gchar *bname;
++  int ret = 0;
++
++  fc = malloc (sizeof *fc);
++  if (fc == NULL)
++    return NULL;
++
++  memset (fc, 0, sizeof *fc);
++
++  /* Find the function in ConfigFS. */
++  fpath = configfs_find_uvc_function (function);
++  if (!fpath) {
++    /*
++     * If the function can't be found attempt legacy parsing to
++     * support the g_webcam gadget. The function parameter contains
++     * a UDC name in that case.
++     */
++    ret = parse_legacy_g_webcam (function, fc);
++    if (ret) {
++      configfs_free_uvc_function (fc);
++      fc = NULL;
++    }
++
++    return fc;
++  }
++
++  /*
++   * Parse the function configuration. Remove the gadget name qualifier
++   * from the function name, if any.
++   */
++  bname = g_path_get_basename (function);
++
++  fc->udc = attribute_read_str (fpath, "../../UDC");
++  fc->video = udc_find_video_device (fc->udc, bname);
++  if (!fc->video) {
++    ret = -ENODEV;
++    goto done;
++  }
++
++  ret = configfs_parse_uvc (fpath, fc);
++
++done:
++  if (ret) {
++    configfs_free_uvc_function (fc);
++    fc = NULL;
++  }
++
++  free (fpath);
++  g_free (bname);
++
++  return fc;
++}
++
++static char *
++video_find_config_name (const char *video)
++{
++  char *vpath;
++  glob_t globbuf;
++  char *config;
++  int ret;
++
++  ret = asprintf (&vpath,
++      "/sys/class/udc/*/device/gadget*/video4linux/%s", video ? video : "*");
++  if (!ret)
++    return NULL;
++
++  glob (vpath, 0, NULL, &globbuf);
++  free (vpath);
++
++  if (globbuf.gl_pathc != 1)
++    return NULL;
++
++  config = attribute_read_str (globbuf.gl_pathv[0], "function_name");
++
++  globfree (&globbuf);
++
++  return config;
++}
++
++struct uvc_function_config *
++configfs_parse_uvc_videodev (int fd, const char *video)
++{
++  struct uvc_function_config *fc;
++  char *function = NULL;
++  char rpath[PATH_MAX];
++  char *res;
++  gchar *bname;
++
++  res = realpath (video, rpath);
++  if (!res)
++    return NULL;
++
++  bname = g_path_get_basename (rpath);
++  function = video_find_config_name (bname);
++  g_free (bname);
++
++  if (!function)
++    return NULL;
++
++  fc = configfs_parse_uvc_function (function);
++
++  free (function);
++
++  return fc;
++}
+diff --git a/sys/uvcgadget/configfs.h b/sys/uvcgadget/configfs.h
+new file mode 100644
+index 00000000..1cbca78e
+--- /dev/null
++++ b/sys/uvcgadget/configfs.h
+@@ -0,0 +1,119 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++/*
++ * ConfigFS Gadget device handling
++ *
++ * Copyright (C) 2018 Kieran Bingham
++ *
++ * Contact: Kieran Bingham <kieran.bingham@ideasonboard.com>
++ */
++
++#ifndef __CONFIGFS_H__
++#define __CONFIGFS_H__
++
++#include <stdint.h>
++
++/*
++ * struct uvc_function_config_endpoint - Endpoint parameters
++ * @bInterval: Transfer interval (interrupt and isochronous only)
++ * @bMaxBurst: Transfer burst size (super-speed only)
++ * @wMaxPacketSize: Maximum packet size (including the multiplier)
++ */
++struct uvc_function_config_endpoint
++{
++  unsigned int bInterval;
++  unsigned int bMaxBurst;
++  unsigned int wMaxPacketSize;
++};
++
++/*
++ * struct uvc_function_config_interface - Interface parameters
++ * @bInterfaceNumber: Interface number
++ */
++struct uvc_function_config_interface
++{
++  unsigned int bInterfaceNumber;
++};
++
++/*
++ * struct uvc_function_config_control - Control interface parameters
++ * @intf: Generic interface parameters
++ */
++struct uvc_function_config_control
++{
++  struct uvc_function_config_interface intf;
++};
++
++/*
++ * struct uvc_function_config_frame - Streaming frame parameters
++ * @index: Frame index in the UVC descriptors
++ * @width: Frame width in pixels
++ * @height: Frame height in pixels
++ * @num_intervals: Number of entries in the intervals array
++ * @intervals: Array of frame intervals
++ */
++struct uvc_function_config_frame
++{
++  unsigned int index;
++  unsigned int width;
++  unsigned int height;
++  unsigned int num_intervals;
++  unsigned int *intervals;
++  unsigned int maxvideofbsize;
++};
++
++/*
++ * struct uvc_function_config_format - Streaming format parameters
++ * @index: Format index in the UVC descriptors
++ * @guid: Format GUID
++ * @fcc: V4L2 pixel format
++ * @num_frames: Number of entries in the frames array
++ * @frames: Array of frame descriptors
++ */
++struct uvc_function_config_format
++{
++  unsigned int index;
++  uint8_t guid[16];
++  unsigned int fcc;
++  unsigned int num_frames;
++  struct uvc_function_config_frame *frames;
++};
++
++/*
++ * struct uvc_function_config_streaming - Streaming interface parameters
++ * @intf: Generic interface parameters
++ * @ep: Endpoint parameters
++ * @num_formats: Number of entries in the formats array
++ * @formats: Array of format descriptors
++ */
++struct uvc_function_config_streaming
++{
++  struct uvc_function_config_interface intf;
++  struct uvc_function_config_endpoint ep;
++
++  unsigned int num_formats;
++  struct uvc_function_config_format *formats;
++};
++
++/*
++ * struct uvc_function_config - UVC function configuration parameters
++ * @video: Full path to the video device node
++ * @udc: UDC name
++ * @control: Control interface configuration
++ * @streaming: Streaming interface configuration
++ */
++struct uvc_function_config
++{
++  char *video;
++  char *udc;
++
++  struct uvc_function_config_control control;
++  struct uvc_function_config_streaming streaming;
++};
++
++struct uvc_function_config *configfs_parse_uvc_function (const char *function);
++void configfs_free_uvc_function (struct uvc_function_config *fc);
++
++struct uvc_function_config *configfs_parse_uvc_videodev (int fd,
++    const char *video);
++
++#endif
+diff --git a/sys/uvcgadget/gstuvcsink.c b/sys/uvcgadget/gstuvcsink.c
+new file mode 100644
+index 00000000..b921e231
+--- /dev/null
++++ b/sys/uvcgadget/gstuvcsink.c
+@@ -0,0 +1,942 @@
++/*
++ * SPDX-License-Identifier: LGPL-2.0-or-later
++ *
++ * Copyright (C) 2023 Pengutronix e.K. - www.pengutronix.de
++ *
++ */
++
++/**
++ * SECTION:plugin-uvcgadget
++ * @title: uvcgadget
++ *
++ * Since: 1.24
++ */
++
++/**
++ * SECTION:element-uvcsink
++ * @title: uvcsink
++ *
++ * uvcsink can be used to push frames to the Linux UVC Gadget
++ * driver.
++ *
++ * ## Example launch lines
++ * |[
++ * gst-launch videotestsrc ! uvcsink v4l2sink::device=/dev/video1
++ * ]|
++ * This pipeline streams a test pattern on UVC gadget /dev/video1.
++ *
++ * Before starting the pipeline, the linux system needs an uvc gadget
++ * configured on the udc (usb device controller)
++ *
++ * Either by using the legacy g_webcam gadget or by preconfiguring it
++ * with configfs. One way to configure is to use the example script from
++ * uvc-gadget:
++ *
++ * https://git.ideasonboard.org/uvc-gadget.git/blob/HEAD:/scripts/uvc-gadget.sh
++ *
++ * A modern way of configuring the gadget with an scheme file that gets
++ * loaded by gadget-tool (gt) using libusbgx.
++ *
++ * https://github.com/linux-usb-gadgets/libusbgx
++ * https://github.com/linux-usb-gadgets/gt
++ *
++ * Since: 1.24
++ */
++#define _GNU_SOURCE
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <sys/ioctl.h>
++#include <fcntl.h>
++#include <unistd.h>
++
++#include <gst/gst.h>
++#include <gst/pbutils/pbutils.h>
++
++#include "gstuvcsink.h"
++
++GST_DEBUG_CATEGORY (uvcsink_debug);
++#define GST_CAT_DEFAULT uvcsink_debug
++
++/**
++ * gst_util_simplify_fraction:
++ * @numerator: First value as #gint
++ * @denominator: Second value as #gint
++ * @n_terms: non-significative terms (typical value: 8)
++ * @threshold: threshold (typical value: 333)
++ *
++ * Calculates the simpler representation of @numerator and @denominator and
++ * update both values with the resulting simplified fraction.
++ *
++ * Simplify a fraction using a simple continued fraction decomposition.
++ * The idea here is to convert fractions such as 333333/10000000 to 1/30
++ * using 32 bit arithmetic only. The algorithm is not perfect and relies
++ * upon two arbitrary parameters to remove non-significative terms from
++ * the simple continued fraction decomposition. Using 8 and 333 for
++ * @n_terms and @threshold respectively seems to give nice results.
++ *
++ * Since: 1.24
++ */
++static void
++gst_util_simplify_fraction (gint * numerator, gint * denominator,
++    guint n_terms, guint threshold)
++{
++  guint *an;
++  guint x, y, r;
++  guint i, n;
++
++  an = g_malloc_n (n_terms, sizeof (*an));
++  if (an == NULL)
++    return;
++
++  /*
++   * Convert the fraction to a simple continued fraction. See
++   * https://en.wikipedia.org/wiki/Continued_fraction
++   * Stop if the current term is bigger than or equal to the given
++   * threshold.
++   */
++  x = *numerator;
++  y = *denominator;
++
++  for (n = 0; n < n_terms && y != 0; ++n) {
++    an[n] = x / y;
++    if (an[n] >= threshold) {
++      if (n < 2)
++        n++;
++      break;
++    }
++
++    r = x - an[n] * y;
++    x = y;
++    y = r;
++  }
++
++  /* Expand the simple continued fraction back to an integer fraction. */
++  x = 0;
++  y = 1;
++
++  for (i = n; i > 0; --i) {
++    r = y;
++    y = an[i - 1] * y + x;
++    x = r;
++  }
++
++  *numerator = y;
++  *denominator = x;
++  g_free (an);
++}
++
++enum
++{
++  ARG_0,
++  PROP_STREAMING,
++  PROP_LAST
++};
++
++#define gst_uvc_sink_parent_class parent_class
++G_DEFINE_TYPE (GstUvcSink, gst_uvc_sink, GST_TYPE_BIN);
++GST_ELEMENT_REGISTER_DEFINE (uvcsink,
++    "uvcsink", GST_RANK_NONE, GST_TYPE_UVCSINK);
++
++/* GstElement methods: */
++static GstStateChangeReturn gst_uvc_sink_change_state (GstElement *
++    element, GstStateChange transition);
++
++static void gst_uvc_sink_dispose (GObject * object);
++static gboolean gst_uvc_sink_prepare_configfs (GstUvcSink * self);
++
++static void
++gst_uvc_sink_get_property (GObject * object, guint prop_id,
++    GValue * value, GParamSpec * pspec)
++{
++  GstUvcSink *self = GST_UVCSINK (object);
++
++  switch (prop_id) {
++    case PROP_STREAMING:
++      g_value_set_boolean (value, g_atomic_int_get (&self->streaming));
++      break;
++    default:
++      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
++      break;
++  }
++}
++
++static GstStructure *
++gst_v4l2uvc_fourcc_to_bare_struct (guint32 fourcc)
++{
++  GstStructure *structure = NULL;
++
++  /* Since MJPEG and YUY2 are currently the only one supported
++   * we limit the function to parse only these fourccs
++   */
++  switch (fourcc) {
++    case V4L2_PIX_FMT_MJPEG:   /* Motion-JPEG */
++    case V4L2_PIX_FMT_JPEG:    /* JFIF JPEG */
++      structure = gst_structure_new_empty ("image/jpeg");
++      break;
++    case V4L2_PIX_FMT_YUYV:{
++      GstVideoFormat format = GST_VIDEO_FORMAT_YUY2;
++      if (format != GST_VIDEO_FORMAT_UNKNOWN)
++        structure = gst_structure_new ("video/x-raw",
++            "format", G_TYPE_STRING, gst_video_format_to_string (format), NULL);
++      break;
++    }
++      break;
++    default:
++      GST_DEBUG ("Unsupported fourcc 0x%08x %" GST_FOURCC_FORMAT,
++          fourcc, GST_FOURCC_ARGS (fourcc));
++      break;
++  }
++
++  return structure;
++}
++
++/* The UVC EVENT_DATA from the host, which is committing the currently
++ * selected configuration (format+resolution+framerate) is only selected
++ * by some index values (except the framerate). We have to transform
++ * those values to an valid caps string that we can return on the caps
++ * query.
++ */
++static GstCaps *
++gst_uvc_sink_get_configured_caps (GstUvcSink * self)
++{
++  struct v4l2_fmtdesc format;
++  struct v4l2_frmsizeenum size;
++  struct v4l2_frmivalenum ival;
++  guint32 width, height;
++  gint device_fd;
++  GstStructure *s;
++  gint numerator, denominator;
++  GValue framerate = { 0, };
++
++  g_object_get (G_OBJECT (self->v4l2sink), "device-fd", &device_fd, NULL);
++
++  format.index = self->cur.bFormatIndex - 1;
++  format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
++
++  if (ioctl (device_fd, VIDIOC_ENUM_FMT, &format) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, READ, ("Linux kernel error"),
++        ("VIDIOC_ENUM_FMT failed: %s (%d)", g_strerror (errno), errno));
++    return NULL;
++  }
++
++  s = gst_v4l2uvc_fourcc_to_bare_struct (format.pixelformat);
++
++  memset (&size, 0, sizeof (struct v4l2_frmsizeenum));
++  size.index = self->cur.bFrameIndex - 1;
++  size.pixel_format = format.pixelformat;
++
++  if (ioctl (device_fd, VIDIOC_ENUM_FRAMESIZES, &size) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, READ, ("Linux kernel error"),
++        ("VIDIOC_ENUM_FRAMESIZES failed: %s (%d)", g_strerror (errno), errno));
++    return NULL;
++  }
++
++  GST_LOG_OBJECT (self, "got discrete frame size %dx%d",
++      size.discrete.width, size.discrete.height);
++
++  width = MIN (size.discrete.width, G_MAXINT);
++  height = MIN (size.discrete.height, G_MAXINT);
++
++  if (!width || !height)
++    return NULL;
++
++  g_value_init (&framerate, GST_TYPE_FRACTION);
++
++  memset (&ival, 0, sizeof (struct v4l2_frmivalenum));
++
++  ival.index = 0;
++  ival.pixel_format = format.pixelformat;
++  ival.width = width;
++  ival.height = height;
++
++#define SIMPLIFY_FRACTION_N_TERMS   8
++#define SIMPLIFY_FRACTION_THRESHOLD 333
++
++  numerator = self->cur.dwFrameInterval;
++  denominator = 10000000;
++  gst_util_simplify_fraction (&numerator, &denominator,
++      SIMPLIFY_FRACTION_N_TERMS, SIMPLIFY_FRACTION_THRESHOLD);
++
++  if (ioctl (device_fd, VIDIOC_ENUM_FRAMEINTERVALS, &ival) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, READ, ("Linux kernel error"),
++        ("VIDIOC_ENUM_FRAMEINTERVALS failed: %s (%d)",
++            g_strerror (errno), errno));
++    return NULL;
++  }
++
++  do {
++    gint inumerator = ival.discrete.numerator;
++    gint idenominator = ival.discrete.denominator;
++
++    gst_util_simplify_fraction (&inumerator, &idenominator,
++        SIMPLIFY_FRACTION_N_TERMS, SIMPLIFY_FRACTION_THRESHOLD);
++
++    if (numerator == inumerator && denominator == idenominator)
++      /* swap to get the framerate */
++      gst_value_set_fraction (&framerate, denominator, numerator);
++
++    ival.index++;
++  } while (ioctl (device_fd, VIDIOC_ENUM_FRAMEINTERVALS, &ival) >= 0);
++
++  gst_structure_set (s, "width", G_TYPE_INT, (gint) width,
++      "height", G_TYPE_INT, (gint) height, NULL);
++
++  gst_structure_take_value (s, "framerate", &framerate);
++
++  return gst_caps_new_full (s, NULL);
++}
++
++static gboolean gst_uvc_sink_to_fakesink (GstUvcSink * self);
++static gboolean gst_uvc_sink_to_v4l2sink (GstUvcSink * self);
++
++static void
++gst_uvc_sink_update_streaming (GstUvcSink * self)
++{
++  if (self->streamon && !self->streaming)
++    GST_ERROR_OBJECT (self, "Unexpected STREAMON");
++  if (self->streamoff && self->streaming)
++    GST_ERROR_OBJECT (self, "Unexpected STREAMOFF");
++
++  if (self->streamon)
++    gst_uvc_sink_to_v4l2sink (self);
++
++  g_atomic_int_set (&self->streamon, FALSE);
++  g_atomic_int_set (&self->streamoff, FALSE);
++}
++
++static gboolean
++gst_uvc_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
++{
++  GstUvcSink *self = GST_UVCSINK (parent);
++
++  switch (GST_EVENT_TYPE (event)) {
++    case GST_EVENT_CAPS:
++      GST_DEBUG_OBJECT (self, "Handling %" GST_PTR_FORMAT, event);
++
++      /* EVENT CAPS signals that the buffers after the event will use new caps.
++       * If the UVC host requested a new format, we now must start the stream.
++       */
++      if (self->caps_changed) {
++        if (self->streamon || self->streamoff)
++          g_atomic_int_set (&self->caps_changed, FALSE);
++
++        gst_uvc_sink_update_streaming (self);
++      }
++      break;
++    default:
++      break;
++  }
++
++  return gst_pad_event_default (pad, parent, event);
++}
++
++static gboolean
++gst_uvc_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
++{
++  GstUvcSink *self = GST_UVCSINK (parent);
++
++  switch (GST_QUERY_TYPE (query)) {
++    case GST_QUERY_CAPS:
++    {
++      if (gst_caps_is_empty (self->cur_caps))
++        return gst_pad_query_default (pad, parent, query);
++
++      GST_DEBUG_OBJECT (self, "caps %" GST_PTR_FORMAT, self->cur_caps);
++      gst_query_set_caps_result (query, self->cur_caps);
++
++      if (!self->caps_changed)
++        gst_uvc_sink_update_streaming (self);
++
++      return TRUE;
++    }
++    case GST_QUERY_ALLOCATION:
++      return TRUE;
++    default:
++      return gst_pad_query_default (pad, parent, query);
++  }
++  return TRUE;
++}
++
++static void
++gst_uvc_sink_class_init (GstUvcSinkClass * klass)
++{
++  GObjectClass *gobject_class;
++  GstElementClass *element_class;
++
++  element_class = GST_ELEMENT_CLASS (klass);
++
++  element_class->change_state = gst_uvc_sink_change_state;
++
++  gst_element_class_set_metadata (element_class,
++      "UVC Sink", "Sink/Video",
++      "Streams Video via UVC Gadget", "Michael Grzeschik <mgr@pengutronix.de>");
++
++  GST_DEBUG_CATEGORY_INIT (uvcsink_debug, "uvcsink", 0, "uvc sink element");
++
++  gobject_class = G_OBJECT_CLASS (klass);
++  gobject_class->dispose = gst_uvc_sink_dispose;
++  gobject_class->get_property = gst_uvc_sink_get_property;
++
++  /**
++   * uvcsink:streaming:
++   *
++   * The stream status of the host.
++   *
++   * Since: 1.24
++   */
++  g_object_class_install_property (gobject_class, PROP_STREAMING,
++      g_param_spec_boolean ("streaming", "streaming",
++          "The stream status of the host", 0,
++          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
++}
++
++static gboolean
++gst_uvc_sink_to_fakesink (GstUvcSink * self)
++{
++  if (gst_pad_is_linked (self->fakesinkpad)) {
++    GST_DEBUG_OBJECT (self, "v4l2sink already disabled");
++    return FALSE;
++  }
++
++  GST_DEBUG_OBJECT (self, "switching to fakesink");
++  gst_ghost_pad_set_target (GST_GHOST_PAD (self->sinkpad), self->fakesinkpad);
++  gst_element_set_state (GST_ELEMENT (self->fakesink), GST_STATE_PLAYING);
++
++  /* going to state READY makes v4l2sink lose its reference to the clock */
++  self->v4l2_clock = gst_element_get_clock (self->v4l2sink);
++
++  gst_pad_query (self->v4l2sinkpad, gst_query_new_drain ());
++
++  gst_element_set_state (GST_ELEMENT (self->v4l2sink), GST_STATE_READY);
++
++  return TRUE;
++}
++
++static gboolean
++gst_uvc_sink_to_v4l2sink (GstUvcSink * self)
++{
++  if (gst_pad_is_linked (self->v4l2sinkpad)) {
++    GST_DEBUG_OBJECT (self, "fakesink already disabled");
++    return FALSE;
++  }
++
++  if (self->v4l2_clock) {
++    gst_element_set_clock (self->v4l2sink, self->v4l2_clock);
++    gst_object_unref (self->v4l2_clock);
++  }
++
++  GST_DEBUG_OBJECT (self, "switching to v4l2sink");
++
++  gst_ghost_pad_set_target (GST_GHOST_PAD (self->sinkpad), self->v4l2sinkpad);
++  gst_element_set_state (GST_ELEMENT (self->v4l2sink), GST_STATE_PLAYING);
++
++  gst_pad_query (self->fakesinkpad, gst_query_new_drain ());
++
++  gst_element_set_state (GST_ELEMENT (self->fakesink), GST_STATE_READY);
++
++  return TRUE;
++}
++
++static GstPadProbeReturn
++gst_uvc_sink_sinkpad_buffer_peer_probe (GstPad * pad,
++    GstPadProbeInfo * info, gpointer user_data)
++{
++  GstUvcSink *self = user_data;
++
++  if (self->streamon || self->streamoff)
++    return GST_PAD_PROBE_DROP;
++
++  self->buffer_peer_probe_id = 0;
++
++  return GST_PAD_PROBE_REMOVE;
++}
++
++static GstPadProbeReturn
++gst_uvc_sink_sinkpad_idle_probe (GstPad * pad,
++    GstPadProbeInfo * info, gpointer user_data)
++{
++  GstUvcSink *self = user_data;
++
++  if (self->streamon || self->streamoff) {
++    /* Drop all incoming buffers until the streamoff or streamon is done. */
++    self->buffer_peer_probe_id =
++        gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_BUFFER,
++        gst_uvc_sink_sinkpad_buffer_peer_probe, self, NULL);
++
++    GST_DEBUG_OBJECT (self, "Send reconfigure");
++    gst_pad_push_event (self->sinkpad, gst_event_new_reconfigure ());
++  }
++
++  if (self->streamoff)
++    gst_uvc_sink_to_fakesink (self);
++
++  return GST_PAD_PROBE_PASS;
++}
++
++static void
++gst_uvc_sink_remove_buffer_peer_probe (GstUvcSink * self)
++{
++  GstPad *peerpad = gst_pad_get_peer (self->sinkpad);
++  if (peerpad && self->buffer_peer_probe_id) {
++    gst_pad_remove_probe (peerpad, self->buffer_peer_probe_id);
++    gst_object_unref (peerpad);
++    self->buffer_peer_probe_id = 0;
++  }
++}
++
++static void
++gst_uvc_sink_create_idle_probe (GstUvcSink * self)
++{
++  GstPad *peerpad = gst_pad_get_peer (self->sinkpad);
++  if (peerpad) {
++    self->idle_probe_id =
++        gst_pad_add_probe (peerpad, GST_PAD_PROBE_TYPE_IDLE,
++        gst_uvc_sink_sinkpad_idle_probe, self, NULL);
++    gst_object_unref (peerpad);
++  }
++}
++
++static void
++gst_uvc_sink_remove_idle_probe (GstUvcSink * self)
++{
++  GstPad *peerpad = gst_pad_get_peer (self->sinkpad);
++  if (peerpad && self->idle_probe_id) {
++    gst_pad_remove_probe (peerpad, self->idle_probe_id);
++    gst_object_unref (peerpad);
++    self->idle_probe_id = 0;
++  }
++}
++
++static gboolean
++gst_uvc_sink_open (GstUvcSink * self)
++{
++  if (!self->v4l2sink) {
++    gst_element_post_message (GST_ELEMENT_CAST (self),
++        gst_missing_element_message_new (GST_ELEMENT_CAST (self), "v4l2sink"));
++
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("No v4l2sink element found"), ("Check your plugin installation"));
++    return FALSE;
++  }
++
++  if (!self->fakesink) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("No fakesink element found"), ("Check your plugin installation"));
++    return FALSE;
++  }
++
++  return TRUE;
++}
++
++static void
++gst_uvc_sink_init (GstUvcSink * self)
++{
++  /* add the v4l2sink element */
++  self->v4l2sink = gst_element_factory_make ("v4l2sink", "v4l2sink");
++  if (!self->v4l2sink)
++    return;
++
++  g_object_set (G_OBJECT (self->v4l2sink), "async", FALSE, NULL);
++  gst_bin_add (GST_BIN (self), self->v4l2sink);
++
++  /* add the fakesink element */
++  self->fakesink = gst_element_factory_make ("fakesink", "fakesink");
++  if (!self->fakesink)
++    return;
++
++  g_object_set (G_OBJECT (self->fakesink), "sync", TRUE, NULL);
++  gst_bin_add (GST_BIN (self), self->fakesink);
++
++  self->v4l2sinkpad = gst_element_get_static_pad (self->v4l2sink, "sink");
++  g_return_if_fail (self->v4l2sinkpad != NULL);
++
++  self->fakesinkpad = gst_element_get_static_pad (self->fakesink, "sink");
++  g_return_if_fail (self->fakesinkpad != NULL);
++
++  /* create ghost pad sink */
++  self->sinkpad = gst_ghost_pad_new ("sink", self->fakesinkpad);
++  gst_element_add_pad (GST_ELEMENT (self), self->sinkpad);
++
++  g_atomic_int_set (&self->streaming, FALSE);
++
++  g_atomic_int_set (&self->streamon, FALSE);
++  g_atomic_int_set (&self->streamoff, FALSE);
++
++  gst_pad_set_query_function (self->sinkpad, gst_uvc_sink_query);
++  gst_pad_set_event_function (self->sinkpad, gst_uvc_sink_event);
++
++  self->cur_caps = gst_caps_new_empty ();
++}
++
++static void
++gst_uvc_sink_dispose (GObject * object)
++{
++  GstUvcSink *self = GST_UVCSINK (object);
++
++  if (self->sinkpad) {
++    gst_uvc_sink_remove_buffer_peer_probe (self);
++
++    gst_pad_set_active (self->sinkpad, FALSE);
++    gst_element_remove_pad (GST_ELEMENT (self), self->sinkpad);
++    self->sinkpad = NULL;
++  }
++
++  G_OBJECT_CLASS (parent_class)->dispose (object);
++}
++
++static gboolean gst_uvc_sink_unwatch (GstUvcSink * self);
++
++/* the thread where everything happens */
++static void
++gst_uvc_sink_task (gpointer data)
++{
++  GstUvcSink *self = GST_UVCSINK (data);
++  GstClockTime timeout = GST_CLOCK_TIME_NONE;
++  struct uvc_request_data resp;
++  gboolean ret = TRUE;
++
++  /* Since the plugin needs to be able to start immidiatly in PLAYING
++     state we ensure the pipeline is not blocked while we poll for
++     events.
++   */
++  GST_PAD_STREAM_UNLOCK (self->sinkpad);
++
++  ret = gst_poll_wait (self->poll, timeout);
++  if (G_UNLIKELY (ret < 0))
++    return;
++
++  timeout = GST_CLOCK_TIME_NONE;
++
++  if (gst_poll_fd_has_closed (self->poll, &self->pollfd)) {
++    GST_ELEMENT_ERROR (self, RESOURCE, READ, ("videofd was closed"), NULL);
++    gst_uvc_sink_unwatch (self);
++    gst_element_set_state (GST_ELEMENT (self), GST_STATE_NULL);
++    return;
++  }
++
++  if (gst_poll_fd_has_error (self->poll, &self->pollfd)) {
++    GST_ELEMENT_ERROR (self, RESOURCE, READ, ("videofd has error"), NULL);
++    gst_uvc_sink_unwatch (self);
++    gst_element_set_state (GST_ELEMENT (self), GST_STATE_NULL);
++    return;
++  }
++
++  /* PRI is used to signal that events are available */
++  if (gst_poll_fd_has_pri (self->poll, &self->pollfd)) {
++    struct v4l2_event event = { 0, };
++    struct uvc_event *uvc_event = (void *) &event.u.data;
++
++    if (ioctl (self->pollfd.fd, VIDIOC_DQEVENT, &event) < 0) {
++      GST_ELEMENT_ERROR (self, RESOURCE, READ,
++          ("could not dequeue event"), NULL);
++      gst_uvc_sink_unwatch (self);
++      gst_element_set_state (GST_ELEMENT (self), GST_STATE_NULL);
++      return;
++    }
++
++    switch (event.type) {
++      case UVC_EVENT_STREAMON:
++        GST_DEBUG_OBJECT (self, "UVC_EVENT_STREAMON");
++        GST_STATE_LOCK (GST_ELEMENT (self));
++        g_atomic_int_set (&self->streaming, TRUE);
++        g_atomic_int_set (&self->streamon, TRUE);
++        GST_STATE_UNLOCK (GST_ELEMENT (self));
++        g_object_notify (G_OBJECT (self), "streaming");
++        break;
++      case UVC_EVENT_STREAMOFF:
++      case UVC_EVENT_DISCONNECT:
++        GST_DEBUG_OBJECT (self, "UVC_EVENT_STREAMOFF");
++        GST_STATE_LOCK (GST_ELEMENT (self));
++        g_atomic_int_set (&self->streaming, FALSE);
++        g_atomic_int_set (&self->streamoff, TRUE);
++        GST_STATE_UNLOCK (GST_ELEMENT (self));
++        g_object_notify (G_OBJECT (self), "streaming");
++        break;
++      case UVC_EVENT_SETUP:
++        GST_DEBUG_OBJECT (self, "UVC_EVENT_SETUP");
++
++        memset (&resp, 0, sizeof (resp));
++        resp.length = -EL2HLT;
++
++        uvc_events_process_setup (self, &uvc_event->req, &resp);
++
++        if (ioctl (self->pollfd.fd, UVCIOC_SEND_RESPONSE, &resp) < 0) {
++          GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++              ("UVCIOC_SEND_RESPONSE failed"),
++              ("UVCIOC_SEND_RESPONSE on UVC_EVENT_SETUP failed"));
++          gst_uvc_sink_unwatch (self);
++          gst_element_set_state (GST_ELEMENT (self), GST_STATE_NULL);
++          return;
++        }
++        break;
++      case UVC_EVENT_DATA:
++        GST_DEBUG_OBJECT (self, "UVC_EVENT_DATA");
++        uvc_events_process_data (self, &uvc_event->data);
++        if (self->control == UVC_VS_COMMIT_CONTROL) {
++          GstCaps *configured_caps;
++          GstCaps *prev_caps;
++
++          /* The configured caps are not sufficient for negotiation. Select caps
++           * from the probed caps that match the configured caps.
++           */
++          configured_caps = gst_uvc_sink_get_configured_caps (self);
++          gst_clear_caps (&self->cur_caps);
++          self->cur_caps =
++              gst_caps_intersect_full (self->probed_caps, configured_caps,
++              GST_CAPS_INTERSECT_FIRST);
++          GST_INFO_OBJECT (self, "UVC host selected %" GST_PTR_FORMAT,
++              self->cur_caps);
++          gst_caps_unref (configured_caps);
++
++          prev_caps = gst_pad_get_current_caps (self->sinkpad);
++          if (!gst_caps_is_subset (prev_caps, self->cur_caps)) {
++            self->caps_changed = TRUE;
++            GST_DEBUG_OBJECT (self,
++                "caps changed from %" GST_PTR_FORMAT, prev_caps);
++          }
++          gst_caps_unref (prev_caps);
++        }
++        break;
++      default:
++        break;
++    }
++  }
++}
++
++static gboolean
++gst_uvc_sink_watch (GstUvcSink * self)
++{
++  struct v4l2_event_subscription sub = {.type = UVC_EVENT_STREAMON };
++  gboolean ret = TRUE;
++  gint device_fd;
++  gint fd;
++
++  ret = gst_uvc_sink_prepare_configfs (self);
++  if (!ret) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("could not parse configfs"), ("Check your configfs setup"));
++    return FALSE;
++  }
++
++  g_object_get (G_OBJECT (self->v4l2sink), "device-fd", &device_fd, NULL);
++
++  fd = dup3 (device_fd, device_fd + 1, O_CLOEXEC);
++  if (fd < 0)
++    return FALSE;
++
++  self->poll = gst_poll_new (TRUE);
++  gst_poll_fd_init (&self->pollfd);
++  self->pollfd.fd = fd;
++  gst_poll_add_fd (self->poll, &self->pollfd);
++  gst_poll_fd_ctl_pri (self->poll, &self->pollfd, TRUE);
++
++  if (ioctl (device_fd, VIDIOC_SUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to subscribe event"),
++        ("UVC_EVENT_STREAMON could not be subscribed"));
++    return FALSE;
++  }
++
++  sub.type = UVC_EVENT_STREAMOFF;
++  if (ioctl (device_fd, VIDIOC_SUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to subscribe event"),
++        ("UVC_EVENT_STREAMOFF could not be subscribed"));
++    return FALSE;
++  }
++
++  sub.type = UVC_EVENT_DISCONNECT;
++  if (ioctl (device_fd, VIDIOC_SUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to subscribe event"),
++        ("UVC_EVENT_DISCONNECT could not be subscribed"));
++    return FALSE;
++  }
++
++  sub.type = UVC_EVENT_SETUP;
++  if (ioctl (device_fd, VIDIOC_SUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to subscribe event"),
++        ("UVC_EVENT_SETUP could not be subscribed"));
++    return FALSE;
++  }
++
++  sub.type = UVC_EVENT_DATA;
++  if (ioctl (device_fd, VIDIOC_SUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to subscribe event"),
++        ("UVC_EVENT_DATA could not be subscribed"));
++    return FALSE;
++  }
++
++  if (!gst_pad_start_task (GST_PAD (self->sinkpad),
++          (GstTaskFunction) gst_uvc_sink_task, self, NULL)) {
++    GST_ELEMENT_ERROR (self, CORE, THREAD, ("Could not start pad task"),
++        ("Could not start pad task"));
++    return FALSE;
++  }
++
++  return TRUE;
++}
++
++static gboolean
++gst_uvc_sink_unwatch (GstUvcSink * self)
++{
++  struct v4l2_event_subscription sub = {.type = UVC_EVENT_DATA };
++  gint device_fd;
++
++  gst_poll_set_flushing (self->poll, TRUE);
++  gst_pad_stop_task (GST_PAD (self->sinkpad));
++
++  g_object_get (G_OBJECT (self->v4l2sink), "device-fd", &device_fd, NULL);
++
++  if (ioctl (device_fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to unsubscribe event"),
++        ("UVC_EVENT_DATA could not be unsubscribed"));
++    return FALSE;
++  }
++
++  sub.type = UVC_EVENT_SETUP;
++  if (ioctl (device_fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to unsubscribe event"),
++        ("UVC_EVENT_SETUP could not be unsubscribed"));
++    return FALSE;
++  }
++
++  sub.type = UVC_EVENT_STREAMON;
++  if (ioctl (device_fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to unsubscribe event"),
++        ("UVC_EVENT_STREAMON could not be unsubscribed"));
++    return FALSE;
++  }
++
++  sub.type = UVC_EVENT_STREAMOFF;
++  if (ioctl (device_fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to unsubscribe event"),
++        ("UVC_EVENT_STREAMOFF could not be unsubscribed"));
++    return FALSE;
++  }
++
++  sub.type = UVC_EVENT_DISCONNECT;
++  if (ioctl (device_fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub) < 0) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to unsubscribe event"),
++        ("UVC_EVENT_DISCONNECT could not be unsubscribed"));
++    return FALSE;
++  }
++
++  return TRUE;
++}
++
++static gboolean
++gst_uvc_sink_prepare_configfs (GstUvcSink * self)
++{
++  gint device_fd;
++  GValue device = G_VALUE_INIT;
++
++  g_object_get (G_OBJECT (self->v4l2sink), "device-fd", &device_fd, NULL);
++  g_object_get_property (G_OBJECT (self->v4l2sink), "device", &device);
++
++  self->fc = configfs_parse_uvc_videodev (device_fd,
++      g_value_get_string (&device));
++  if (!self->fc) {
++    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
++        ("Failed to identify function configuration"),
++        ("Check your configfs setup"));
++    return FALSE;
++  }
++
++  uvc_fill_streaming_control (self, &self->probe, self->cur.bFrameIndex,
++      self->cur.bFormatIndex, self->cur.dwFrameInterval);
++  uvc_fill_streaming_control (self, &self->commit, self->cur.bFrameIndex,
++      self->cur.bFormatIndex, self->cur.dwFrameInterval);
++
++  return TRUE;
++}
++
++static gboolean
++gst_uvc_sink_query_probed_caps (GstUvcSink * self)
++{
++  GstQuery *caps_query = gst_query_new_caps (NULL);
++  GstCaps *query_caps;
++
++  gst_clear_caps (&self->probed_caps);
++  if (!gst_pad_query (self->v4l2sinkpad, caps_query))
++    return FALSE;
++
++  gst_query_parse_caps_result (caps_query, &query_caps);
++  gst_query_unref (caps_query);
++
++  self->probed_caps = gst_caps_copy (query_caps);
++
++  gst_caps_replace (&self->cur_caps, self->probed_caps);
++
++  return TRUE;
++}
++
++static GstStateChangeReturn
++gst_uvc_sink_change_state (GstElement * element, GstStateChange transition)
++{
++  GstUvcSink *self = GST_UVCSINK (element);
++  int bret = GST_STATE_CHANGE_SUCCESS;
++
++  GST_DEBUG_OBJECT (self, "%s -> %s",
++      gst_element_state_get_name (GST_STATE_TRANSITION_CURRENT (transition)),
++      gst_element_state_get_name (GST_STATE_TRANSITION_NEXT (transition)));
++
++  switch (transition) {
++    case GST_STATE_CHANGE_NULL_TO_READY:
++      if (!gst_uvc_sink_open (self))
++        return GST_STATE_CHANGE_FAILURE;
++      break;
++    case GST_STATE_CHANGE_READY_TO_PAUSED:
++      gst_uvc_sink_create_idle_probe (self);
++      break;
++    case GST_STATE_CHANGE_PAUSED_TO_READY:
++      gst_element_sync_state_with_parent (GST_ELEMENT (self->fakesink));
++      gst_uvc_sink_remove_idle_probe (self);
++      break;
++    case GST_STATE_CHANGE_READY_TO_NULL:
++      if (!gst_uvc_sink_unwatch (self))
++        return GST_STATE_CHANGE_FAILURE;
++      break;
++    default:
++      break;
++  }
++
++  bret = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
++
++  switch (transition) {
++    case GST_STATE_CHANGE_PAUSED_TO_READY:
++      break;
++    case GST_STATE_CHANGE_NULL_TO_READY:
++      if (!gst_uvc_sink_watch (self))
++        return GST_STATE_CHANGE_FAILURE;
++      if (!gst_uvc_sink_query_probed_caps (self))
++        return GST_STATE_CHANGE_FAILURE;
++      break;
++    default:
++      break;
++  }
++
++  return bret;
++}
++
++static gboolean
++plugin_init (GstPlugin * plugin)
++{
++  return GST_ELEMENT_REGISTER (uvcsink, plugin);
++}
++
++GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
++    GST_VERSION_MINOR,
++    uvcgadget,
++    "gstuvcgadget plugin",
++    plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)
+diff --git a/sys/uvcgadget/gstuvcsink.h b/sys/uvcgadget/gstuvcsink.h
+new file mode 100644
+index 00000000..27e594ef
+--- /dev/null
++++ b/sys/uvcgadget/gstuvcsink.h
+@@ -0,0 +1,79 @@
++/*
++ * SPDX-License-Identifier: LGPL-2.0-or-later
++ *
++ * Copyright (C) 2023 Pengutronix e.K. - www.pengutronix.de
++ *
++ */
++
++#pragma once
++
++#include "linux/usb/g_uvc.h"
++#include "linux/usb/video.h"
++#include "linux/videodev2.h"
++
++#include <gst/gst.h>
++
++#include "configfs.h"
++
++G_BEGIN_DECLS GST_DEBUG_CATEGORY_EXTERN (uvcsink_debug);
++
++#define GST_TYPE_UVCSINK (gst_uvc_sink_get_type())
++G_DECLARE_FINAL_TYPE (GstUvcSink, gst_uvc_sink, GST, UVCSINK, GstBin)
++
++GST_ELEMENT_REGISTER_DECLARE (uvcsink);
++
++struct _GstUvcSink
++{
++  GstBin bin;
++  GstElement *fakesink;
++  GstElement *v4l2sink;
++  GstPad *sinkpad;
++  GstPad *fakesinkpad;
++  GstPad *v4l2sinkpad;
++
++  /* streaming status */
++  gboolean streaming;
++
++  GstCaps *probed_caps;
++  GstCaps *cur_caps;
++
++  /* a poll for video_fd */
++  GstPoll *poll;
++  GstPollFD pollfd;
++
++  struct uvc_function_config *fc;
++
++  struct {
++    int bFrameIndex;
++    int bFormatIndex;
++    unsigned int dwFrameInterval;
++  } cur;
++
++  struct uvc_streaming_control probe;
++  struct uvc_streaming_control commit;
++
++  int control;
++
++  /* probes */
++  int buffer_peer_probe_id;
++  int idle_probe_id;
++
++  GstClock *v4l2_clock;
++
++  int caps_changed;
++  int streamon;
++  int streamoff;
++};
++
++#define UVCSINK_MSG_LOCK(v) g_mutex_lock(&(v)->msg_lock)
++#define UVCSINK_MSG_UNLOCK(v) g_mutex_unlock(&(v)->msg_lock)
++
++int uvc_events_process_data(GstUvcSink * self,
++                                   const struct uvc_request_data *data);
++int uvc_events_process_setup(GstUvcSink * self,
++                         const struct usb_ctrlrequest *ctrl,
++                         struct uvc_request_data *resp);
++int uvc_fill_streaming_control(GstUvcSink * self,
++                           struct uvc_streaming_control *ctrl,
++                           int iframe, int iformat, unsigned int dwival);
++G_END_DECLS
+diff --git a/sys/uvcgadget/meson.build b/sys/uvcgadget/meson.build
+new file mode 100644
+index 00000000..0d3cbf4e
+--- /dev/null
++++ b/sys/uvcgadget/meson.build
+@@ -0,0 +1,40 @@
++uvcgadget_sources = [
++  'gstuvcsink.c',
++  'configfs.c',
++  'uvc.c'
++]
++
++libgudev_dep = dependency('gudev-1.0', required: get_option('uvcgadget'))
++
++if get_option('uvcgadget').disabled()
++  have_v4l2 = false
++  message('UVCSink plugin is disabled')
++else
++  # Should only be built on Linux, check for Linux kernel headers even though
++  # we have our own copy.
++  have_v4l2 = cc.has_header('linux/videodev2.h') or cc.has_header('sys/videodev2.h') or cc.has_header('sys/videoio.h')
++  if get_option('uvcgadget').enabled() and not have_v4l2
++    error('UVCGADGET is requested but kernel headers were not found')
++  endif
++
++  # Find makedev in various header files. Different operating systems put the
++  # macro in different header files.
++  foreach name: ['mkdev', 'sysmacros', 'types']
++    have_makedev = cc.has_header_symbol('sys/@0@.h'.format(name), 'makedev')
++    cdata.set10('HAVE_MAKEDEV_IN_' + name.to_upper(), have_makedev)
++  endforeach
++endif
++
++if have_v4l2 and libgudev_dep.found()
++  gstuvcgadget = library('gstuvcgadget',
++    uvcgadget_sources,
++    c_args : gst_plugins_bad_args,
++    cpp_args: gst_plugins_bad_args,
++    include_directories : [configinc, include_directories('../v4l2codecs')],
++    dependencies : [gstbase_dep, gstvideo_dep, gstallocators_dep, libgudev_dep, gstpbutils_dep,],
++    install : true,
++    install_dir : plugins_install_dir,
++  )
++  pkgconfig.generate(gstuvcgadget, install_dir : plugins_pkgconfig_install_dir)
++  plugins += [gstuvcgadget]
++endif
+diff --git a/sys/uvcgadget/uvc.c b/sys/uvcgadget/uvc.c
+new file mode 100644
+index 00000000..e00a5a29
+--- /dev/null
++++ b/sys/uvcgadget/uvc.c
+@@ -0,0 +1,420 @@
++/*
++ * SPDX-License-Identifier: LGPL-2.0-or-later
++ *
++ * Copyright (C) 2023 Pengutronix e.K. - www.pengutronix.de
++ *
++ */
++
++#define _GNU_SOURCE
++
++#include <endian.h>
++#include <glob.h>
++#include <stdio.h>
++#include <fcntl.h>
++#include <stdint.h>
++#include <unistd.h>
++
++#include "gstuvcsink.h"
++#include "configfs.h"
++
++#define GST_CAT_DEFAULT uvcsink_debug
++
++#define UVC_STRING_CONTROL_IDX                  0
++#define UVC_STRING_STREAMING_IDX                1
++
++/* --------------------------------------------------------------------------
++ * Control requests
++ */
++
++static const char *
++uvc_request_name (uint8_t req)
++{
++  switch (req) {
++    case UVC_SET_CUR:
++      return "SET_CUR";
++    case UVC_GET_CUR:
++      return "GET_CUR";
++    case UVC_GET_MIN:
++      return "GET_MIN";
++    case UVC_GET_MAX:
++      return "GET_MAX";
++    case UVC_GET_RES:
++      return "GET_RES";
++    case UVC_GET_LEN:
++      return "GET_LEN";
++    case UVC_GET_INFO:
++      return "GET_INFO";
++    case UVC_GET_DEF:
++      return "GET_DEF";
++    default:
++      return "<invalid>";
++  }
++}
++
++static const char *
++uvc_video_control_interface_control_selector_name (uint8_t cs)
++{
++  switch (cs) {
++    case UVC_VC_CONTROL_UNDEFINED:
++      return "UVC_VC_CONTROL_UNDEFINED";
++    case UVC_VC_VIDEO_POWER_MODE_CONTROL:
++      return "UVC_VC_VIDEO_POWER_MODE_CONTROL";
++    case UVC_VC_REQUEST_ERROR_CODE_CONTROL:
++      return "UVC_VC_REQUEST_ERROR_CODE_CONTROL";
++    default:
++      return "<unknown video control interface control selector>";
++  }
++}
++
++static const char *
++uvc_camera_terminal_control_selector_name (uint8_t cs)
++{
++  switch (cs) {
++    case UVC_CT_CONTROL_UNDEFINED:
++      return "UVC_CT_CONTROL_UNDEFINED";
++    case UVC_CT_SCANNING_MODE_CONTROL:
++      return "UVC_CT_SCANNING_MODE_CONTROL";
++    case UVC_CT_AE_MODE_CONTROL:
++      return "UVC_CT_AE_MODE_CONTROL";
++    case UVC_CT_AE_PRIORITY_CONTROL:
++      return "UVC_CT_AE_PRIORITY_CONTROL";
++    case UVC_CT_EXPOSURE_TIME_ABSOLUTE_CONTROL:
++      return "UVC_CT_EXPOSURE_TIME_ABSOLUTE_CONTROL";
++    case UVC_CT_EXPOSURE_TIME_RELATIVE_CONTROL:
++      return "UVC_CT_EXPOSURE_TIME_RELATIVE_CONTROL";
++    case UVC_CT_FOCUS_ABSOLUTE_CONTROL:
++      return "UVC_CT_FOCUS_ABSOLUTE_CONTROL";
++    case UVC_CT_FOCUS_RELATIVE_CONTROL:
++      return "UVC_CT_FOCUS_RELATIVE_CONTROL";
++    case UVC_CT_FOCUS_AUTO_CONTROL:
++      return "UVC_CT_FOCUS_AUTO_CONTROL";
++    case UVC_CT_IRIS_ABSOLUTE_CONTROL:
++      return "UVC_CT_IRIS_ABSOLUTE_CONTROL";
++    case UVC_CT_IRIS_RELATIVE_CONTROL:
++      return "UVC_CT_IRIS_RELATIVE_CONTROL";
++    case UVC_CT_ZOOM_ABSOLUTE_CONTROL:
++      return "UVC_CT_ZOOM_ABSOLUTE_CONTROL";
++    case UVC_CT_ZOOM_RELATIVE_CONTROL:
++      return "UVC_CT_ZOOM_RELATIVE_CONTROL";
++    case UVC_CT_PANTILT_ABSOLUTE_CONTROL:
++      return "UVC_CT_PANTILT_ABSOLUTE_CONTROL";
++    case UVC_CT_PANTILT_RELATIVE_CONTROL:
++      return "UVC_CT_PANTILT_RELATIVE_CONTROL";
++    case UVC_CT_ROLL_ABSOLUTE_CONTROL:
++      return "UVC_CT_ROLL_ABSOLUTE_CONTROL";
++    case UVC_CT_ROLL_RELATIVE_CONTROL:
++      return "UVC_CT_ROLL_RELATIVE_CONTROL";
++    case UVC_CT_PRIVACY_CONTROL:
++      return "UVC_CT_PRIVACY_CONTROL";
++    default:
++      return "<unknown camera terminal control selector>";
++  }
++}
++
++static const char *
++uvc_processing_unit_control_selector_name (uint8_t cs)
++{
++  switch (cs) {
++    case UVC_PU_CONTROL_UNDEFINED:
++      return "UVC_PU_CONTROL_UNDEFINED";
++    case UVC_PU_BACKLIGHT_COMPENSATION_CONTROL:
++      return "UVC_PU_BACKLIGHT_COMPENSATION_CONTROL";
++    case UVC_PU_BRIGHTNESS_CONTROL:
++      return "UVC_PU_BRIGHTNESS_CONTROL";
++    case UVC_PU_CONTRAST_CONTROL:
++      return "UVC_PU_CONTRAST_CONTROL";
++    case UVC_PU_GAIN_CONTROL:
++      return "UVC_PU_GAIN_CONTROL";
++    case UVC_PU_POWER_LINE_FREQUENCY_CONTROL:
++      return "UVC_PU_POWER_LINE_FREQUENCY_CONTROL";
++    case UVC_PU_HUE_CONTROL:
++      return "UVC_PU_HUE_CONTROL";
++    case UVC_PU_SATURATION_CONTROL:
++      return "UVC_PU_SATURATION_CONTROL";
++    case UVC_PU_SHARPNESS_CONTROL:
++      return "UVC_PU_SHARPNESS_CONTROL";
++    case UVC_PU_GAMMA_CONTROL:
++      return "UVC_PU_GAMMA_CONTROL";
++    case UVC_PU_WHITE_BALANCE_TEMPERATURE_CONTROL:
++      return "UVC_PU_WHITE_BALANCE_TEMPERATURE_CONTROL";
++    case UVC_PU_WHITE_BALANCE_TEMPERATURE_AUTO_CONTROL:
++      return "UVC_PU_WHITE_BALANCE_TEMPERATURE_AUTO_CONTROL";
++    case UVC_PU_WHITE_BALANCE_COMPONENT_CONTROL:
++      return "UVC_PU_WHITE_BALANCE_COMPONENT_CONTROL";
++    case UVC_PU_WHITE_BALANCE_COMPONENT_AUTO_CONTROL:
++      return "UVC_PU_WHITE_BALANCE_COMPONENT_AUTO_CONTROL";
++    case UVC_PU_DIGITAL_MULTIPLIER_CONTROL:
++      return "UVC_PU_DIGITAL_MULTIPLIER_CONTROL";
++    case UVC_PU_DIGITAL_MULTIPLIER_LIMIT_CONTROL:
++      return "UVC_PU_DIGITAL_MULTIPLIER_LIMIT_CONTROL";
++    case UVC_PU_HUE_AUTO_CONTROL:
++      return "UVC_PU_HUE_AUTO_CONTROL";
++    case UVC_PU_ANALOG_VIDEO_STANDARD_CONTROL:
++      return "UVC_PU_ANALOG_VIDEO_STANDARD_CONTROL";
++    case UVC_PU_ANALOG_LOCK_STATUS_CONTROL:
++      return "UVC_PU_ANALOG_LOCK_STATUS_CONTROL";
++    default:
++      return "<unknown processing unit control selector>";
++  }
++}
++
++static const char *
++uvc_video_streaming_interface_control_selector_name (uint8_t cs)
++{
++  switch (cs) {
++    case UVC_VS_CONTROL_UNDEFINED:
++      return "UVC_VS_CONTROL_UNDEFINED";
++    case UVC_VS_PROBE_CONTROL:
++      return "UVC_VS_PROBE_CONTROL";
++    case UVC_VS_COMMIT_CONTROL:
++      return "UVC_VS_COMMIT_CONTROL";
++    case UVC_VS_STILL_PROBE_CONTROL:
++      return "UVC_VS_STILL_PROBE_CONTROL";
++    case UVC_VS_STILL_COMMIT_CONTROL:
++      return "UVC_VS_STILL_COMMIT_CONTROL";
++    case UVC_VS_STILL_IMAGE_TRIGGER_CONTROL:
++      return "UVC_VS_STILL_IMAGE_TRIGGER_CONTROL";
++    case UVC_VS_STREAM_ERROR_CODE_CONTROL:
++      return "UVC_VS_STREAM_ERROR_CODE_CONTROL";
++    case UVC_VS_GENERATE_KEY_FRAME_CONTROL:
++      return "UVC_VS_GENERATE_KEY_FRAME_CONTROL";
++    case UVC_VS_UPDATE_FRAME_SEGMENT_CONTROL:
++      return "UVC_VS_UPDATE_FRAME_SEGMENT_CONTROL";
++    case UVC_VS_SYNC_DELAY_CONTROL:
++      return "UVC_VS_SYNC_DELAY_CONTROL";
++    default:
++      return "<unknown video streaming interface control selector>";
++  }
++}
++
++int
++uvc_fill_streaming_control (GstUvcSink * self,
++    struct uvc_streaming_control *ctrl,
++    int iframe, int iformat, unsigned int dwival)
++{
++  const struct uvc_function_config_format *format;
++  const struct uvc_function_config_frame *frame;
++  unsigned int i;
++
++  if (!self->fc)
++    return -ENOENT;
++  /*
++   * Restrict the iformat, iframe and ival to valid values. Negative
++   * values for iformat or iframe will result in the maximum valid value
++   * being selected.
++   */
++  iformat = CLAMP ((unsigned int) iformat, 1U, self->fc->streaming.num_formats);
++  format = &self->fc->streaming.formats[iformat - 1];
++
++  iframe = CLAMP ((unsigned int) iframe, 1U, format->num_frames);
++  frame = &format->frames[iframe - 1];
++
++  for (i = 0; i < frame->num_intervals; ++i) {
++    if (dwival <= frame->intervals[i]) {
++      dwival = frame->intervals[i];
++      break;
++    }
++  }
++
++  if (i == frame->num_intervals)
++    dwival = frame->intervals[frame->num_intervals - 1];
++
++  memset (ctrl, 0, sizeof (*ctrl));
++
++  ctrl->bmHint = 1;
++  ctrl->bFormatIndex = iformat;
++  ctrl->bFrameIndex = iframe;
++  ctrl->dwFrameInterval = dwival;
++
++  switch (format->fcc) {
++    case V4L2_PIX_FMT_YUYV:
++      ctrl->dwMaxVideoFrameSize = frame->width * frame->height * 2;
++      break;
++    case V4L2_PIX_FMT_MJPEG:
++      ctrl->dwMaxVideoFrameSize = frame->maxvideofbsize;
++      break;
++  }
++
++  ctrl->dwMaxPayloadTransferSize = self->fc->streaming.ep.wMaxPacketSize;
++  ctrl->bmFramingInfo = 3;
++  ctrl->bPreferedVersion = 1;
++  ctrl->bMaxVersion = 1;
++
++  return 0;
++}
++
++int
++uvc_events_process_data (GstUvcSink * self, const struct uvc_request_data *data)
++{
++  const struct uvc_streaming_control *ctrl =
++      (const struct uvc_streaming_control *) &data->data;
++  struct uvc_streaming_control *target;
++  int ret;
++
++  switch (self->control) {
++    case UVC_VS_PROBE_CONTROL:
++      GST_DEBUG_OBJECT (self, "setting probe control");
++      target = &self->probe;
++      break;
++
++    case UVC_VS_COMMIT_CONTROL:
++      GST_DEBUG_OBJECT (self, "setting commit control");
++      target = &self->commit;
++      break;
++
++    default:
++      GST_ELEMENT_ERROR (self, RESOURCE, READ,
++          ("setting unknown control, %d", self->control), NULL);
++      return -EOPNOTSUPP;
++  }
++
++  ret = uvc_fill_streaming_control (self, target, ctrl->bFrameIndex,
++      ctrl->bFormatIndex, ctrl->dwFrameInterval);
++  if (ret)
++    return ret;
++
++  if (self->control == UVC_VS_COMMIT_CONTROL) {
++    self->cur.bFrameIndex = ctrl->bFrameIndex;
++    self->cur.bFormatIndex = ctrl->bFormatIndex;
++    self->cur.dwFrameInterval = ctrl->dwFrameInterval;
++  }
++
++  return 0;
++}
++
++static int
++uvc_events_process_streaming (GstUvcSink * self, uint8_t req, uint8_t cs,
++    struct uvc_request_data *resp)
++{
++  struct uvc_streaming_control *ctrl;
++  int ret;
++
++  GST_DEBUG_OBJECT (self,
++      "%s: %s",
++      uvc_video_streaming_interface_control_selector_name (cs),
++      uvc_request_name (req));
++
++  if (cs != UVC_VS_PROBE_CONTROL && cs != UVC_VS_COMMIT_CONTROL)
++    return 0;
++
++  ctrl = (struct uvc_streaming_control *) &resp->data;
++  resp->length = sizeof (*ctrl);
++
++  switch (req) {
++    case UVC_SET_CUR:
++      self->control = cs;
++      resp->length = 34;
++      break;
++
++    case UVC_GET_CUR:
++      if (cs == UVC_VS_PROBE_CONTROL)
++        memcpy (ctrl, &self->probe, sizeof (*ctrl));
++      else
++        memcpy (ctrl, &self->commit, sizeof (*ctrl));
++      break;
++
++    case UVC_GET_MIN:
++    case UVC_GET_MAX:
++    case UVC_GET_DEF:
++      if (req == UVC_GET_MAX)
++        ret = uvc_fill_streaming_control (self, ctrl, -1, -1, UINT_MAX);
++      else
++        ret = uvc_fill_streaming_control (self, ctrl, 1, 1, 0);
++      if (ret)
++        return ret;
++      break;
++
++    case UVC_GET_RES:
++      memset (ctrl, 0, sizeof (*ctrl));
++      break;
++
++    case UVC_GET_LEN:
++      resp->data[0] = 0x00;
++      resp->data[1] = 0x22;
++      resp->length = 2;
++      break;
++
++    case UVC_GET_INFO:
++      resp->data[0] = 0x03;
++      resp->length = 1;
++      break;
++  }
++
++  return 0;
++}
++
++static void
++uvc_events_parse_control (GstUvcSink * self, uint8_t req,
++    uint8_t cs, uint8_t entity_id, uint8_t len, struct uvc_request_data *resp)
++{
++  switch (entity_id) {
++    case 0:
++      GST_DEBUG_OBJECT (self, "%s",
++          uvc_video_control_interface_control_selector_name (cs));
++      break;
++
++    case 1:
++      GST_DEBUG_OBJECT (self, "%s: %s",
++          uvc_camera_terminal_control_selector_name (cs),
++          uvc_request_name (req));
++      break;
++
++    case 2:
++      GST_DEBUG_OBJECT (self, "%s: %s",
++          uvc_processing_unit_control_selector_name (cs),
++          uvc_request_name (req));
++      break;
++
++    default:
++      GST_DEBUG_OBJECT (self,
++          "Unknown entity ID (0x%02x), CS: 0x%02x, Request %s (0x%02x)",
++          entity_id, cs, uvc_request_name (req), req);
++      break;
++  }
++}
++
++static int
++uvc_events_process_class (GstUvcSink * self,
++    const struct usb_ctrlrequest *ctrl, struct uvc_request_data *resp)
++{
++  unsigned int interface = le16toh (ctrl->wIndex) & 0xff;
++
++  if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_INTERFACE)
++    return -EINVAL;
++
++  if (interface == UVC_STRING_CONTROL_IDX) {
++    uvc_events_parse_control (self, ctrl->bRequest, ctrl->wValue >> 8,
++        ctrl->wIndex >> 8, ctrl->wLength, resp);
++    return -EOPNOTSUPP;
++  } else if (interface == UVC_STRING_STREAMING_IDX) {
++    return uvc_events_process_streaming (self, ctrl->bRequest,
++        le16toh (ctrl->wValue) >> 8, resp);
++  }
++
++  return 0;
++}
++
++int
++uvc_events_process_setup (GstUvcSink * self,
++    const struct usb_ctrlrequest *ctrl, struct uvc_request_data *resp)
++{
++  self->control = 0;
++
++  GST_DEBUG_OBJECT (self,
++      "bRequestType %02x bRequest %02x wValue %04x wIndex %04x wLength %04x",
++      ctrl->bRequestType, ctrl->bRequest, ctrl->wValue,
++      ctrl->wIndex, ctrl->wLength);
++
++  switch (ctrl->bRequestType & USB_TYPE_MASK) {
++    case USB_TYPE_STANDARD:
++      return -EOPNOTSUPP;
++
++    case USB_TYPE_CLASS:
++      return uvc_events_process_class (self, ctrl, resp);
++
++    default:
++      break;
++  }
++
++  return 0;
++}
+-- 
+2.20.1
+
