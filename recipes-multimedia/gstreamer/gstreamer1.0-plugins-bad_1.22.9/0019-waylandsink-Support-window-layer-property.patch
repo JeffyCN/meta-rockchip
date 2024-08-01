@@ -1,7 +1,7 @@
-From 6c47e3160d6c2fffb6ee22b0d3a6abfded8a6717 Mon Sep 17 00:00:00 2001
+From ae4a4b988392ad227137eb74549abf2e2347d9d2 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 5 Mar 2021 10:15:51 +0800
-Subject: [PATCH 19/45] waylandsink: Support window layer property
+Subject: [PATCH 19/49] waylandsink: Support window layer property
 
 Support setting top|normal|bottom window layer.
 
@@ -17,7 +17,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  4 files changed, 103 insertions(+), 5 deletions(-)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index 71d53a1..648b5ff 100644
+index 71d53a16..648b5ff0 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
 @@ -61,6 +61,7 @@ enum
@@ -129,7 +129,7 @@ index 71d53a1..648b5ff 100644
            G_CALLBACK (on_window_closed), self, 0);
        gst_wl_window_set_rotate_method (self->window,
 diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
-index d4c3764..a417788 100644
+index d4c37640..a4177882 100644
 --- a/ext/wayland/gstwaylandsink.h
 +++ b/ext/wayland/gstwaylandsink.h
 @@ -57,6 +57,7 @@ struct _GstWaylandSink
@@ -141,7 +141,7 @@ index d4c3764..a417788 100644
    gchar *display_name;
  
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index 3d4e562..e954ef3 100644
+index 3d4e562a..e954ef38 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -259,6 +259,43 @@ gst_wl_window_new_internal (GstWlDisplay * display, GMutex * render_lock)
@@ -206,7 +206,7 @@ index 3d4e562..e954ef3 100644
      /* Finally, commit the xdg_surface state as toplevel */
      priv->configured = FALSE;
 diff --git a/gst-libs/gst/wayland/gstwlwindow.h b/gst-libs/gst/wayland/gstwlwindow.h
-index 2bbd643..a0b05c3 100644
+index 2bbd643a..a0b05c3b 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.h
 +++ b/gst-libs/gst/wayland/gstwlwindow.h
 @@ -28,19 +28,30 @@ G_BEGIN_DECLS

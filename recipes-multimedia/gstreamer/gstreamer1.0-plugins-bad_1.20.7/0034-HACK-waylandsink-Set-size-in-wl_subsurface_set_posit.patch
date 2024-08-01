@@ -1,0 +1,39 @@
+From b7b949df36d7a1247f4eb319144922b2222c7a6f Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 21 Jul 2022 12:29:27 +0800
+Subject: [PATCH 34/46] HACK: waylandsink: Set size in
+ wl_subsurface_set_position() when no viewport
+
+Tested with hacked enlightenment.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/wlwindow.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/ext/wayland/wlwindow.c b/ext/wayland/wlwindow.c
+index 27fdda49..ba1046aa 100644
+--- a/ext/wayland/wlwindow.c
++++ b/ext/wayland/wlwindow.c
+@@ -506,7 +506,17 @@ gst_wl_window_resize_video_surface (GstWlWindow * window, gboolean commit)
+         wl_fixed_from_int (src.x), wl_fixed_from_int (src.y),
+         wl_fixed_from_int (src.w), wl_fixed_from_int (src.h));
+   } else {
+-    gst_video_sink_center_rect (src, dst, &res, FALSE);
++    if (window->fill_mode == GST_WL_WINDOW_STRETCH) {
++      res = dst;
++    } else {
++      if (window->fill_mode == GST_WL_WINDOW_CROP)
++        GST_WARNING ("The compositor doesn't support crop mode (no viewport)!");
++
++      gst_video_sink_center_rect (src, dst, &res, TRUE);
++    }
++
++    wl_subsurface_set_position (window->video_subsurface,
++        res.w << 16 | res.x, res.h << 16 | res.y);
+   }
+ 
+   wl_subsurface_set_position (window->video_subsurface, res.x, res.y);
+-- 
+2.20.1
+

@@ -1,7 +1,7 @@
 From 5f2a8de04448ff7d1739fa08fe2c72d8aa74217e Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 15 Jun 2020 10:11:42 +0800
-Subject: [PATCH 10/43] waylandsink: Support setting toplevel window position
+Subject: [PATCH 10/46] waylandsink: Support setting toplevel window position
 
 Needs hacked wayland server, tested with:
 	waylandsink render-rectangle="<100,200,300,400>"
@@ -15,7 +15,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  4 files changed, 46 insertions(+), 21 deletions(-)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index 9e55e4f..6647123 100644
+index 9e55e4f7..6647123f 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
 @@ -63,7 +63,8 @@ enum
@@ -87,7 +87,7 @@ index 9e55e4f..6647123 100644
    g_mutex_unlock (&sink->render_lock);
  }
 diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
-index 1c5fb07..9872c29 100644
+index 1c5fb070..9872c290 100644
 --- a/ext/wayland/gstwaylandsink.h
 +++ b/ext/wayland/gstwaylandsink.h
 @@ -69,6 +69,7 @@ struct _GstWaylandSink
@@ -99,7 +99,7 @@ index 1c5fb07..9872c29 100644
    struct wl_callback *callback;
  };
 diff --git a/ext/wayland/wlwindow.c b/ext/wayland/wlwindow.c
-index 57b5491..7814cb8 100644
+index 57b5491a..7814cb81 100644
 --- a/ext/wayland/wlwindow.c
 +++ b/ext/wayland/wlwindow.c
 @@ -79,7 +79,7 @@ handle_xdg_toplevel_configure (void *data, struct xdg_toplevel *xdg_toplevel,
@@ -177,7 +177,7 @@ index 57b5491..7814cb8 100644
    if (window->area_subsurface)
      wl_subsurface_set_position (window->area_subsurface, x, y);
 diff --git a/ext/wayland/wlwindow.h b/ext/wayland/wlwindow.h
-index 303c336..ba61d7a 100644
+index 303c336d..ba61d7a0 100644
 --- a/ext/wayland/wlwindow.h
 +++ b/ext/wayland/wlwindow.h
 @@ -83,7 +83,8 @@ GType gst_wl_window_get_type (void);

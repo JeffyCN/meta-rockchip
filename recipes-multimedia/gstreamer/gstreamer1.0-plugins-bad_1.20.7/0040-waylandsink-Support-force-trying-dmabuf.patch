@@ -1,0 +1,118 @@
+From e5aad072ce2033efed35d46097afcf4dc2314f62 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 14 Jun 2023 10:04:42 +0800
+Subject: [PATCH 40/46] waylandsink: Support force trying dmabuf
+
+Not all source plugins would provide dma feature for dmabuf.
+
+Set env WAYLANDSINK_FORCE_DMABUF=1 to enable it.
+
+Tested on RK3588 EVB with:
+export GST_MPP_VIDEODEC_DEFAULT_ARM_AFBC=1
+export WAYLANDSINK_FORCE_DMABUF=1
+gst-play-1.0 hevc.mp4 --videosink=waylandsink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 30 ++++++++++++++++++++++--------
+ ext/wayland/gstwaylandsink.h |  2 +-
+ 2 files changed, 23 insertions(+), 9 deletions(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 1e925b9e..2eba651a 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -282,6 +282,8 @@ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
+ static void
+ gst_wayland_sink_init (GstWaylandSink * sink)
+ {
++  const gchar *env;
++
+   g_mutex_init (&sink->display_lock);
+   g_mutex_init (&sink->render_lock);
+   g_cond_init (&sink->redraw_cond);
+@@ -290,6 +292,10 @@ gst_wayland_sink_init (GstWaylandSink * sink)
+   sink->layer = GST_WL_WINDOW_LAYER_NORMAL;
+   sink->alpha = 1.0;
+   sink->fill_mode = DEFAULT_FILL_MODE;
++
++  env = g_getenv ("WAYLANDSINK_FORCE_DMABUF");
++  if (env && !strcmp (env, "1"))
++    sink->force_dmabuf = TRUE;
+ }
+ 
+ static void
+@@ -614,6 +620,9 @@ gst_wayland_sink_fixup_caps (GstWaylandSink * sink, GstCaps * caps)
+     tmp_caps = gst_caps_from_string (
+         GST_VIDEO_CAPS_MAKE_WITH_FEATURES (GST_CAPS_FEATURE_MEMORY_DMABUF,
+             "NV12_10LE40"));
++    if (!sink->force_dmabuf)
++      gst_caps_set_features_simple (tmp_caps,
++          gst_caps_features_new_single (GST_CAPS_FEATURE_MEMORY_DMABUF));
+ 
+     /* NV15(AFBC) */
+     if (sink->display->support_afbc) {
+@@ -630,18 +639,22 @@ gst_wayland_sink_fixup_caps (GstWaylandSink * sink, GstCaps * caps)
+   if (sink->display->support_afbc) {
+     if (gst_wl_display_check_format_for_dmabuf (sink->display,
+             GST_VIDEO_FORMAT_NV12)) {
+-      tmp_caps = gst_caps_from_string (
+-          GST_VIDEO_CAPS_MAKE_WITH_FEATURES (GST_CAPS_FEATURE_MEMORY_DMABUF,
+-              "NV12"));
++      tmp_caps = gst_caps_from_string (GST_VIDEO_CAPS_MAKE ("NV12"));
++      if (!sink->force_dmabuf)
++        gst_caps_set_features_simple (tmp_caps,
++            gst_caps_features_new_single (GST_CAPS_FEATURE_MEMORY_DMABUF));
++
+       gst_caps_set_simple (tmp_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
+       gst_caps_append (caps, tmp_caps);
+     }
+ 
+     if (gst_wl_display_check_format_for_dmabuf (sink->display,
+             GST_VIDEO_FORMAT_NV16)) {
+-      tmp_caps = gst_caps_from_string (
+-          GST_VIDEO_CAPS_MAKE_WITH_FEATURES (GST_CAPS_FEATURE_MEMORY_DMABUF,
+-              "NV16"));
++      tmp_caps = gst_caps_from_string (GST_VIDEO_CAPS_MAKE ("NV16"));
++      if (!sink->force_dmabuf)
++        gst_caps_set_features_simple (tmp_caps,
++            gst_caps_features_new_single (GST_CAPS_FEATURE_MEMORY_DMABUF));
++
+       gst_caps_set_simple (tmp_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
+       gst_caps_append (caps, tmp_caps);
+     }
+@@ -783,6 +796,9 @@ gst_wayland_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+   use_dmabuf = gst_caps_features_contains (gst_caps_get_features (caps, 0),
+       GST_CAPS_FEATURE_MEMORY_DMABUF);
+ 
++  if (sink->force_dmabuf)
++    use_dmabuf = TRUE;
++
+   /* validate the format base on the memory type. */
+   if (use_dmabuf) {
+     if (!gst_wl_display_check_format_for_dmabuf (sink->display, format))
+@@ -791,8 +807,6 @@ gst_wayland_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+     goto unsupported_format;
+   }
+ 
+-  sink->use_dmabuf = use_dmabuf;
+-
+   return TRUE;
+ 
+ invalid_format:
+diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
+index 4f517f86..ef6872fc 100644
+--- a/ext/wayland/gstwaylandsink.h
++++ b/ext/wayland/gstwaylandsink.h
+@@ -56,7 +56,7 @@ struct _GstWaylandSink
+   GstWlDisplay *display;
+   GstWlWindow *window;
+   GstBufferPool *pool;
+-  gboolean use_dmabuf;
++  gboolean force_dmabuf;
+   guintptr window_handle;
+ 
+   gboolean video_info_changed;
+-- 
+2.20.1
+

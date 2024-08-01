@@ -1,0 +1,32 @@
+From c404ca206ee6809e8899400bec2a5191a6f33add Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 25 Mar 2024 12:14:30 +0800
+Subject: [PATCH 43/49] HACK: jpegparse: Allow duplicated or bad SOF marker
+
+Warn about it instead of error out.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst/jpegformat/gstjpegparse.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/gst/jpegformat/gstjpegparse.c b/gst/jpegformat/gstjpegparse.c
+index 3c549030..3f7569c0 100644
+--- a/gst/jpegformat/gstjpegparse.c
++++ b/gst/jpegformat/gstjpegparse.c
+@@ -830,11 +830,8 @@ gst_jpeg_parse_handle_frame (GstBaseParse * bparse, GstBaseParseFrame * frame,
+             parse->state |= GST_JPEG_PARSER_STATE_GOT_SOF;
+             parse->sof = marker - 0xc0;
+           } else {
+-            GST_ELEMENT_ERROR (parse, STREAM, FORMAT,
++            GST_ELEMENT_WARNING (parse, STREAM, FORMAT,
+                 ("Duplicated or bad SOF marker"), (NULL));
+-            gst_buffer_unmap (frame->buffer, &mapinfo);
+-            gst_jpeg_parse_reset (parse);
+-            return GST_FLOW_ERROR;
+           }
+         }
+         break;
+-- 
+2.20.1
+

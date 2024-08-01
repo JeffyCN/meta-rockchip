@@ -1,0 +1,39 @@
+From 015003e64de20b82c442ff425b8fdf623b670dd7 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 18 Jan 2022 12:20:10 +0800
+Subject: [PATCH 28/49] kmssink: Avoid double-closing shared gem handle
+
+The gem handle could be shared between multiple planes.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmsallocator.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/sys/kms/gstkmsallocator.c b/sys/kms/gstkmsallocator.c
+index ad56a17c..359646af 100644
+--- a/sys/kms/gstkmsallocator.c
++++ b/sys/kms/gstkmsallocator.c
+@@ -538,6 +538,7 @@ gst_kms_allocator_dmabuf_import (GstAllocator * allocator, gint * prime_fds,
+   GstKMSMemory *kmsmem;
+   GstMemory *mem;
+   gint i, ret;
++  guint32 handle = 0;
+ 
+   g_return_val_if_fail (n_planes <= GST_VIDEO_MAX_PLANES, FALSE);
+ 
+@@ -564,6 +565,11 @@ gst_kms_allocator_dmabuf_import (GstAllocator * allocator, gint * prime_fds,
+     struct drm_gem_close arg = { kmsmem->gem_handle[i], };
+     gint err;
+ 
++    if (handle == arg.handle)
++      break;
++
++    handle = arg.handle;
++
+     err = drmIoctl (alloc->priv->fd, DRM_IOCTL_GEM_CLOSE, &arg);
+     if (err)
+       GST_WARNING_OBJECT (allocator,
+-- 
+2.20.1
+

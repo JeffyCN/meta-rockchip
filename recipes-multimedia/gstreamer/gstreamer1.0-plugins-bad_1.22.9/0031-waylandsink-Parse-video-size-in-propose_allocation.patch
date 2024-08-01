@@ -1,0 +1,86 @@
+From d3bfab7cdbf2917bec4cbb702284ff3cefa84f06 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 11 May 2022 18:12:39 +0800
+Subject: [PATCH 31/49] waylandsink: Parse video size in propose_allocation()
+
+In some cases it would be called before set_caps().
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index c974dc03..5f99d6fe 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -782,11 +782,10 @@ gst_wayland_sink_get_caps (GstBaseSink * bsink, GstCaps * filter)
+ }
+ 
+ static GstBufferPool *
+-gst_wayland_create_pool (GstWaylandSink * self, GstCaps * caps)
++gst_wayland_create_pool (GstWaylandSink * self, GstCaps * caps, gsize size)
+ {
+   GstBufferPool *pool = NULL;
+   GstStructure *structure;
+-  gsize size = self->video_info.size;
+   GstAllocator *alloc;
+ 
+   pool = gst_wl_video_buffer_pool_new ();
+@@ -835,7 +834,7 @@ gst_wayland_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+   /* create a new pool for the new caps */
+   if (self->pool)
+     gst_object_unref (self->pool);
+-  self->pool = gst_wayland_create_pool (self, caps);
++  self->pool = gst_wayland_create_pool (self, caps, self->video_info.size);
+ 
+   use_dmabuf = gst_caps_features_contains (gst_caps_get_features (caps, 0),
+       GST_CAPS_FEATURE_MEMORY_DMABUF);
+@@ -874,10 +873,15 @@ gst_wayland_sink_propose_allocation (GstBaseSink * bsink, GstQuery * query)
+   GstBufferPool *pool = NULL;
+   gboolean need_pool;
+   GstAllocator *alloc;
++  GstVideoInfo info;
+   GstStructure *s;
+   gint value;
+ 
+   gst_query_parse_allocation (query, &caps, &need_pool);
++  if (!caps)
++    goto no_caps;
++  if (!gst_video_info_from_caps (&info, caps))
++    goto invalid_caps;
+ 
+   s = gst_caps_get_structure (caps, 0);
+   if (gst_structure_get_int (s, "arm-afbc", &value) && value) {
+@@ -886,9 +890,9 @@ gst_wayland_sink_propose_allocation (GstBaseSink * bsink, GstQuery * query)
+   }
+ 
+   if (need_pool)
+-    pool = gst_wayland_create_pool (self, caps);
++    pool = gst_wayland_create_pool (self, caps, info.size);
+ 
+-  gst_query_add_allocation_pool (query, pool, self->video_info.size, 2, 0);
++  gst_query_add_allocation_pool (query, pool, info.size, 2, 0);
+   if (pool)
+     g_object_unref (pool);
+ 
+@@ -899,6 +903,16 @@ gst_wayland_sink_propose_allocation (GstBaseSink * bsink, GstQuery * query)
+   g_object_unref (alloc);
+ 
+   return TRUE;
++no_caps:
++  {
++    GST_DEBUG_OBJECT (bsink, "no caps specified");
++    return FALSE;
++  }
++invalid_caps:
++  {
++    GST_DEBUG_OBJECT (bsink, "invalid caps specified");
++    return FALSE;
++  }
+ }
+ 
+ static void
+-- 
+2.20.1
+

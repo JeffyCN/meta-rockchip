@@ -1,7 +1,7 @@
 From 1fffa8389666114a405d70eed143fc311640a000 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 15 Jun 2020 10:03:01 +0800
-Subject: [PATCH 08/45] kmssink: Support setting plane zpos
+Subject: [PATCH 08/49] kmssink: Support setting plane zpos
 
 Set env KMSSINK_PLANE_ZPOS to specify plane zpos.
 Set env KMSSINK_PLANE_ON_TOP to set max zpos.
@@ -16,7 +16,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 79 insertions(+)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 09ca8b6..b25e599 100644
+index 09ca8b63..b25e5998 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -1024,6 +1024,76 @@ gst_kms_sink_update_plane_properties (GstKMSSink * self)
@@ -126,7 +126,7 @@ index 09ca8b6..b25e599 100644
    gst_poll_fd_init (&sink->pollfd);
    sink->poll = gst_poll_new (TRUE);
 diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
-index a769d9b..3b9eb7f 100644
+index a769d9b3..3b9eb7f2 100644
 --- a/sys/kms/gstkmssink.h
 +++ b/sys/kms/gstkmssink.h
 @@ -54,6 +54,7 @@ struct _GstKMSSink {

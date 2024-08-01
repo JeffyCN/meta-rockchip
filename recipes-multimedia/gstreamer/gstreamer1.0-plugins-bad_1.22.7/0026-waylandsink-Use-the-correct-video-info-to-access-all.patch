@@ -1,0 +1,73 @@
+From 36cb4bf33ae8da28600f735b4d5bc46b8823c4a4 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 22 Dec 2021 16:04:46 +0800
+Subject: [PATCH 26/49] waylandsink: Use the correct video info to access
+ allocated buffer
+
+The video info might changed after pool activated.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 10 +++++-----
+ ext/wayland/gstwaylandsink.h |  1 +
+ 2 files changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 6d2fabc6..032f190a 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -972,7 +972,6 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+   GstVideoCropMeta *crop;
+   GstVideoMeta *vmeta;
+   GstVideoFormat format;
+-  GstVideoInfo old_vinfo;
+   GstMemory *mem;
+   struct wl_buffer *wbuf = NULL;
+ 
+@@ -1039,7 +1038,6 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+   /* update video info from video meta */
+   mem = gst_buffer_peek_memory (buffer, 0);
+ 
+-  old_vinfo = self->video_info;
+   vmeta = gst_buffer_get_video_meta (buffer);
+   if (vmeta) {
+     gint i;
+@@ -1081,9 +1079,6 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+       GstVideoFrame src, dst;
+       GstVideoInfo src_info = self->video_info;
+ 
+-      /* rollback video info changes */
+-      self->video_info = old_vinfo;
+-
+       /* we don't know how to create a wl_buffer directly from the provided
+        * memory, so we have to copy the data to shm memory that we know how
+        * to handle... */
+@@ -1110,8 +1105,13 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
+         if (!gst_buffer_pool_set_config (self->pool, config) ||
+             !gst_buffer_pool_set_active (self->pool, TRUE))
+           goto activate_failed;
++
++        self->pool_vinfo = self->video_info;
+       }
+ 
++      /* rollback video info changes */
++      self->video_info = self->pool_vinfo;
++
+       ret = gst_buffer_pool_acquire_buffer (self->pool, &to_render, NULL);
+       if (ret != GST_FLOW_OK)
+         goto no_buffer;
+diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
+index 6211fd6c..de11859d 100644
+--- a/ext/wayland/gstwaylandsink.h
++++ b/ext/wayland/gstwaylandsink.h
+@@ -56,6 +56,7 @@ struct _GstWaylandSink
+ 
+   gboolean video_info_changed;
+   GstVideoInfo video_info;
++  GstVideoInfo pool_vinfo;
+   gboolean fullscreen;
+   GstWlWindowLayer layer;
+   gdouble alpha;
+-- 
+2.20.1
+
