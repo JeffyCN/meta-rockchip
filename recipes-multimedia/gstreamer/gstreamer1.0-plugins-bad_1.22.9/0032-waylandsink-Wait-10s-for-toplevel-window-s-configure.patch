@@ -1,0 +1,29 @@
+From f4538c755611b50f9965bf3936d437daca29d431 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 7 Jul 2022 14:43:31 +0800
+Subject: [PATCH 32/49] waylandsink: Wait 10s for toplevel window's configure
+ event
+
+The original 100ms is racy when system is under heavy load.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/wayland/gstwlwindow.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
+index 2a10322a..39efa93b 100644
+--- a/gst-libs/gst/wayland/gstwlwindow.c
++++ b/gst-libs/gst/wayland/gstwlwindow.c
+@@ -426,7 +426,7 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
+     wl_display_flush (gst_wl_display_get_display (display));
+ 
+     g_mutex_lock (&priv->configure_mutex);
+-    timeout = g_get_monotonic_time () + 100 * G_TIME_SPAN_MILLISECOND;
++    timeout = g_get_monotonic_time () + 10 * G_TIME_SPAN_SECOND;
+     while (!priv->configured) {
+       if (!g_cond_wait_until (&priv->configure_cond, &priv->configure_mutex,
+               timeout)) {
+-- 
+2.20.1
+

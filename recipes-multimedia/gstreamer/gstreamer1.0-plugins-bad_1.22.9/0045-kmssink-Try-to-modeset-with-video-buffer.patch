@@ -1,0 +1,96 @@
+From 98b99104d6acf49eefe6ce4952f6c3228d27c7e6 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 12 Apr 2024 16:44:09 +0800
+Subject: [PATCH 45/49] kmssink: Try to modeset with video buffer
+
+To avoid the initial black screen.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 24 ++++++++++++++++++------
+ 1 file changed, 18 insertions(+), 6 deletions(-)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 9c626294..3c222922 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -969,14 +969,13 @@ ensure_kms_allocator (GstKMSSink * self)
+ }
+ 
+ static gboolean
+-configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo)
++configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo, guint32 fb_id)
+ {
+   gboolean ret;
+   drmModeConnector *conn;
+   int err;
+   gint i;
+   drmModeModeInfo *mode, *preferred;
+-  guint32 fb_id;
+   GstKMSMemory *kmsmem;
+   GstVideoInfo *info;
+ 
+@@ -1004,6 +1003,10 @@ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo)
+       mode = &conn->modes[i];
+   }
+ 
++  if (mode && fb_id)
++    goto try_orig;
++
++retry_tmp:
+   if (preferred && (self->can_scale || !mode))
+     mode = preferred;
+ 
+@@ -1025,10 +1028,15 @@ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo)
+     goto bo_failed;
+   fb_id = kmsmem->fb_id;
+ 
++try_orig:
+   err = drmModeSetCrtc (self->fd, self->crtc_id, fb_id, 0, 0,
+       (uint32_t *) & self->conn_id, 1, mode);
+-  if (err)
++  if (err) {
++    if (!kmsmem)
++      goto retry_tmp;
++
+     goto modesetting_failed;
++  }
+ 
+   self->hdisplay = mode->hdisplay;
+   self->vdisplay = mode->vdisplay;
+@@ -2414,17 +2422,20 @@ gst_kms_sink_show_frame (GstVideoSink * vsink, GstBuffer * buf)
+   GST_TRACE_OBJECT (self, "displaying fb %d", fb_id);
+ 
+   GST_OBJECT_LOCK (self);
++  crop = gst_buffer_get_video_crop_meta (buffer);
+ 
+ retry_set_plane:
++
+   if (self->modesetting_enabled && !self->mode_valid) {
+-    if (!configure_mode_setting (self, vinfo))
++    if (!configure_mode_setting (self, vinfo,
++          (!crop && self->fullscreen) ? fb_id : 0))
+       goto modesetting_failed;
+ 
+     src.w = GST_VIDEO_SINK_WIDTH (self);
+     src.h = GST_VIDEO_SINK_HEIGHT (self);
+   }
+ 
+-  if ((crop = gst_buffer_get_video_crop_meta (buffer))) {
++  if (crop) {
+     GstVideoInfo cropped_vinfo = *vinfo;
+ 
+     video_width = src.w = cropped_vinfo.width = crop->width;
+@@ -2507,7 +2518,8 @@ retry_set_plane:
+       self->can_scale = FALSE;
+ 
+       if (self->modesetting_enabled) {
+-        if (!configure_mode_setting (self, vinfo))
++        if (!configure_mode_setting (self, vinfo,
++              (!crop && self->fullscreen) ? fb_id : 0))
+           goto modesetting_failed;
+ 
+         src.w = GST_VIDEO_SINK_WIDTH (self);
+-- 
+2.20.1
+

@@ -1,7 +1,7 @@
 From f0f9faeaa945bfe88d4fc18eb09c223c1d2815c6 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 5 Mar 2021 10:15:51 +0800
-Subject: [PATCH 19/43] waylandsink: Support window layer property
+Subject: [PATCH 19/46] waylandsink: Support window layer property
 
 Support setting top|normal|bottom window layer.
 
@@ -17,7 +17,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  4 files changed, 100 insertions(+), 5 deletions(-)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index 4577e6c..1bf4511 100644
+index 4577e6c3..1bf45115 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
 @@ -64,6 +64,7 @@ enum
@@ -129,7 +129,7 @@ index 4577e6c..1bf4511 100644
            G_CALLBACK (on_window_closed), sink, 0);
      }
 diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
-index 9872c29..3adddf2 100644
+index 9872c290..3adddf2a 100644
 --- a/ext/wayland/gstwaylandsink.h
 +++ b/ext/wayland/gstwaylandsink.h
 @@ -62,6 +62,7 @@ struct _GstWaylandSink
@@ -141,7 +141,7 @@ index 9872c29..3adddf2 100644
    gchar *display_name;
  
 diff --git a/ext/wayland/wlwindow.c b/ext/wayland/wlwindow.c
-index 7814cb8..7f7f3b6 100644
+index 7814cb81..7f7f3b61 100644
 --- a/ext/wayland/wlwindow.c
 +++ b/ext/wayland/wlwindow.c
 @@ -234,6 +234,42 @@ gst_wl_window_new_internal (GstWlDisplay * display, GMutex * render_lock)
@@ -205,7 +205,7 @@ index 7814cb8..7f7f3b6 100644
      /* Finally, commit the xdg_surface state as toplevel */
      window->configured = FALSE;
 diff --git a/ext/wayland/wlwindow.h b/ext/wayland/wlwindow.h
-index ba61d7a..97ea79e 100644
+index ba61d7a0..97ea79ea 100644
 --- a/ext/wayland/wlwindow.h
 +++ b/ext/wayland/wlwindow.h
 @@ -80,11 +80,20 @@ struct _GstWlWindowClass

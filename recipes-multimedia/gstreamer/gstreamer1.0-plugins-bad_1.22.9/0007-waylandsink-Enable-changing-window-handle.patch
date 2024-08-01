@@ -1,7 +1,7 @@
-From b689f3e2480ef0d3fb018f87904f22a5afefec16 Mon Sep 17 00:00:00 2001
+From 35b8986dc251dd55567b26d0f65a474fb4c83300 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 25 Dec 2018 16:20:35 +0800
-Subject: [PATCH 07/45] waylandsink: Enable changing window handle
+Subject: [PATCH 07/49] waylandsink: Enable changing window handle
 
 Changing window handle is dangerous, but we need this feature for:
 https://redmine.rockchip.com.cn/issues/184629
@@ -13,7 +13,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 18 insertions(+), 6 deletions(-)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index 2f116bf..87262ad 100644
+index 2f116bf5..87262ad8 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
 @@ -716,9 +716,10 @@ render_last_buffer (GstWaylandSink * self, gboolean redraw)
@@ -69,7 +69,7 @@ index 2f116bf..87262ad 100644
      } else {
        GST_ERROR_OBJECT (self, "Failed to find display handle, "
 diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
-index 3243d8c..46b5faa 100644
+index 3243d8cd..46b5faa8 100644
 --- a/ext/wayland/gstwaylandsink.h
 +++ b/ext/wayland/gstwaylandsink.h
 @@ -52,6 +52,7 @@ struct _GstWaylandSink

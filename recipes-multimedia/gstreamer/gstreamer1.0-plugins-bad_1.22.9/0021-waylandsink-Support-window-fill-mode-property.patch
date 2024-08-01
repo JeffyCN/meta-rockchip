@@ -1,21 +1,21 @@
-From 35be42e5fe2147d00fbcdbc9fde80dbfbfd15c30 Mon Sep 17 00:00:00 2001
+From 4d70fac89099ac7d3cee93acce8e86a00f04191d Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 30 Mar 2021 07:08:06 +0800
-Subject: [PATCH 21/45] waylandsink: Support window fill-mode property
+Subject: [PATCH 21/49] waylandsink: Support window fill-mode property
 
 Tested with:
 gst-launch-1.0 videotestsrc ! waylandsink fullscreen=1 fill-mode=crop
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- ext/wayland/gstwaylandsink.c       | 56 +++++++++++++++++++
- ext/wayland/gstwaylandsink.h       |  1 +
- gst-libs/gst/wayland/gstwlwindow.c | 87 ++++++++++++++++++++++++------
- gst-libs/gst/wayland/gstwlwindow.h | 11 ++++
- 4 files changed, 140 insertions(+), 15 deletions(-)
+ ext/wayland/gstwaylandsink.c       |  56 +++++++++++++++
+ ext/wayland/gstwaylandsink.h       |   1 +
+ gst-libs/gst/wayland/gstwlwindow.c | 111 ++++++++++++++++++++++++-----
+ gst-libs/gst/wayland/gstwlwindow.h |  11 +++
+ 4 files changed, 163 insertions(+), 16 deletions(-)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index 71b1c1c..f8032fc 100644
+index 71b1c1c1..f8032fcb 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
 @@ -63,9 +63,12 @@ enum
@@ -141,7 +141,7 @@ index 71b1c1c..f8032fc 100644
          if (self->last_buffer) {
            /* Resend video info to force resize video surface */
 diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
-index 0339ef7..7abfea1 100644
+index 0339ef77..7abfea1b 100644
 --- a/ext/wayland/gstwaylandsink.h
 +++ b/ext/wayland/gstwaylandsink.h
 @@ -59,6 +59,7 @@ struct _GstWaylandSink
@@ -153,7 +153,7 @@ index 0339ef7..7abfea1 100644
    gchar *display_name;
  
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index a102b65..19ffae0 100644
+index a102b655..61ec5255 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -66,14 +66,16 @@ typedef struct _GstWlWindowPrivate
@@ -195,7 +195,31 @@ index a102b65..19ffae0 100644
  static void
  gst_wl_window_set_config (GstWlWindow * self, const char *config)
  {
-@@ -494,21 +509,29 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
+@@ -400,7 +415,22 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
+     /* set the initial size to be the same as the reported video size */
+     gint width =
+         gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
+-    gst_wl_window_set_render_rectangle (self, 0, 0, width, info->height, FALSE);
++    switch (priv->buffer_transform) {
++      case WL_OUTPUT_TRANSFORM_NORMAL:
++      case WL_OUTPUT_TRANSFORM_180:
++      case WL_OUTPUT_TRANSFORM_FLIPPED:
++      case WL_OUTPUT_TRANSFORM_FLIPPED_180:
++        gst_wl_window_set_render_rectangle (self, 0, 0,
++            width, info->height, FALSE);
++        break;
++      case WL_OUTPUT_TRANSFORM_90:
++      case WL_OUTPUT_TRANSFORM_270:
++      case WL_OUTPUT_TRANSFORM_FLIPPED_90:
++      case WL_OUTPUT_TRANSFORM_FLIPPED_270:
++        gst_wl_window_set_render_rectangle (self, 0, 0,
++            info->height, width, FALSE);
++        break;
++    }
+   }
+ 
+   return self;
+@@ -494,21 +524,29 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
    GstVideoRectangle src = { 0, };
    GstVideoRectangle dst = { 0, };
    GstVideoRectangle res;
@@ -230,7 +254,7 @@ index a102b65..19ffae0 100644
        break;
    }
  
-@@ -517,10 +540,44 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
+@@ -517,10 +555,51 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
  
    /* center the video_subsurface inside area_subsurface */
    if (priv->video_viewport) {
@@ -273,13 +297,20 @@ index a102b65..19ffae0 100644
 +      res = dst;
 +    }
 +
-+    wp_viewport_set_source (priv->video_viewport,
-+        wl_fixed_from_int (video_x), wl_fixed_from_int (video_y),
-+        wl_fixed_from_int (video_width), wl_fixed_from_int (video_height));
++    if (!swapped) {
++      wp_viewport_set_source (priv->video_viewport,
++          wl_fixed_from_int (video_x), wl_fixed_from_int (video_y),
++          wl_fixed_from_int (video_width), wl_fixed_from_int (video_height));
++    } else {
++      wp_viewport_set_source (priv->video_viewport,
++          wl_fixed_from_int (video_y), wl_fixed_from_int (video_x),
++          wl_fixed_from_int (video_height), wl_fixed_from_int (video_width));
++    }
++
      wp_viewport_set_destination (priv->video_viewport, res.w, res.h);
    } else {
      gst_video_center_rect (&src, &dst, &res, FALSE);
-@@ -566,8 +623,8 @@ gst_wl_window_render (GstWlWindow * self, GstWlBuffer * buffer,
+@@ -566,8 +645,8 @@ gst_wl_window_render (GstWlWindow * self, GstWlBuffer * buffer,
    GstWlWindowPrivate *priv = gst_wl_window_get_instance_private (self);
  
    if (G_UNLIKELY (info)) {
@@ -290,7 +321,7 @@ index a102b65..19ffae0 100644
      priv->video_width = info->width;
      priv->video_height = info->height;
  
-@@ -681,14 +738,14 @@ gst_wl_window_update_geometry (GstWlWindow * self)
+@@ -681,14 +760,14 @@ gst_wl_window_update_geometry (GstWlWindow * self)
    if (!priv->configured)
      return;
  
@@ -308,7 +339,7 @@ index a102b65..19ffae0 100644
  }
  
 diff --git a/gst-libs/gst/wayland/gstwlwindow.h b/gst-libs/gst/wayland/gstwlwindow.h
-index 2672e0f..1571ece 100644
+index 2672e0f0..1571eceb 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.h
 +++ b/gst-libs/gst/wayland/gstwlwindow.h
 @@ -35,11 +35,22 @@ typedef enum

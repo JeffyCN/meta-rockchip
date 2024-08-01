@@ -1,7 +1,7 @@
 From 7effc67c31b9d01459a301b7f3ca0c8961c8835d Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 17 Nov 2020 11:51:40 +0800
-Subject: [PATCH 13/43] gstjpegparse: Allow parsebin to use it for autoplugging
+Subject: [PATCH 13/46] gstjpegparse: Allow parsebin to use it for autoplugging
 
 Add "Codec" to Klass and increase rank.
 
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/gst/jpegformat/gstjpegparse.c b/gst/jpegformat/gstjpegparse.c
-index 5231879..7587c2b 100644
+index 52318796..7587c2b4 100644
 --- a/gst/jpegformat/gstjpegparse.c
 +++ b/gst/jpegformat/gstjpegparse.c
 @@ -89,7 +89,7 @@ static GstFlowReturn gst_jpeg_parse_pre_push_frame (GstBaseParse * bparse,

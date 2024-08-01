@@ -1,7 +1,7 @@
 From c4ee01e62f13964c30f061e2f9c10e01c00da3f6 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 23 Oct 2020 11:11:11 +0800
-Subject: [PATCH 12/43] mpegtsdemux: Create new PCR group for big gap
+Subject: [PATCH 12/46] mpegtsdemux: Create new PCR group for big gap
 
 Currently it would try to reuse the current group and handle the gap by
 just adding 500ms to pcroffset.
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 11 insertions(+)
 
 diff --git a/gst/mpegtsdemux/mpegtspacketizer.c b/gst/mpegtsdemux/mpegtspacketizer.c
-index 2d6e404..2886a0c 100644
+index 2d6e404b..2886a0c6 100644
 --- a/gst/mpegtsdemux/mpegtspacketizer.c
 +++ b/gst/mpegtsdemux/mpegtspacketizer.c
 @@ -1994,6 +1994,7 @@ record_pcr (MpegTSPacketizer2 * packetizer, MpegTSPCR * pcrtable,

@@ -1,7 +1,7 @@
-From d7205da625ee01547e8e1f9d35ea779ea23e7298 Mon Sep 17 00:00:00 2001
+From 8ca414a3bcb82611c575e151c7ce5c6e850b849f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 19 Jun 2020 15:16:42 +0800
-Subject: [PATCH 10/45] HACK: gstmpegvideoparse: Split every picture
+Subject: [PATCH 10/49] HACK: gstmpegvideoparse: Split every picture
 
 Some decoders(e.g. Rockchip MPP) need it.
 
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 2 insertions(+)
 
 diff --git a/gst/videoparsers/gstmpegvideoparse.c b/gst/videoparsers/gstmpegvideoparse.c
-index f8ef31a..2a70f7d 100644
+index f8ef31a1..2a70f7d1 100644
 --- a/gst/videoparsers/gstmpegvideoparse.c
 +++ b/gst/videoparsers/gstmpegvideoparse.c
 @@ -583,6 +583,7 @@ gst_mpegv_parse_process_sc (GstMpegvParse * mpvparse,

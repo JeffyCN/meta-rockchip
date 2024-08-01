@@ -1,0 +1,417 @@
+From d0be2d06691b6c08f8ec409543002ab9132423bc Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 21 Apr 2021 04:44:38 +0800
+Subject: [PATCH 24/49] kmssink: Support NV12_10LE40 NV16_10LE40 and
+ NV12|NV12_10LE40|NV16 (AFBC)
+
+Support using NV12_10LE40 NV16_10LE40 and ARM AFBC compressed format.
+
+NOTE:
+Those formats only supported on a few planes of a few chips.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmsallocator.c |  49 +++++++++++++-
+ sys/kms/gstkmssink.c      | 139 +++++++++++++++++++++++++++++++++++++-
+ sys/kms/gstkmsutils.c     |   9 +++
+ sys/kms/gstkmsutils.h     |  50 ++++++++++++++
+ 4 files changed, 243 insertions(+), 4 deletions(-)
+
+diff --git a/sys/kms/gstkmsallocator.c b/sys/kms/gstkmsallocator.c
+index 6687f3b0..ad56a17c 100644
+--- a/sys/kms/gstkmsallocator.c
++++ b/sys/kms/gstkmsallocator.c
+@@ -36,6 +36,7 @@
+ 
+ /* it needs to be below because is internal to libdrm */
+ #include <drm.h>
++#include <drm_fourcc.h>
+ 
+ #include <gst/allocators/gstdmabuf.h>
+ 
+@@ -416,7 +417,7 @@ static gboolean
+ gst_kms_allocator_add_fb (GstKMSAllocator * alloc, GstKMSMemory * kmsmem,
+     gsize in_offsets[GST_VIDEO_MAX_PLANES], GstVideoInfo * vinfo)
+ {
+-  gint i, ret;
++  gint i, ret = -1;
+   gint num_planes = GST_VIDEO_INFO_N_PLANES (vinfo);
+   guint32 w, h, fmt, bo_handles[4] = { 0, };
+   guint32 pitches[4] = { 0, };
+@@ -442,8 +443,50 @@ gst_kms_allocator_add_fb (GstKMSAllocator * alloc, GstKMSMemory * kmsmem,
+   GST_DEBUG_OBJECT (alloc, "bo handles: %d, %d, %d, %d", bo_handles[0],
+       bo_handles[1], bo_handles[2], bo_handles[3]);
+ 
+-  ret = drmModeAddFB2 (alloc->priv->fd, w, h, fmt, bo_handles, pitches,
+-      offsets, &kmsmem->fb_id, 0);
++  if (GST_VIDEO_INFO_IS_AFBC (vinfo)) {
++    guint64 modifiers[4] = { 0 };
++
++    for (i = 0; i < num_planes; i++)
++      modifiers[i] = DRM_AFBC_MODIFIER;
++
++    if (fmt == DRM_FORMAT_NV12 || fmt == DRM_FORMAT_NV12_10 ||
++        fmt == DRM_FORMAT_NV16) {
++      /* The newer kernel might use new formats instead */
++      guint32 _handles[4] = { bo_handles[0], 0, };
++      guint32 _pitches[4] = { pitches[0], 0, };
++      guint32 _offsets[4] = { offsets[0], 0, };
++      guint64 _modifiers[4] = { modifiers[0], 0, };
++      guint32 _fmt;
++
++      if (fmt == DRM_FORMAT_NV12) {
++        _fmt = DRM_FORMAT_YUV420_8BIT;
++        /* The bpp of YUV420_8BIT is 12 */
++        _pitches[0] *= 1.5;
++      } else if (fmt == DRM_FORMAT_NV12_10) {
++        _fmt = DRM_FORMAT_YUV420_10BIT;
++        /* The bpp of YUV420_10BIT is 15 */
++        _pitches[0] *= 1.5;
++      } else {
++        _fmt = DRM_FORMAT_YUYV;
++        /* The bpp of YUYV (AFBC) is 16 */
++        _pitches[0] *= 2;
++      }
++
++      ret = drmModeAddFB2WithModifiers (alloc->priv->fd, w, h, _fmt, _handles,
++          _pitches, _offsets, _modifiers, &kmsmem->fb_id,
++          DRM_MODE_FB_MODIFIERS);
++    }
++
++    if (ret)
++      ret = drmModeAddFB2WithModifiers (alloc->priv->fd, w, h, fmt, bo_handles,
++          pitches, offsets, modifiers, &kmsmem->fb_id, DRM_MODE_FB_MODIFIERS);
++  } else {
++    ret = drmModeAddFB2 (alloc->priv->fd, w, h, fmt, bo_handles, pitches,
++        offsets, &kmsmem->fb_id, 0);
++    if (ret && fmt == DRM_FORMAT_NV12_10)
++      ret = drmModeAddFB2 (alloc->priv->fd, w, h, DRM_FORMAT_NV15, bo_handles,
++          pitches, offsets, &kmsmem->fb_id, 0);
++  }
+   if (ret) {
+     GST_ERROR_OBJECT (alloc, "Failed to bind to framebuffer: %s (%d)",
+         g_strerror (errno), errno);
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index b25e5998..eb1ffb59 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -822,6 +822,84 @@ modesetting_failed:
+   }
+ }
+ 
++static void
++check_afbc (GstKMSSink * self, drmModePlane * plane, guint32 drmfmt,
++    gboolean * linear, gboolean * afbc)
++{
++  drmModeObjectPropertiesPtr props;
++  drmModePropertyBlobPtr blob;
++  drmModePropertyPtr prop;
++  drmModeResPtr res;
++  struct drm_format_modifier_blob *header;
++  struct drm_format_modifier *modifiers;
++  guint32 *formats;
++  guint64 value = 0;
++  gint i, j;
++
++  *linear = *afbc = FALSE;
++
++  res = drmModeGetResources (self->fd);
++  if (!res)
++    return;
++
++  props = drmModeObjectGetProperties (self->fd, plane->plane_id,
++      DRM_MODE_OBJECT_PLANE);
++  if (!props) {
++    drmModeFreeResources (res);
++    return;
++  }
++
++  for (i = 0; i < props->count_props && !value; i++) {
++    prop = drmModeGetProperty (self->fd, props->props[i]);
++    if (!prop)
++      continue;
++
++    if (!strcmp (prop->name, "IN_FORMATS"))
++      value = props->prop_values[i];
++
++    drmModeFreeProperty (prop);
++  }
++
++  drmModeFreeObjectProperties (props);
++  drmModeFreeResources (res);
++
++  /* No modifiers */
++  if (!value) {
++    *linear = TRUE;
++    return;
++  }
++
++  blob = drmModeGetPropertyBlob (self->fd, value);
++  if (!blob)
++    return;
++
++  header = blob->data;
++  modifiers = (struct drm_format_modifier *)
++      ((gchar *) header + header->modifiers_offset);
++  formats = (guint32 *) ((gchar *) header + header->formats_offset);
++
++  for (i = 0; i < header->count_formats; i++) {
++    if (formats[i] != drmfmt)
++      continue;
++
++    for (j = 0; j < header->count_modifiers; j++) {
++      struct drm_format_modifier *mod = &modifiers[j];
++
++      if ((i < mod->offset) || (i > mod->offset + 63))
++        continue;
++      if (!(mod->formats & (1 << (i - mod->offset))))
++        continue;
++
++      if (mod->modifier == DRM_AFBC_MODIFIER)
++        *afbc = TRUE;
++      else if (mod->modifier == DRM_FORMAT_MOD_LINEAR)
++        *linear = TRUE;
++    }
++  }
++
++  drmModeFreePropertyBlob (blob);
++}
++
+ static gboolean
+ ensure_allowed_caps (GstKMSSink * self, drmModeConnector * conn,
+     drmModePlane * plane, drmModeRes * res)
+@@ -855,7 +933,21 @@ ensure_allowed_caps (GstKMSSink * self, drmModeConnector * conn,
+       mode = &conn->modes[i];
+ 
+     for (j = 0; j < plane->count_formats; j++) {
+-      fmt = gst_video_format_from_drm (plane->formats[j]);
++      gboolean linear = FALSE, afbc = FALSE;
++
++      check_afbc (self, plane, plane->formats[j], &linear, &afbc);
++
++      if (plane->formats[j] == DRM_FORMAT_YUV420_8BIT)
++        fmt = GST_VIDEO_FORMAT_NV12;
++      else if (plane->formats[j] == DRM_FORMAT_YUV420_10BIT)
++        fmt = GST_VIDEO_FORMAT_NV12_10LE40;
++      else if (plane->formats[j] == DRM_FORMAT_NV20)
++        fmt = GST_VIDEO_FORMAT_NV16_10LE40;
++      else if (afbc && plane->formats[j] == DRM_FORMAT_YUYV)
++        fmt = GST_VIDEO_FORMAT_NV16;
++      else
++        fmt = gst_video_format_from_drm (plane->formats[j]);
++
+       if (fmt == GST_VIDEO_FORMAT_UNKNOWN) {
+         GST_INFO_OBJECT (self, "ignoring format %" GST_FOURCC_FORMAT,
+             GST_FOURCC_ARGS (plane->formats[j]));
+@@ -880,6 +972,16 @@ ensure_allowed_caps (GstKMSSink * self, drmModeConnector * conn,
+       if (!caps)
+         continue;
+ 
++      if (afbc) {
++        GstCaps *afbc_caps = gst_caps_copy (caps);
++        gst_caps_set_simple (afbc_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
++
++        if (linear)
++          gst_caps_append (caps, afbc_caps);
++        else
++          gst_caps_replace (&caps, afbc_caps);
++      }
++
+       tmp_caps = gst_caps_merge (tmp_caps, caps);
+     }
+ 
+@@ -1525,11 +1627,23 @@ gst_kms_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+ {
+   GstKMSSink *self;
+   GstVideoInfo vinfo;
++  GstStructure *s;
++  gint value;
+ 
+   self = GST_KMS_SINK (bsink);
+ 
+   if (!gst_video_info_from_caps (&vinfo, caps))
+     goto invalid_format;
++
++  /* parse AFBC from caps */
++  s = gst_caps_get_structure (caps, 0);
++  if (gst_structure_get_int (s, "arm-afbc", &value)) {
++    if (value)
++      GST_VIDEO_INFO_SET_AFBC (&vinfo);
++    else
++      GST_VIDEO_INFO_UNSET_AFBC (&vinfo);
++  }
++
+   self->vinfo = vinfo;
+ 
+   if (!gst_kms_sink_calculate_display_ratio (self, &vinfo,
+@@ -1604,7 +1718,9 @@ gst_kms_sink_propose_allocation (GstBaseSink * bsink, GstQuery * query)
+   gboolean need_pool;
+   GstVideoInfo vinfo;
+   GstBufferPool *pool;
++  GstStructure *s;
+   gsize size;
++  gint value;
+ 
+   self = GST_KMS_SINK (bsink);
+ 
+@@ -1616,6 +1732,10 @@ gst_kms_sink_propose_allocation (GstBaseSink * bsink, GstQuery * query)
+   if (!gst_video_info_from_caps (&vinfo, caps))
+     goto invalid_caps;
+ 
++  s = gst_caps_get_structure (caps, 0);
++  if (gst_structure_get_int (s, "arm-afbc", &value) && value)
++    goto afbc_caps;
++
+   size = GST_VIDEO_INFO_SIZE (&vinfo);
+ 
+   pool = NULL;
+@@ -1654,6 +1774,11 @@ invalid_caps:
+     GST_DEBUG_OBJECT (bsink, "invalid caps specified");
+     return FALSE;
+   }
++afbc_caps:
++  {
++    GST_DEBUG_OBJECT (bsink, "no allocation for AFBC");
++    return FALSE;
++  }
+ no_pool:
+   {
+     /* Already warned in create_pool */
+@@ -1886,6 +2011,11 @@ gst_kms_sink_copy_to_dumb_buffer (GstKMSSink * self, GstVideoInfo * vinfo,
+   gboolean success;
+   GstBuffer *buf = NULL;
+ 
++  if (GST_VIDEO_INFO_IS_AFBC (vinfo)) {
++    GST_ERROR_OBJECT (self, "unable to copy AFBC");
++    return NULL;
++  }
++
+   if (!ensure_internal_pool (self, vinfo, inbuf))
+     goto bail;
+ 
+@@ -2066,6 +2196,10 @@ retry_set_plane:
+   gst_kms_push_hdr_infoframe (self, FALSE);
+ #endif
+ 
++  if (GST_VIDEO_INFO_IS_AFBC (vinfo))
++    /* The AFBC's width should align to 4 */
++    src.w &= ~3;
++
+   GST_TRACE_OBJECT (self,
+       "drmModeSetPlane at (%i,%i) %ix%i sourcing at (%i,%i) %ix%i",
+       result.x, result.y, result.w, result.h, src.x, src.y, src.w, src.h);
+@@ -2155,6 +2289,9 @@ gst_kms_sink_drain (GstKMSSink * self)
+ 
+     dumb_buf = gst_kms_sink_copy_to_dumb_buffer (self, &self->last_vinfo,
+         parent_meta->buffer);
++    if (!dumb_buf)
++      dumb_buf = gst_buffer_ref (self->last_buffer);
++
+     last_buf = self->last_buffer;
+     self->last_buffer = dumb_buf;
+ 
+diff --git a/sys/kms/gstkmsutils.c b/sys/kms/gstkmsutils.c
+index cc719fcd..a0d52ef3 100644
+--- a/sys/kms/gstkmsutils.c
++++ b/sys/kms/gstkmsutils.c
+@@ -68,6 +68,9 @@ static const struct
+   DEF_FMT (YUV422, Y42B),
+   DEF_FMT (NV61, NV61),
+   DEF_FMT (NV16, NV16),
++  DEF_FMT (NV12_10, NV12_10LE40),
++  DEF_FMT (NV15, NV12_10LE40),
++  DEF_FMT (NV20, NV16_10LE40),
+   DEF_FMT (UYVY, UYVY),
+   DEF_FMT (YVYU, YVYU),
+   DEF_FMT (YUYV, YUY2),
+@@ -129,6 +132,9 @@ gst_drm_bpp_from_drm (guint32 drmfmt)
+       bpp = 8;
+       break;
+     case DRM_FORMAT_P010:
++    case DRM_FORMAT_NV12_10:
++    case DRM_FORMAT_NV15:
++    case DRM_FORMAT_NV20:
+       bpp = 10;
+       break;
+     case DRM_FORMAT_UYVY:
+@@ -161,6 +167,8 @@ gst_drm_height_from_drm (guint32 drmfmt, guint32 height)
+     case DRM_FORMAT_YVU420:
+     case DRM_FORMAT_YUV422:
+     case DRM_FORMAT_NV12:
++    case DRM_FORMAT_NV12_10:
++    case DRM_FORMAT_NV15:
+     case DRM_FORMAT_NV21:
+     case DRM_FORMAT_P010:
+     case DRM_FORMAT_P016:
+@@ -168,6 +176,7 @@ gst_drm_height_from_drm (guint32 drmfmt, guint32 height)
+       break;
+     case DRM_FORMAT_NV16:
+     case DRM_FORMAT_NV61:
++    case DRM_FORMAT_NV20:
+       ret = height * 2;
+       break;
+     case DRM_FORMAT_NV24:
+diff --git a/sys/kms/gstkmsutils.h b/sys/kms/gstkmsutils.h
+index 65700706..500405a1 100644
+--- a/sys/kms/gstkmsutils.h
++++ b/sys/kms/gstkmsutils.h
+@@ -30,6 +30,56 @@
+ 
+ G_BEGIN_DECLS
+ 
++#ifndef DRM_FORMAT_NV12_10
++#define DRM_FORMAT_NV12_10 fourcc_code('N', 'A', '1', '2')
++#endif
++
++#ifndef DRM_FORMAT_NV15
++#define DRM_FORMAT_NV15 fourcc_code('N', 'V', '1', '5')
++#endif
++
++#ifndef DRM_FORMAT_NV20
++#define DRM_FORMAT_NV20 fourcc_code('N', 'V', '2', '0')
++#endif
++
++#ifndef DRM_FORMAT_YUV420_8BIT
++#define DRM_FORMAT_YUV420_8BIT fourcc_code('Y', 'U', '0', '8')
++#endif
++
++#ifndef DRM_FORMAT_YUV420_10BIT
++#define DRM_FORMAT_YUV420_10BIT fourcc_code('Y', 'U', '1', '0')
++#endif
++
++#ifndef DRM_FORMAT_MOD_VENDOR_ARM
++#define DRM_FORMAT_MOD_VENDOR_ARM 0x08
++#endif
++
++#ifndef DRM_FORMAT_MOD_ARM_AFBC
++#define DRM_FORMAT_MOD_ARM_AFBC(__afbc_mode) fourcc_mod_code(ARM, __afbc_mode)
++#endif
++
++#ifndef AFBC_FORMAT_MOD_BLOCK_SIZE_16x16
++#define AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 (1ULL)
++#endif
++
++#ifndef AFBC_FORMAT_MOD_SPARSE
++#define AFBC_FORMAT_MOD_SPARSE (((__u64)1) << 6)
++#endif
++
++#define DRM_AFBC_MODIFIER \
++  (DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_SPARSE) | \
++   DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16))
++
++#ifndef GST_VIDEO_FLAG_ARM_AFBC
++#define GST_VIDEO_FLAG_ARM_AFBC (1UL << 31)
++#define GST_VIDEO_INFO_SET_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_SET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#define GST_VIDEO_INFO_UNSET_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_UNSET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#define GST_VIDEO_INFO_IS_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_IS_SET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#endif
++
+ GstVideoFormat gst_video_format_from_drm (guint32 drmfmt);
+ guint32        gst_drm_format_from_video (GstVideoFormat fmt);
+ guint32        gst_drm_bpp_from_drm (guint32 drmfmt);
+-- 
+2.20.1
+

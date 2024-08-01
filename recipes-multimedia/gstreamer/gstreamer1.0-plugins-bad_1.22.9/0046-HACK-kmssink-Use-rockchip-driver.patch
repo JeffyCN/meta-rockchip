@@ -1,0 +1,38 @@
+From 68a93592bd6238e16895d35d6b96f4587d162869 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 12 Apr 2024 17:14:40 +0800
+Subject: [PATCH 46/49] HACK: kmssink: Use rockchip driver
+
+To speed it up.
+
+Tested on RK3588 EVB with:
+gst-play-1.0 demo.mp4 --videosink=kmssink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index 3c222922..195bdb83 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -634,11 +634,15 @@ gst_kms_sink_video_overlay_init (GstVideoOverlayInterface * iface)
+ static int
+ kms_open (gchar ** driver)
+ {
++#if 0
+   static const char *drivers[] = { "i915", "radeon", "nouveau", "vmwgfx",
+     "exynos", "amdgpu", "imx-drm", "imx-lcdif", "rockchip", "atmel-hlcdc",
+     "msm", "xlnx", "vc4", "meson", "stm", "sun4i-drm", "mxsfb-drm", "tegra",
+     "tidss", "xilinx_drm",      /* DEPRECATED. Replaced by xlnx */
+   };
++#else
++  static const char *drivers[] = { "rockchip", };
++#endif
+   int i, fd = -1;
+ 
+   for (i = 0; i < G_N_ELEMENTS (drivers); i++) {
+-- 
+2.20.1
+

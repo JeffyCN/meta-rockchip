@@ -1,0 +1,28 @@
+From 3f331b25ff0f5d8e8af85352302d29785970010d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 27 Dec 2021 21:37:06 +0800
+Subject: [PATCH 27/46] waylandsink: Prefer to use waylandsink
+
+Increase rank to primary.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index 934464c0..04f1e2a0 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -128,7 +128,7 @@ G_DEFINE_TYPE_WITH_CODE (GstWaylandSink, gst_wayland_sink, GST_TYPE_VIDEO_SINK,
+         gst_wayland_sink_videooverlay_init)
+     G_IMPLEMENT_INTERFACE (GST_TYPE_WAYLAND_VIDEO,
+         gst_wayland_sink_waylandvideo_init));
+-GST_ELEMENT_REGISTER_DEFINE (waylandsink, "waylandsink", GST_RANK_MARGINAL,
++GST_ELEMENT_REGISTER_DEFINE (waylandsink, "waylandsink", GST_RANK_PRIMARY,
+     GST_TYPE_WAYLAND_SINK);
+ 
+ /* A tiny GstVideoBufferPool subclass that modify the options to remove
+-- 
+2.20.1
+
