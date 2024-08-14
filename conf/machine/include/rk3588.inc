@@ -8,7 +8,6 @@ RK_SOC_FAMILY := "rk3588"
 
 PREFERRED_VERSION_linux-rockchip := "5.10%"
 LINUXLIBCVERSION := "5.10-custom%"
-OLDEST_KERNEL := "5.10"
 
 KBUILD_DEFCONFIG := "rk3588_linux_defconfig"
 
