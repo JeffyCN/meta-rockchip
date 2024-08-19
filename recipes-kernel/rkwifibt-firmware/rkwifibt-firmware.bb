@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://${RKBASE}/licenses/LICENSE.rockchip;md5=d63890e209bf0
 
 inherit local-git
 
-SRCREV = "fe32b4846ce7fc14a73a9922e397b906fadd7868"
+SRCREV = "f4b13f7af66eaa023f942150fb3b1c6e79ddb90e"
 SRC_URI = "git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkwifibt;"
 
 S = "${WORKDIR}/git"
@@ -23,6 +23,11 @@ do_install() {
 		${D}/${nonarch_base_libdir}/firmware/
 	ln -rsf ${D}/${nonarch_base_libdir}/firmware/*rtl*_* \
 		${D}/${nonarch_base_libdir}/firmware/rtlbt/
+
+	if [ -r ${nonarch_base_libdir}/firmware/nvram_ap6275p.txt ]; then
+		ln -sf nvram_ap6275p.txt \
+			${nonarch_base_libdir}/firmware/nvram_AP6275P.txt
+	fi
 }
 
 PACKAGES =+ " \
@@ -84,6 +89,7 @@ FILES:${PN}-ap6275p-wifi = " \
 	${nonarch_base_libdir}/firmware/clm_bcm43752a2_pcie_ag.blob \
 	${nonarch_base_libdir}/firmware/fw_bcm43752a2_pcie_ag.bin \
 	${nonarch_base_libdir}/firmware/nvram_AP6275P.txt \
+	${nonarch_base_libdir}/firmware/nvram_ap6275p.txt \
 "
 FILES:${PN}-ap6275s-wifi = " \
 	${nonarch_base_libdir}/firmware/fw_bcm43752a2_ag_apsta.bin \
