@@ -1,0 +1,27 @@
+From a8e61090dc36693fba3cd15c50778b8728def93c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 18 Mar 2020 10:12:31 +0800
+Subject: [PATCH 10/22] glupload: dmabuf: prefer DirectDmabufExternal uploader
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/gl/gstglupload.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gst-libs/gst/gl/gstglupload.c b/gst-libs/gst/gl/gstglupload.c
+index d91898a..3788bb9 100644
+--- a/gst-libs/gst/gl/gstglupload.c
++++ b/gst-libs/gst/gl/gstglupload.c
+@@ -3204,8 +3204,8 @@ static const UploadMethod *upload_methods[] = {
+   &_passthrough_upload,
+   &_gl_memory_upload,
+ #if GST_GL_HAVE_DMABUF
+-  &_direct_dma_buf_upload,
+   &_direct_dma_buf_external_upload,
++  &_direct_dma_buf_upload,
+   &_dma_buf_upload,
+ #endif
+ #if GST_GL_HAVE_VIV_DIRECTVIV
+-- 
+2.20.1
+

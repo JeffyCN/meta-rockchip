@@ -1,0 +1,48 @@
+From 6d71556383d1fa6857030cf7992b2777fd7c4e89 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 29 Mar 2024 17:29:09 +0800
+Subject: [PATCH 36/40] waylandsink: Support NV24 shm format
+
+Tested with:
+gst-launch-1.0 videotestsrc ! 'video/x-raw,format=NV24' ! waylandsink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/wayland/gstwlvideoformat.c | 1 +
+ gst-libs/gst/wayland/gstwlvideoformat.h | 4 ++--
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/gst-libs/gst/wayland/gstwlvideoformat.c b/gst-libs/gst/wayland/gstwlvideoformat.c
+index ffe4dd6..412e8de 100644
+--- a/gst-libs/gst/wayland/gstwlvideoformat.c
++++ b/gst-libs/gst/wayland/gstwlvideoformat.c
+@@ -86,6 +86,7 @@ static const wl_VideoFormat wl_formats[] = {
+   {WL_SHM_FORMAT_NV16, DRM_FORMAT_NV16, GST_VIDEO_FORMAT_NV16},
+   {-1, DRM_FORMAT_NV20, GST_VIDEO_FORMAT_NV16_10LE40},
+   {WL_SHM_FORMAT_NV61, DRM_FORMAT_NV61, GST_VIDEO_FORMAT_NV61},
++  {WL_SHM_FORMAT_NV24, DRM_FORMAT_NV24, GST_VIDEO_FORMAT_NV24},
+   {WL_SHM_FORMAT_P010, DRM_FORMAT_P010, GST_VIDEO_FORMAT_P010_10LE},
+   {WL_SHM_FORMAT_YUV410, DRM_FORMAT_YUV410, GST_VIDEO_FORMAT_YUV9},
+   {WL_SHM_FORMAT_YVU410, DRM_FORMAT_YVU410, GST_VIDEO_FORMAT_YVU9},
+diff --git a/gst-libs/gst/wayland/gstwlvideoformat.h b/gst-libs/gst/wayland/gstwlvideoformat.h
+index 79c3be2..6eb1ce9 100644
+--- a/gst-libs/gst/wayland/gstwlvideoformat.h
++++ b/gst-libs/gst/wayland/gstwlvideoformat.h
+@@ -38,12 +38,12 @@ G_BEGIN_DECLS
+  */
+ #if G_BYTE_ORDER == G_BIG_ENDIAN
+ #define GST_WL_VIDEO_FORMATS "{ AYUV, RGBA, ARGB, BGRA, ABGR, P010_10LE, v308, " \
+-    "RGBx, xRGB, BGRx, xBGR, RGB, BGR, Y42B, NV16, NV61, YUY2, YVYU, UYVY, " \
++    "RGBx, xRGB, BGRx, xBGR, RGB, BGR, Y42B, NV16, NV61, NV24, YUY2, YVYU, UYVY, " \
+     "NV12_10LE40, NV16_10LE40, " \
+     "I420, YV12, NV12, NV21, Y41B, YUV9, YVU9, BGR16, RGB16 }"
+ #elif G_BYTE_ORDER == G_LITTLE_ENDIAN
+ #define GST_WL_VIDEO_FORMATS "{ AYUV, RGBA, ARGB, BGRA, ABGR, P010_10LE, v308, " \
+-    "RGBx, xRGB, BGRx, xBGR, RGB, BGR, Y42B, NV16, NV61, YUY2, YVYU, UYVY, " \
++    "RGBx, xRGB, BGRx, xBGR, RGB, BGR, Y42B, NV16, NV61, NV24, YUY2, YVYU, UYVY, " \
+     "NV12_10LE40, NV16_10LE40, " \
+     "I420, YV12, NV12, NV21, Y41B, YUV9, YVU9, BGR16, RGB16 }"
+ #endif
+-- 
+2.20.1
+

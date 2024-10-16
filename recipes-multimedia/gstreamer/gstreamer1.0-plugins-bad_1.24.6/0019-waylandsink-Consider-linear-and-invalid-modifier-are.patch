@@ -1,0 +1,42 @@
+From 85a5863e4e3c61376d2c76c9a36ddf8395d3fe8e Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 16 Oct 2024 08:38:51 +0800
+Subject: [PATCH 19/40] waylandsink: Consider linear and invalid modifier are
+ the same
+
+That is true with Rockchip BSP drivers and packages.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/wayland/gstwldisplay.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/gst-libs/gst/wayland/gstwldisplay.c b/gst-libs/gst/wayland/gstwldisplay.c
+index 9119f1d..ef0bb7f 100644
+--- a/gst-libs/gst/wayland/gstwldisplay.c
++++ b/gst-libs/gst/wayland/gstwldisplay.c
+@@ -211,6 +211,7 @@ dmabuf_modifier (void *data, struct zwp_linux_dmabuf_v1 *zwp_linux_dmabuf,
+     GstVideoFormat gst_format = gst_wl_dmabuf_format_to_video_format (format);
+     const guint32 fourcc = gst_video_dma_drm_fourcc_from_format (gst_format);
+ 
++#if 0
+     /*
+      * Ignore unsupported formats along with implicit modifiers. Implicit
+      * modifiers have been source of garbled output for many many years and it
+@@ -218,6 +219,13 @@ dmabuf_modifier (void *data, struct zwp_linux_dmabuf_v1 *zwp_linux_dmabuf,
+      */
+     if (fourcc == DRM_FORMAT_INVALID || modifier == DRM_FORMAT_MOD_INVALID)
+       return;
++#else
++    if (fourcc == DRM_FORMAT_INVALID)
++      return;
++
++    if (modifier == DRM_FORMAT_MOD_INVALID)
++      modifier = DRM_FORMAT_MOD_LINEAR;
++#endif
+ 
+     if (table_header == TRUE) {
+       GST_INFO ("===== All DMA Formats With Modifiers =====");
+-- 
+2.20.1
+

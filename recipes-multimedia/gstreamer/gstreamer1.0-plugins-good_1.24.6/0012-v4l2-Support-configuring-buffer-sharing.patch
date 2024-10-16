@@ -1,0 +1,140 @@
+From ec15ef18710fd3ada4de4b72c5c16bb1e01e3b6b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 27 Jun 2022 17:48:30 +0800
+Subject: [PATCH 12/13] v4l2: Support configuring buffer sharing
+
+Tested with:
+export GST_DEBUG=v4l2bufferpool:5
+gst-launch-1.0 v4l2src buffer-sharing=true ! waylandsink
+gst-launch-1.0 v4l2src buffer-sharing=false ! waylandsink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/v4l2/gstv4l2object.c | 37 +++++++++++++++++++++++++++++++++++++
+ sys/v4l2/gstv4l2object.h |  5 ++++-
+ 2 files changed, 41 insertions(+), 1 deletion(-)
+
+diff --git a/sys/v4l2/gstv4l2object.c b/sys/v4l2/gstv4l2object.c
+index f04c568..2c32b72 100644
+--- a/sys/v4l2/gstv4l2object.c
++++ b/sys/v4l2/gstv4l2object.c
+@@ -59,6 +59,7 @@ GST_DEBUG_CATEGORY_EXTERN (v4l2_debug);
+ #define GST_V4L2_DEFAULT_HEIGHT         240
+ 
+ static guint DEFAULT_PROP_MIN_BUFFERS = 0;
++static gboolean DEFAULT_PROP_BUFFER_SHARING = TRUE;
+ 
+ enum
+ {
+@@ -336,6 +337,9 @@ gst_v4l2_object_install_properties_helper (GObjectClass * gobject_class,
+   if (buf)
+     DEFAULT_PROP_MIN_BUFFERS = atoi (buf);
+ 
++  if ((buf = g_getenv ("GST_V4L2_BUF_SHARING")))
++    DEFAULT_PROP_BUFFER_SHARING = buf[0] == '1';
++
+   g_object_class_install_property (gobject_class, PROP_DEVICE,
+       g_param_spec_string ("device", "Device", "Device location",
+           default_device, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+@@ -461,6 +465,12 @@ gst_v4l2_object_install_properties_helper (GObjectClass * gobject_class,
+           0, VIDEO_MAX_FRAME, DEFAULT_PROP_MIN_BUFFERS,
+           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+ 
++  g_object_class_install_property (gobject_class, PROP_BUFFER_SHARING,
++      g_param_spec_boolean ("buffer-sharing", "Buffer sharing",
++          "Enabled buffer sharing",
++          DEFAULT_PROP_BUFFER_SHARING,
++          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
+   gst_type_mark_as_plugin_api (GST_TYPE_V4L2_DEVICE_FLAGS, 0);
+   gst_type_mark_as_plugin_api (GST_TYPE_V4L2_TV_NORM, 0);
+   gst_type_mark_as_plugin_api (GST_TYPE_V4L2_IO_MODE, 0);
+@@ -582,6 +592,7 @@ gst_v4l2_object_new (GstElement * element,
+   }
+ 
+   v4l2object->min_buffers = DEFAULT_PROP_MIN_BUFFERS;
++  v4l2object->buffer_sharing = DEFAULT_PROP_BUFFER_SHARING;
+ 
+   return v4l2object;
+ }
+@@ -758,6 +769,9 @@ gst_v4l2_object_set_property_helper (GstV4l2Object * v4l2object,
+     case PROP_MIN_BUFFERS:
+       v4l2object->min_buffers = g_value_get_uint (value);
+       break;
++    case PROP_BUFFER_SHARING:
++      v4l2object->buffer_sharing = g_value_get_boolean (value);
++      break;
+     default:
+       return FALSE;
+       break;
+@@ -858,6 +872,9 @@ gst_v4l2_object_get_property_helper (GstV4l2Object * v4l2object,
+     case PROP_MIN_BUFFERS:
+       g_value_set_uint (value, v4l2object->min_buffers);
+       break;
++    case PROP_BUFFER_SHARING:
++      g_value_set_boolean (value, v4l2object->buffer_sharing);
++      break;
+     default:
+       return FALSE;
+       break;
+@@ -1247,6 +1264,22 @@ gst_v4l2_object_format_get_rank (const struct v4l2_fmtdesc *fmt)
+     }
+   }
+ 
++  {
++    const char *buf = g_getenv ("GST_V4L2_PREFERRED_FOURCC");
++    int max_rank = YUV_BASE_RANK * 2;
++
++    while (buf) {
++      if (buf[0] == ':')
++        buf++;
++
++      if (!strncmp (buf, (char *) &fourcc, 4))
++        rank = max_rank;
++
++      buf = strchr (buf, ':');
++      max_rank--;
++    }
++  }
++
+   /* All ranks are below 1<<15 so a shift by 15
+    * will a) make all non-emulated formats larger
+    * than emulated and b) will not overflow
+@@ -5443,7 +5476,11 @@ gst_v4l2_object_decide_allocation (GstV4l2Object * obj, GstQuery * query)
+       gst_v4l2_object_match_buffer_layout_from_struct (obj, params, caps, size);
+   }
+ 
++#if 0
+   can_share_own_pool = (has_video_meta || !obj->need_video_meta);
++#else
++  can_share_own_pool = obj->buffer_sharing;
++#endif
+ 
+   gst_v4l2_get_driver_min_buffers (obj);
+   /* We can't share our own pool, if it exceed V4L2 capacity */
+diff --git a/sys/v4l2/gstv4l2object.h b/sys/v4l2/gstv4l2object.h
+index 76c637b..277827c 100644
+--- a/sys/v4l2/gstv4l2object.h
++++ b/sys/v4l2/gstv4l2object.h
+@@ -231,6 +231,8 @@ struct _GstV4l2Object {
+   
+   guint max_width;
+   guint max_height;
++
++  gboolean buffer_sharing;
+ };
+ 
+ struct _GstV4l2ObjectClassHelper {
+@@ -256,7 +258,8 @@ GType gst_v4l2_object_get_type (void);
+     PROP_EXTRA_CONTROLS,      \
+     PROP_PIXEL_ASPECT_RATIO,  \
+     PROP_FORCE_ASPECT_RATIO,  \
+-    PROP_MIN_BUFFERS
++    PROP_MIN_BUFFERS,         \
++    PROP_BUFFER_SHARING
+ 
+ /* create/destroy */
+ GstV4l2Object*  gst_v4l2_object_new       (GstElement * element,
+-- 
+2.20.1
+
