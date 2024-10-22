@@ -27,7 +27,7 @@ ROCKCHIP_KERNEL_IMAGES ?= "1"
 PREFERRED_VERSION_linux-rockchip ?= "5.10%"
 LINUXLIBCVERSION ?= "5.10-custom%"
 # Avoid old kernel version error
-OLDEST_KERNEL := "${@d.getVar('LINUXLIBCVERSION').split('-')[0]}"
+OLDEST_KERNEL = "${@d.getVar('LINUXLIBCVERSION').split('-')[0]}"
 
 # Custom kernel might not support newest python
 PACKAGECONFIG:remove:pn-perf = "scripting"
