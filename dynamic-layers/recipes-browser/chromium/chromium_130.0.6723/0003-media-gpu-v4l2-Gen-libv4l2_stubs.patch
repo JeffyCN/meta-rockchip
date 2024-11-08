@@ -1,0 +1,36 @@
+From e02cc552e4d2720ad909a9bb2be8da06ed744f7a Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 2 Nov 2023 16:08:22 +0800
+Subject: [PATCH 03/16] media: gpu: v4l2: Gen libv4l2_stubs
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/v4l2/BUILD.gn | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
+index 3a67c02cf..f8ee0fd91 100644
+--- a/media/gpu/v4l2/BUILD.gn
++++ b/media/gpu/v4l2/BUILD.gn
+@@ -8,10 +8,18 @@ import("//build/config/ui.gni")
+ import("//media/gpu/args.gni")
+ import("//media/media_options.gni")
+ import("//testing/test.gni")
++import("//tools/generate_stubs/rules.gni")
+ import("//ui/gl/features.gni")
+ 
+ assert(use_v4l2_codec)
+ 
++generate_stubs("libv4l2_stubs") {
++  extra_header = "v4l2_stub_header.fragment"
++  sigs = [ "v4l2.sig" ]
++  output_name = "v4l2_stubs"
++  deps = [ "//base" ]
++}
++
+ source_set("v4l2") {
+   defines = [ "MEDIA_GPU_IMPLEMENTATION" ]
+   sources = [
+-- 
+2.38.5
+
