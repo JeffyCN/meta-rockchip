@@ -49,6 +49,9 @@ do_configure:prepend() {
 	# Remove unneeded stages from make.sh
 	sed -i -e '/^select_tool/d' -e '/^clean/d' -e '/^\t*make/d' -e '/which python2/{n;n;s/exit 1/true/}' ${S}/make.sh
 
+	# Fixup platform(chip) detection
+	sed -i "s/PLAT=.*/PLAT=${RK_SOC_FAMILY}/" ${S}/make.sh
+
 	[ ! -e "${S}/.config" ] || make -C ${S} mrproper
 
 	sed -i 's/ found;/ found = NULL;/' ${S}/lib/avb/libavb/avb_slot_verify.c
@@ -58,7 +61,6 @@ do_configure:prepend() {
 RK_IDBLOCK_IMG = "idblock.img"
 RK_LOADER_BIN = "loader.bin"
 RK_TRUST_IMG = "trust.img"
-UBOOT_BINARY = "uboot.img"
 
 do_compile:append() {
 	cd ${B}
@@ -70,21 +72,12 @@ do_compile:append() {
 
 	# Pack rockchip loader images
 	./make.sh
-
 	ln -sf *_loader*.bin "${RK_LOADER_BIN}"
 
 	# Generate idblock image
-	bbnote "${PN}: Generating ${RK_IDBLOCK_IMG} from ${RK_LOADER_BIN}"
-	../rkbin/tools/boot_merger unpack -i "${RK_LOADER_BIN}" -o .
-
-	if [ -f FlashHead.bin ];then
-		cat FlashHead.bin FlashData.bin > "${RK_IDBLOCK_IMG}"
-	else
-		./tools/mkimage -n "${RK_SOC_FAMILY}" -T rksd -d FlashData.bin \
-			"${RK_IDBLOCK_IMG}"
-	fi
-
-	cat FlashBoot.bin >> "${RK_IDBLOCK_IMG}"
+	bbnote "${PN}: Generating ${RK_IDBLOCK_IMG}..."
+	./make.sh --idblock
+	ln -sf idblock.bin "${RK_IDBLOCK_IMG}"
 }
 
 do_deploy:append() {
