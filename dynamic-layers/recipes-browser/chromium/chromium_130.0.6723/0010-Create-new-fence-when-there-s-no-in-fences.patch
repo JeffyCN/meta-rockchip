@@ -1,0 +1,90 @@
+From 0daa0e476830311952df83b791afd36a41a7f707 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 31 May 2021 01:29:11 +0800
+Subject: [PATCH 10/16] Create new fence when there's no in-fences
+
+There're cases that in-fences are not provided.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../wayland/gpu/gbm_surfaceless_wayland.cc    | 29 +++++++++++++++++--
+ .../wayland/gpu/gbm_surfaceless_wayland.h     |  1 +
+ 2 files changed, 28 insertions(+), 2 deletions(-)
+
+diff --git a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc
+index acb4a60ba..309af7255 100644
+--- a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc
++++ b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.cc
+@@ -36,6 +36,12 @@ static constexpr size_t kMaxSolidColorBuffers = 12;
+ 
+ static constexpr gfx::Size kSolidColorBufferSize{4, 4};
+ 
++void WaitForEGLFence(EGLDisplay display, EGLSyncKHR fence) {
++  eglClientWaitSyncKHR(display, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR,
++                       EGL_FOREVER_KHR);
++  eglDestroySyncKHR(display, fence);
++}
++
+ void WaitForGpuFences(std::vector<std::unique_ptr<gfx::GpuFence>> fences) {
+   for (auto& fence : fences)
+     fence->Wait();
+@@ -215,8 +221,9 @@ void GbmSurfacelessWayland::Present(SwapCompletionCallback completion_callback,
+     return;
+   }
+ 
+-  base::OnceClosure fence_wait_task;
+   std::vector<std::unique_ptr<gfx::GpuFence>> fences;
++  // Uset in-fences provided in the overlays. If there are none, we insert our
++  // own fence and wait.
+   for (auto& config : frame->configs) {
+     if (!config.access_fence_handle.is_null()) {
+       fences.push_back(std::make_unique<gfx::GpuFence>(
+@@ -225,7 +232,17 @@ void GbmSurfacelessWayland::Present(SwapCompletionCallback completion_callback,
+     }
+   }
+ 
+-  fence_wait_task = base::BindOnce(&WaitForGpuFences, std::move(fences));
++  base::OnceClosure fence_wait_task;
++  if (!fences.empty()) {
++    fence_wait_task = base::BindOnce(&WaitForGpuFences, std::move(fences));
++  } else {
++    // TODO(fangzhoug): the following should be replaced by a per surface flush
++    // as it gets implemented in GL drivers.
++    EGLSyncKHR fence = InsertFence(has_implicit_external_sync_);
++    CHECK_NE(fence, EGL_NO_SYNC_KHR) << "eglCreateSyncKHR failed";
++
++    fence_wait_task = base::BindOnce(&WaitForEGLFence, GetDisplay(), fence);
++  }
+ 
+   base::OnceClosure fence_retired_callback = base::BindOnce(
+       &GbmSurfacelessWayland::FenceRetired, weak_factory_.GetWeakPtr(), frame);
+@@ -298,6 +315,14 @@ void GbmSurfacelessWayland::MaybeSubmitFrames() {
+   }
+ }
+ 
++EGLSyncKHR GbmSurfacelessWayland::InsertFence(bool implicit) {
++  const EGLint attrib_list[] = {EGL_SYNC_CONDITION_KHR,
++                                EGL_SYNC_PRIOR_COMMANDS_IMPLICIT_EXTERNAL_ARM,
++                                EGL_NONE};
++  return eglCreateSyncKHR(GetEGLDisplay(), EGL_SYNC_FENCE_KHR,
++                          implicit ? attrib_list : nullptr);
++}
++
+ void GbmSurfacelessWayland::FenceRetired(PendingFrame* frame) {
+   frame->ready = true;
+   MaybeSubmitFrames();
+diff --git a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.h b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.h
+index 1bf2d2bd5..ad2a2f0f3 100644
+--- a/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.h
++++ b/ui/ozone/platform/wayland/gpu/gbm_surfaceless_wayland.h
+@@ -152,6 +152,7 @@ class GbmSurfacelessWayland : public gl::Presenter, public WaylandSurfaceGpu {
+ 
+   void MaybeSubmitFrames();
+ 
++  EGLSyncKHR InsertFence(bool implicit);
+   void FenceRetired(PendingFrame* frame);
+ 
+   // Sets a flag that skips glFlush step in unittests.
+-- 
+2.38.5
+
