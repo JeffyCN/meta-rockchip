@@ -46,15 +46,6 @@ do_configure:prepend() {
 	# Remove unneeded stages from make.sh
 	sed -i -e '/^select_tool/d' -e '/^clean/d' -e '/^\t*make/d' -e '/which python2/{n;n;s/exit 1/true/}' ${S}/make.sh
 
-	if [ "x${RK_ALLOW_PREBUILT_UBOOT}" = "x1" ]; then
-		# Copy prebuilt images
-		if [ -e "${S}/${UBOOT_BINARY}" ]; then
-			bbnote "${PN}: Found prebuilt images."
-			mkdir -p ${B}/prebuilt/
-			mv ${S}/*.bin ${S}/*.img ${B}/prebuilt/
-		fi
-	fi
-
 	[ ! -e "${S}/.config" ] || make -C ${S} mrproper
 
 	sed -i 's/ found;/ found = NULL;/' ${S}/lib/avb/libavb/avb_slot_verify.c
@@ -69,18 +60,13 @@ UBOOT_BINARY = "uboot.img"
 do_compile:append() {
 	cd ${B}
 
-	if [ -e "${B}/prebuilt/${UBOOT_BINARY}" ]; then
-		bbnote "${PN}: Using prebuilt images."
-		ln -sf ${B}/prebuilt/*.bin ${B}/prebuilt/*.img ${B}/
-	else
-		# Prepare needed files
-		for d in make.sh scripts configs arch/arm/mach-rockchip; do
-			cp -rT ${S}/${d} ${d}
-		done
+	# Prepare needed files
+	for d in make.sh scripts configs arch/arm/mach-rockchip; do
+		cp -rT ${S}/${d} ${d}
+	done
 
-		# Pack rockchip loader images
-		./make.sh
-	fi
+	# Pack rockchip loader images
+	./make.sh
 
 	ln -sf *_loader*.bin "${RK_LOADER_BIN}"
 
