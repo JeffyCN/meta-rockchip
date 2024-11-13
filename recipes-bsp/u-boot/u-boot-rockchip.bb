@@ -59,6 +59,8 @@ RK_IDBLOCK_IMG = "idblock.img"
 RK_LOADER_BIN = "loader.bin"
 RK_TRUST_IMG = "trust.img"
 
+UBOOT_BINARY = "uboot.img"
+
 do_compile:append() {
 	cd ${B}
 
@@ -67,14 +69,28 @@ do_compile:append() {
 		cp -rT ${S}/${d} ${d}
 	done
 
-	# Pack rockchip loader images
-	./make.sh
+	# Pack Rockchip loader images
+	if [ "$RK_UBOOT_SPL" ]; then
+		# Use U-Boot's SPL
+		./make.sh --spl-new
+		if ! grep -q "ROCKCHIP_FIT_IMAGE_PACK=y" .config; then
+			# Repack SPL for non-FIT U-Boot
+			./make.sh --spl
+		fi
+	else
+		# Use Rockchip Miniloader
+		./make.sh
+	fi
 	ln -sf *_loader*.bin "${RK_LOADER_BIN}"
 
 	# Generate idblock image
 	bbnote "${PN}: Generating ${RK_IDBLOCK_IMG}..."
-	./make.sh --idblock
-	ln -sf idblock.bin "${RK_IDBLOCK_IMG}"
+	if ls *.img | grep -q idblock; then
+		ln -sf *_idblock_*.img "${RK_IDBLOCK_IMG}"
+	else
+		./make.sh --idblock
+		ln -sf idblock.bin "${RK_IDBLOCK_IMG}"
+	fi
 }
 
 do_deploy:append() {
