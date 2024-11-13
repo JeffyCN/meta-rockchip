@@ -13,3 +13,7 @@ MALI_GPU := "midgard-t86x"
 MALI_VERSION := "r18p0"
 
 RK_ISP_VERSION := "1"
+
+MACHINE_EXTRA_RRECOMMENDS:append = " \
+	linux-firmware-rockchip-dptx \
+"
