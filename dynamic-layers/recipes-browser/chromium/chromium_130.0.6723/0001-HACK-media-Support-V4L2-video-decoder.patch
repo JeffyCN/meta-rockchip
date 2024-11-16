@@ -1,4 +1,4 @@
-From 63936e3b30b27afc79680429a9d4358ab3ad5292 Mon Sep 17 00:00:00 2001
+From 0723ba4b933eba3e04b87c8b322bb5a9d4c5f11e Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 14 Dec 2023 10:00:22 +0800
 Subject: [PATCH 01/16] HACK: media: Support V4L2 video decoder
@@ -14,6 +14,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  media/gpu/chromeos/fourcc.h                   | 12 +++++
  media/gpu/v4l2/BUILD.gn                       | 43 +++++++++---------
  .../legacy/v4l2_video_decode_accelerator.h    |  2 +-
+ .../v4l2_video_decoder_backend_stateful.cc    |  1 +
  media/gpu/v4l2/v4l2_device.cc                 |  6 ++-
  media/gpu/v4l2/v4l2_queue.cc                  | 44 +++++++++++++++++++
  media/gpu/v4l2/v4l2_utils.cc                  | 28 ++++++++----
@@ -21,7 +22,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  media/gpu/v4l2/v4l2_vda_helpers.cc            |  2 +
  media/gpu/v4l2/v4l2_video_decoder.cc          |  8 ++++
  .../services/gpu_mojo_media_client_linux.cc   |  8 ++++
- 12 files changed, 150 insertions(+), 31 deletions(-)
+ 13 files changed, 151 insertions(+), 31 deletions(-)
 
 diff --git a/media/gpu/chromeos/chromeos_compressed_gpu_memory_buffer_video_frame_utils.cc b/media/gpu/chromeos/chromeos_compressed_gpu_memory_buffer_video_frame_utils.cc
 index 337e52a47..4bf586160 100644
@@ -157,6 +158,18 @@ index ffc76263a..7ef042660 100644
  // The MT21C software decompressor is tightly coupled to the MT8173.
  // See mt21_decompressor.h
  #define SUPPORT_MT21_PIXEL_FORMAT_SOFTWARE_DECOMPRESSION
+diff --git a/media/gpu/v4l2/legacy/v4l2_video_decoder_backend_stateful.cc b/media/gpu/v4l2/legacy/v4l2_video_decoder_backend_stateful.cc
+index 8929feb42..1da7eedb0 100644
+--- a/media/gpu/v4l2/legacy/v4l2_video_decoder_backend_stateful.cc
++++ b/media/gpu/v4l2/legacy/v4l2_video_decoder_backend_stateful.cc
+@@ -755,6 +755,7 @@ bool V4L2StatefulVideoDecoderBackend::IsSupportedProfile(
+   DCHECK(device_);
+   if (supported_profiles_.empty()) {
+     const std::vector<uint32_t> kSupportedInputFourccs = {
++      V4L2_PIX_FMT_AV1,
+       V4L2_PIX_FMT_H264,
+ #if BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
+       V4L2_PIX_FMT_HEVC,
 diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
 index 39c16611c..67a867fb5 100644
 --- a/media/gpu/v4l2/v4l2_device.cc
