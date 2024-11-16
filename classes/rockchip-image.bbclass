@@ -69,7 +69,62 @@ do_fixup_wks() {
 }
 addtask do_fixup_wks after do_write_wks_template before do_image_wic
 
-IMAGE_POSTPROCESS_COMMAND:append = " gen_rkparameter;"
+IMAGE_POSTPROCESS_COMMAND:append = " do_image_wic_ufs;gen_rkparameter;"
+
+do_image_wic_ufs() {
+	IMAGE="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.wic"
+	[ -f "${IMAGE}" ] || return
+
+	echo "Creating wic image for UFS(4K logical sector size)..."
+
+	UFS_IMAGE="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.ufs.wic"
+	cp "${IMAGE}" "${UFS_IMAGE}"
+
+	# Clear old GPT
+	sgdisk -z "${UFS_IMAGE}"
+
+	# Transform GPT entries
+	INDEX=1
+	sgdisk -p "${IMAGE}" | grep -E "^ +[0-9]" | while read line;do
+		NAME=$(echo ${line} | cut -f 7 -d ' ')
+		START=$(echo ${line} | cut -f 2 -d ' ')
+		END=$(echo ${line} | cut -f 3 -d ' ')
+		UUID=$(sgdisk -i ${INDEX} "${IMAGE}" 2>/dev/null | \
+		       grep "GUID:" | xargs -n 1 | tail -n 1)
+
+		# Convert to 4K logical sector size
+		START=$(expr ${START} / 8)
+		END=$(expr ${END} / 8)
+
+		echo "Adding partition($INDEX): $NAME $START-$END ($UUID)..."
+
+		sgdisk -a 1 -n ${INDEX}:${START}:${END} "${UFS_IMAGE}"
+		sgdisk -c ${INDEX}:${NAME} "${UFS_IMAGE}"
+		sgdisk -u ${INDEX}:${UUID} "${UFS_IMAGE}"
+
+		INDEX=$(expr ${INDEX} + 1)
+	done
+
+	TMP_IMAGE=$(mktemp)
+
+	# Backup GPT(32K) and clear it
+	dd if="${UFS_IMAGE}" of="${TMP_IMAGE}" bs=1K count=32
+	dd if=/dev/zero of="${UFS_IMAGE}" conv=notrunc bs=1K count=32
+
+	# MBR(512B)
+	dd if="${TMP_IMAGE}" of="${UFS_IMAGE}" conv=notrunc bs=512 count=1
+
+	# GPT header(512B) from 512B to 4K
+	dd if="${TMP_IMAGE}" of="${UFS_IMAGE}" conv=notrunc bs=512 count=1 \
+		skip=1 seek=8
+
+	# GPT entries(16K) from 1K to 8K
+	dd if="${TMP_IMAGE}" of="${UFS_IMAGE}" conv=notrunc bs=512 count=32 \
+		skip=2 seek=16
+
+	rm -f "${TMP_IMAGE}"
+}
+
 gen_rkparameter() {
 	if [ ! -f "${DEPLOY_DIR_IMAGE}/loader.bin" ];then
 		echo "Skip making Rockchip parameter."
