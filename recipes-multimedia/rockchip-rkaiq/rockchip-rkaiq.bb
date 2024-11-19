@@ -31,7 +31,6 @@ EXTRA_OECMAKE = "     \
     -DARCH=${@bb.utils.contains('TUNE_FEATURES', 'aarch64', 'aarch64', 'arm', d)} \
     -DISP_HW_VERSION=-DISP_HW_V${@d.getVar('RK_ISP_VERSION').replace('.','')} \
     -DRKAIQ_TARGET_SOC=${@d.getVar('RK_SOC_FAMILY').replace('rk3568','rk356x')} \
-    -DRKAIQ_HAVE_DUMPSYS=OFF \
 "
 
 do_generate_toolchain_file:append () {
@@ -53,8 +52,10 @@ do_generate_toolchain_file:append () {
 do_install:append () {
 	# rkaiq installed 3A server to the wrong dir.
 	[ ! -d ${D}/usr/usr ] || cp -rp ${D}/usr/usr ${D}/
+
+	# Drop unused tools
 	rm -rf ${D}/usr/etc ${D}/usr/usr ${D}/usr/bin/*demo \
-		${D}/usr/bin/rkaiq_tool_server
+		${D}/usr/bin/rkaiq_tool_server ${D}/usr/bin/dumpcam
 
 	chrpath -d ${D}/${libdir}/libsmartIr.so
 
