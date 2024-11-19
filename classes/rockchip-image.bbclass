@@ -6,6 +6,7 @@ export RK_PARTITION_GROW ?= "1"
 
 IMAGE_FSTYPES:remove = "iso live"
 export RK_ROOTFS_TYPE ?= "ext4"
+export RK_ROOTFS_EXTRAOPTS ?= "-F -i 8192 -b 4096"
 
 IMAGE_FSTYPES:append = " ${RK_ROOTFS_TYPE} wic"
 
