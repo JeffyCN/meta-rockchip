@@ -151,6 +151,9 @@ For example using the kernel/ and u-boot/ in the same directory of meta-rockchip
 
 ```makefile
 # build/conf/local.conf
+PREFERRED_VERSION_linux-rockchip := "6.1%"
+LINUXLIBCVERSION := "6.1-custom%"
+
 SRC_URI:pn-linux-rockchip = " \
         git://${TOPDIR}/../kernel;protocol=file;usehead=1 \
         file://cgroups.cfg \
@@ -158,10 +161,17 @@ SRC_URI:pn-linux-rockchip = " \
 SRCREV:pn-linux-rockchip = "${AUTOREV}"
 KBRANCH = "HEAD"
 
-SRC_URI:pn-u-boot = " \
-        git://${TOPDIR}/../u-boot;protocol=file;usehead=1 \
+SRC_URI:pn-linux-libc-headers = " \
+        git://${TOPDIR}/../kernel;protocol=file;usehead=1 \
 "
-SRCREV:pn-u-boot = "${AUTOREV}"
+SRCREV:pn-linux-libc-headers = "${AUTOREV}"
+
+SRC_URI:pn-u-boot-rockchip = " \
+        git://${TOPDIR}/../u-boot;protocol=file;usehead=1 \
+        git://${TOPDIR}/../rkbin;protocol=file;usehead=1;name=rkbin;branch=HEAD;destsuffix=rkbin \
+"
+SRCREV:pn-u-boot-rockchip = "${AUTOREV}"
+SRCREV_rkbin:pn-u-boot-rockchip = "${AUTOREV}"
 ```
 
 ## Maintainers
