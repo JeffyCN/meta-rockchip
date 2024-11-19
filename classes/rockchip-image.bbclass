@@ -123,6 +123,10 @@ do_image_wic_ufs() {
 	dd if="${TMP_IMAGE}" of="${UFS_IMAGE}" conv=notrunc bs=512 count=32 \
 		skip=2 seek=16
 
+	# IDBlock(SPL, less than 512K) copy from 32K to 544K(32K + 512K)
+	dd if="${UFS_IMAGE}" of="${UFS_IMAGE}" conv=notrunc bs=1K count=512 \
+		skip=32 seek=544
+
 	rm -f "${TMP_IMAGE}"
 }
 
