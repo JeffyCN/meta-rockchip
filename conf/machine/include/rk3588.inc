@@ -6,12 +6,12 @@ require conf/machine/include/mali.inc
 
 RK_SOC_FAMILY := "rk3588"
 
-PREFERRED_VERSION_linux-rockchip := "5.10%"
-LINUXLIBCVERSION := "5.10-custom%"
+PREFERRED_VERSION_linux-rockchip := "6.1%"
+LINUXLIBCVERSION := "6.1-custom%"
 
 KBUILD_DEFCONFIG := "rk3588_linux_defconfig"
 
 MALI_GPU := "valhall-g610"
-MALI_VERSION := "g6p0"
+MALI_VERSION := "g13p0"
 
 RK_ISP_VERSION := "3.0"
