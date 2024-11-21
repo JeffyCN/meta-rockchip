@@ -6,10 +6,10 @@ require conf/machine/include/mali.inc
 
 RK_SOC_FAMILY := "rk3568"
 
-PREFERRED_VERSION_linux-rockchip := "4.19%"
-LINUXLIBCVERSION := "4.19-custom%"
+PREFERRED_VERSION_linux-rockchip := "6.1%"
+LINUXLIBCVERSION := "6.1-custom%"
 
 MALI_GPU := "bifrost-g52"
-MALI_VERSION := "g2p0"
+MALI_VERSION := "g13p0"
 
 RK_ISP_VERSION := "2.1"
