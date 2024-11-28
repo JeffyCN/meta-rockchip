@@ -1,4 +1,4 @@
-From fb9153ff247467955a176a1696a169dc8cbbe9f1 Mon Sep 17 00:00:00 2001
+From ac7aea5236009ca9f21c3fa1c44610474b2746b8 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 24 May 2022 16:16:33 +0800
 Subject: [PATCH 12/22] glupload: Support NV12_10LE40 and NV12|NV12_10LE40|NV16
@@ -10,33 +10,31 @@ gst-play-1.0 video.mp4 --videosink=glimagesink
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- gst-libs/gst/gl/egl/gsteglimage.c   | 21 ++++++++++++++-
+ gst-libs/gst/gl/egl/gsteglimage.c   | 22 +++++++++++++--
  gst-libs/gst/gl/egl/gsteglimage.h   |  2 ++
  gst-libs/gst/gl/gstglmemory.h       |  2 +-
  gst-libs/gst/gl/gstglupload.c       | 15 ++++++++++-
  gst-libs/gst/gl/meson.build         |  5 +++-
  gst-libs/gst/video/video-info-dma.c | 14 ++++++++++
  gst-libs/gst/video/video-info-dma.h | 42 +++++++++++++++++++++++++++++
- 7 files changed, 97 insertions(+), 4 deletions(-)
+ 7 files changed, 97 insertions(+), 5 deletions(-)
 
 diff --git a/gst-libs/gst/gl/egl/gsteglimage.c b/gst-libs/gst/gl/egl/gsteglimage.c
-index b70fd59..8d0a2ea 100644
+index b70fd59..3129daf 100644
 --- a/gst-libs/gst/gl/egl/gsteglimage.c
 +++ b/gst-libs/gst/gl/egl/gsteglimage.c
-@@ -854,10 +854,12 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
+@@ -854,8 +854,9 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
  {
    EGLImageKHR img;
    const GstVideoInfo *in_info = &in_info_dma->vinfo;
 +  GstVideoFormat format = GST_VIDEO_INFO_FORMAT (in_info);
    guint32 fourcc;
-   guint64 modifier;
+-  guint64 modifier;
++  guint64 modifier = DRM_FORMAT_MOD_LINEAR;
    gint i;
    gboolean with_modifiers;
-+  guint64 modifier = DRM_FORMAT_MOD_LINEAR;
  
-   /* Explanation of array length:
-    * - 6 plane independent values are at the start (width, height, format FourCC)
-@@ -867,6 +869,7 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
+@@ -867,6 +868,7 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
     */
    guintptr attribs[41];         /* 6 + 10 * 3 + 4 + 1 */
    gint atti = 0;
@@ -44,7 +42,7 @@ index b70fd59..8d0a2ea 100644
  
    if (!gst_egl_image_check_dmabuf_direct_with_dma_drm (context, in_info_dma,
            target))
-@@ -880,6 +883,22 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
+@@ -880,6 +882,22 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
    if (!with_modifiers && modifier != DRM_FORMAT_MOD_LINEAR)
      return NULL;
  
@@ -67,7 +65,7 @@ index b70fd59..8d0a2ea 100644
    /* EGL DMABuf importation supports a maximum of 3 planes */
    if (G_UNLIKELY (n_planes > 3))
      return NULL;
-@@ -898,7 +917,7 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
+@@ -898,7 +916,7 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
      attribs[atti++] = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
      attribs[atti++] = offset[0];
      attribs[atti++] = EGL_DMA_BUF_PLANE0_PITCH_EXT;
