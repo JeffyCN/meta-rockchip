@@ -18,8 +18,10 @@ CHROMIUM_EXTRA_ARGS:append = " --use-gl=angle --use-angle=gles-egl --use-cmd-dec
 
 CHROMIUM_EXTRA_ARGS:append = " --no-sandbox --gpu-sandbox-start-early --ignore-gpu-blacklist --ignore-gpu-blocklist --enable-accelerated-video-decode"
 
-# TODO: Revisit once VDA and VEA are not dependent on Vaapi on linux
-CHROMIUM_EXTRA_ARGS:append = " --enable-features=VaapiVideoDecoder,VaapiVideoEncoder"
+# HACK: VDA and VEA might depend on Vaapi on linux in some old versions.
+# CHROMIUM_EXTRA_ARGS:append = " --enable-features=VaapiVideoDecoder,VaapiVideoEncoder"
+
+CHROMIUM_EXTRA_ARGS:append = " --enable-features=AcceleratedVideoDecoder,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,kAcceleratedVideoEncodeLinux"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
