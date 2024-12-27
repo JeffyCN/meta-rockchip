@@ -1,49 +1,185 @@
-From afcc5575be944502825affeca78c7b1aeef0ba9b Mon Sep 17 00:00:00 2001
+From 9444d833a80861ea5a633d546e20c911598d1069 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 30 Jan 2023 17:13:26 +0800
 Subject: [PATCH 2/3] HACK: Support python3 for dtoc
 
-Sync a few files from v2020.01
+Sync a few files from v2020.01 and v2025.01
 
 Change-Id: Ib88caeb2b29520146c8fcf7c7e1a0eb2823aaab7
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- scripts/dtc/pylibfdt/Makefile         |   5 +-
- scripts/dtc/pylibfdt/libfdt.i_shipped | 869 +++++++++++++++++++++++---
+ scripts/dtc/README                    | 106 ++++
+ scripts/dtc/pylibfdt/Makefile         |  24 +-
+ scripts/dtc/pylibfdt/libfdt.i_shipped | 880 +++++++++++++++++++++++---
+ scripts/dtc/pylibfdt/setup.py         |  71 ++-
  tools/dtoc/dtb_platdata.py            |  35 +-
  tools/dtoc/dtoc.py                    |  60 +-
  tools/dtoc/fdt.py                     | 472 +++++++++++---
  tools/dtoc/fdt_util.py                | 135 +++-
  tools/patman/test_util.py             |  92 +++
- 7 files changed, 1431 insertions(+), 237 deletions(-)
+ 9 files changed, 1620 insertions(+), 255 deletions(-)
+ create mode 100644 scripts/dtc/README
  create mode 100644 tools/patman/test_util.py
 
+diff --git a/scripts/dtc/README b/scripts/dtc/README
+new file mode 100644
+index 00000000000..a48312a422c
+--- /dev/null
++++ b/scripts/dtc/README
+@@ -0,0 +1,106 @@
++The source tree contains the Device Tree Compiler (dtc) toolchain for
++working with device tree source and binary files and also libfdt, a
++utility library for reading and manipulating the binary format.
++
++DTC and LIBFDT are maintained by:
++
++David Gibson <david@gibson.dropbear.id.au>
++Jon Loeliger <loeliger@gmail.com>
++
++
++Python library
++--------------
++
++A Python library is also available. To build this you will need to install
++swig and Python development files. On Debian distributions:
++
++   sudo apt-get install swig python3-dev
++
++The library provides an Fdt class which you can use like this:
++
++$ PYTHONPATH=../pylibfdt python3
++>>> import libfdt
++>>> fdt = libfdt.Fdt(open('test_tree1.dtb', mode='rb').read())
++>>> node = fdt.path_offset('/subnode@1')
++>>> print(node)
++124
++>>> prop_offset = fdt.first_property_offset(node)
++>>> prop = fdt.get_property_by_offset(prop_offset)
++>>> print('%s=%s' % (prop.name, prop.as_str()))
++compatible=subnode1
++>>> node2 = fdt.path_offset('/')
++>>> print(fdt.getprop(node2, 'compatible').as_str())
++test_tree1
++
++You will find tests in tests/pylibfdt_tests.py showing how to use each
++method. Help is available using the Python help command, e.g.:
++
++    $ cd pylibfdt
++    $ python3 -c "import libfdt; help(libfdt)"
++
++If you add new features, please check code coverage:
++
++    $ sudo apt-get install python3-coverage
++    $ cd tests
++    # It's just 'coverage' on most other distributions
++    $ python3-coverage run pylibfdt_tests.py
++    $ python3-coverage html
++    # Open 'htmlcov/index.html' in your browser
++
++
++The library can be installed with pip from a local source tree:
++
++    pip install . [--user|--prefix=/path/to/install_dir]
++
++Or directly from a remote git repo:
++
++    pip install git+git://git.kernel.org/pub/scm/utils/dtc/dtc.git@main
++
++The install depends on libfdt shared library being installed on the host system
++first. Generally, using --user or --prefix is not necessary and pip will use the
++default location for the Python installation which varies if the user is root or
++not.
++
++You can also install everything via make if you like, but pip is recommended.
++
++To install both libfdt and pylibfdt you can use:
++
++    make install [PREFIX=/path/to/install_dir]
++
++To disable building the python library, even if swig and Python are available,
++use:
++
++    make NO_PYTHON=1
++
++
++More work remains to support all of libfdt, including access to numeric
++values.
++
++
++Adding a new function to libfdt.h
++---------------------------------
++
++The shared library uses libfdt/version.lds to list the exported functions, so
++add your new function there. Check that your function works with pylibfdt. If
++it cannot be supported, put the declaration in libfdt.h behind #ifndef SWIG so
++that swig ignores it.
++
++
++Tests
++-----
++
++Test files are kept in the tests/ directory. Use 'make check' to build and run
++all tests.
++
++If you want to adjust a test file, be aware that tree_tree1.dts is compiled
++and checked against a binary tree from assembler macros in trees.S. So
++if you change that file you must change tree.S also.
++
++
++Mailing list
++------------
++The following list is for discussion about dtc and libfdt implementation
++mailto:devicetree-compiler@vger.kernel.org
++
++Core device tree bindings are discussed on the devicetree-spec list:
++mailto:devicetree-spec@vger.kernel.org
 diff --git a/scripts/dtc/pylibfdt/Makefile b/scripts/dtc/pylibfdt/Makefile
-index 01d5e0ffe3..42342c75bb 100644
+index 01d5e0ffe30..e442d5c2420 100644
 --- a/scripts/dtc/pylibfdt/Makefile
 +++ b/scripts/dtc/pylibfdt/Makefile
-@@ -14,13 +14,14 @@ PYLIBFDT_srcs = $(addprefix $(LIBFDT_srcdir)/,$(LIBFDT_SRCS)) \
+@@ -13,18 +13,32 @@ include $(LIBFDT_srcdir)/Makefile.libfdt
+ PYLIBFDT_srcs = $(addprefix $(LIBFDT_srcdir)/,$(LIBFDT_SRCS)) \
  		$(obj)/libfdt.i
  
++# create a version string compliant with PEP 440
++PEP_VERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(subst -,,$(EXTRAVERSION))
++
  quiet_cmd_pymod = PYMOD   $@
 -      cmd_pymod = unset CC; unset CROSS_COMPILE; unset CFLAGS;\
 +      cmd_pymod = unset CROSS_COMPILE; unset CFLAGS; \
 +		CC="$(HOSTCC)" LDSHARED="$(HOSTCC) -shared " \
  		LDFLAGS="$(HOSTLDFLAGS)" \
- 		VERSION="u-boot-$(UBOOTVERSION)" \
+-		VERSION="u-boot-$(UBOOTVERSION)" \
++		VERSION="$(PEP_VERSION)" \
  		CPPFLAGS="$(HOSTCFLAGS) -I$(LIBFDT_srcdir)" OBJDIR=$(obj) \
  		SOURCES="$(PYLIBFDT_srcs)" \
  		SWIG_OPTS="-I$(LIBFDT_srcdir) -I$(LIBFDT_srcdir)/.." \
 -		$(PYTHON) $< --quiet build_ext --inplace
 +		$(PYTHON3) $< --quiet build_ext --inplace
  
- $(obj)/_libfdt.so: $(src)/setup.py $(PYLIBFDT_srcs) FORCE
+-$(obj)/_libfdt.so: $(src)/setup.py $(PYLIBFDT_srcs) FORCE
++rebuild: $(src)/setup.py $(PYLIBFDT_srcs)
++	@# Remove the library since otherwise Python doesn't seem to regenerate
++	@# the libfdt.py file if it is missing.
++	@rm -f $(obj)/_libfdt*.so
  	$(call if_changed,pymod)
++	@# Rename the file to _libfdt.so so this Makefile doesn't run every time
++	@if [ ! -e $(obj)/_libfdt.so ]; then \
++		mv $(obj)/_libfdt*.so $(obj)/_libfdt.so; \
++	fi
++
++$(obj)/_libfdt.so $(obj)/libfdt.py &: rebuild
++	@:
+ 
+-always += _libfdt.so
++always += _libfdt.so libfdt.py
+ 
+ clean-files += libfdt.i _libfdt.so libfdt.py libfdt_wrap.c
 diff --git a/scripts/dtc/pylibfdt/libfdt.i_shipped b/scripts/dtc/pylibfdt/libfdt.i_shipped
-index 5b1a8cf4d4..fae0b27d7d 100644
+index 5b1a8cf4d49..e4659489a96 100644
 --- a/scripts/dtc/pylibfdt/libfdt.i_shipped
 +++ b/scripts/dtc/pylibfdt/libfdt.i_shipped
-@@ -1,9 +1,8 @@
+@@ -1,18 +1,33 @@
 +/* SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause */
  /*
   * pylibfdt - Flat Device Tree manipulation in Python
@@ -54,7 +190,13 @@ index 5b1a8cf4d4..fae0b27d7d 100644
   */
  
  %module libfdt
-@@ -13,6 +12,18 @@
+ 
++%begin %{
++#define PY_SSIZE_T_CLEAN
++%}
++
+ %include <stdint.i>
+ 
  %{
  #define SWIG_FILE_WITH_INIT
  #include "libfdt.h"
@@ -73,7 +215,7 @@ index 5b1a8cf4d4..fae0b27d7d 100644
  %}
  
  %pythoncode %{
-@@ -44,6 +55,7 @@ import struct
+@@ -44,6 +59,7 @@ import struct
  # Pass this as the 'quiet' parameter to return -ENOTFOUND on NOTFOUND errors,
  # instead of raising an exception.
  QUIET_NOTFOUND = (NOTFOUND,)
@@ -81,7 +223,7 @@ index 5b1a8cf4d4..fae0b27d7d 100644
  
  
  class FdtException(Exception):
-@@ -80,7 +92,7 @@ def check_err(val, quiet=()):
+@@ -80,7 +96,7 @@ def check_err(val, quiet=()):
      Raises
          FdtException if val < 0
      """
@@ -90,23 +232,23 @@ index 5b1a8cf4d4..fae0b27d7d 100644
          if -val not in quiet:
              raise FdtException(val)
      return val
-@@ -109,27 +121,182 @@ def check_err_null(val, quiet=()):
+@@ -109,27 +125,182 @@ def check_err_null(val, quiet=()):
              raise FdtException(val)
      return val
  
 -class Fdt:
 -    """Device tree class, supporting all operations
--
--    The Fdt object is created is created from a device tree binary file,
--    e.g. with something like:
 +class FdtRo(object):
 +    """Class for a read-only device-tree
  
--       fdt = Fdt(open("filename.dtb").read())
+-    The Fdt object is created is created from a device tree binary file,
+-    e.g. with something like:
 +    This is a base class used by FdtRw (read-write access) and FdtSw
 +    (sequential-write access). It implements read-only access to the
 +    device tree.
  
+-       fdt = Fdt(open("filename.dtb").read())
+-
 -    Operations can then be performed using the methods in this class. Each
 -    method xxx(args...) corresponds to a libfdt function fdt_xxx(fdt, args...).
 +    Here are the three classes and when you should use them:
@@ -286,7 +428,7 @@ index 5b1a8cf4d4..fae0b27d7d 100644
      def subnode_offset(self, parentoffset, name, quiet=()):
          """Get the offset of a named subnode
  
-@@ -162,6 +329,20 @@ class Fdt:
+@@ -162,6 +333,20 @@ class Fdt:
          """
          return check_err(fdt_path_offset(self._fdt, path), quiet)
  
@@ -307,7 +449,7 @@ index 5b1a8cf4d4..fae0b27d7d 100644
      def first_property_offset(self, nodeoffset, quiet=()):
          """Get the offset of the first property in a node offset
  
-@@ -196,20 +377,6 @@ class Fdt:
+@@ -196,20 +381,6 @@ class Fdt:
          return check_err(fdt_next_property_offset(self._fdt, prop_offset),
                           quiet)
  
@@ -328,7 +470,7 @@ index 5b1a8cf4d4..fae0b27d7d 100644
      def get_property_by_offset(self, prop_offset, quiet=()):
          """Obtains a property that can be examined
  
-@@ -230,51 +397,135 @@ class Fdt:
+@@ -230,51 +401,135 @@ class Fdt:
              return pdata
          return Property(pdata[0], pdata[1])
  
@@ -484,7 +626,7 @@ index 5b1a8cf4d4..fae0b27d7d 100644
  
      def pack(self, quiet=()):
          """Pack the device tree to remove unused space
-@@ -284,86 +535,158 @@ class Fdt:
+@@ -284,86 +539,158 @@ class Fdt:
          Args:
              quiet: Errors to ignore (empty to raise on all errors)
  
@@ -667,19 +809,19 @@ index 5b1a8cf4d4..fae0b27d7d 100644
 +
 +        Returns:
 +            Error code, or 0 if OK
- 
--class Property:
++
 +        Raises:
 +            FdtError if an error occurs
 +        """
 +        return check_err(fdt_del_node(self._fdt, nodeoffset), quiet)
-+
+ 
+-class Property:
 +
 +class Property(bytearray):
      """Holds a device tree property name and value.
  
      This holds a copy of a property taken from the device tree. It does not
-@@ -372,16 +695,307 @@ class Property:
+@@ -372,16 +699,308 @@ class Property:
  
      Properties:
          name: Property name
@@ -776,7 +918,8 @@ index 5b1a8cf4d4..fae0b27d7d 100644
 +            Fdt object allowing access to the newly created device tree
 +        """
 +        fdtsw = bytearray(self._fdt)
-+        check_err(fdt_finish(fdtsw))
++        while self.check_space(fdt_finish(fdtsw)):
++            fdtsw = bytearray(self._fdt)
 +        return Fdt(fdtsw)
 +
 +    def check_space(self, val):
@@ -990,15 +1133,37 @@ index 5b1a8cf4d4..fae0b27d7d 100644
  
  %include "libfdt/fdt.h"
  
-@@ -409,6 +1023,7 @@ typedef int fdt32_t;
-         fdt = fdt; /* avoid unused variable warning */
+@@ -395,7 +1014,7 @@ typedef int fdt32_t;
+ 	}
+ 	$1 = (void *)PyByteArray_AsString($input);
+         fdt = $1;
+-        fdt = fdt; /* avoid unused variable warning */
++        (void)fdt; /* avoid unused variable warning */
+ }
+ 
+ /* Some functions do change the device tree, so use void * */
+@@ -406,9 +1025,10 @@ typedef int fdt32_t;
+ 	}
+ 	$1 = PyByteArray_AsString($input);
+         fdt = $1;
+-        fdt = fdt; /* avoid unused variable warning */
++        (void)fdt; /* avoid unused variable warning */
  }
  
 +/* typemap used for fdt_get_property_by_offset() */
  %typemap(out) (struct fdt_property *) {
  	PyObject *buff;
  
-@@ -428,22 +1043,76 @@ typedef int fdt32_t;
+@@ -417,7 +1037,7 @@ typedef int fdt32_t;
+ 			fdt_string(fdt1, fdt32_to_cpu($1->nameoff)));
+ 		buff = PyByteArray_FromStringAndSize(
+ 			(const char *)($1 + 1), fdt32_to_cpu($1->len));
+-		resultobj = SWIG_Python_AppendOutput(resultobj, buff);
++		resultobj = SWIG_AppendOutput(resultobj, buff);
+ 	}
+ }
+ 
+@@ -428,22 +1048,76 @@ typedef int fdt32_t;
  	if (!$1)
  		$result = Py_None;
  	else
@@ -1031,7 +1196,7 @@ index 5b1a8cf4d4..fae0b27d7d 100644
 +
 +%typemap(argout) int *depth {
 +        PyObject *val = Py_BuildValue("i", *arg$argnum);
-+        resultobj = SWIG_Python_AppendOutput(resultobj, val);
++        resultobj = SWIG_AppendOutput(resultobj, val);
 +}
 +
 +%apply int *depth { int *depth };
@@ -1047,7 +1212,7 @@ index 5b1a8cf4d4..fae0b27d7d 100644
 +           if (PyTuple_GET_SIZE(resultobj) == 0)
 +              resultobj = val;
 +           else
-+              resultobj = SWIG_Python_AppendOutput(resultobj, val);
++              resultobj = SWIG_AppendOutput(resultobj, val);
 +        }
  }
  
@@ -1086,8 +1251,132 @@ index 5b1a8cf4d4..fae0b27d7d 100644
 +int fdt_property_stub(void *fdt, const char *name, const void *val, int len);
  
  %include <../libfdt/libfdt.h>
+diff --git a/scripts/dtc/pylibfdt/setup.py b/scripts/dtc/pylibfdt/setup.py
+index 4f7cf042bfe..c6fe5a6a446 100755
+--- a/scripts/dtc/pylibfdt/setup.py
++++ b/scripts/dtc/pylibfdt/setup.py
+@@ -1,11 +1,13 @@
+-#!/usr/bin/env python2
++#!/usr/bin/env python3
++# SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-2-Clause)
+ 
+ """
+ setup.py file for SWIG libfdt
+ Copyright (C) 2017 Google, Inc.
+ Written by Simon Glass <sjg@chromium.org>
+ 
+-SPDX-License-Identifier:	GPL-2.0+ BSD-2-Clause
++This script is modified from the upstream version, to fit in with the U-Boot
++build system.
+ 
+ Files to be built into the extension are provided in SOURCES
+ C flags to use are provided in CPPFLAGS
+@@ -18,14 +20,34 @@ allows this script to be run stand-alone, e.g.:
+     ./pylibfdt/setup.py install [--prefix=...]
+ """
+ 
+-from distutils.core import setup, Extension
++from setuptools import setup, Extension
++from setuptools.command.build_py import build_py as _build_py
+ import os
+ import re
+ import sys
+ 
++try:
++    from setuptools import sic
++except ImportError:
++    pass
++
++srcdir = os.path.dirname(__file__)
++
++with open(os.path.join(srcdir, "../README"), "r") as fh:
++    long_description = fh.read()
++
+ # Decodes a Makefile assignment line into key and value (and plus for +=)
+-RE_KEY_VALUE = re.compile('(?P<key>\w+) *(?P<plus>[+])?= *(?P<value>.*)$')
++RE_KEY_VALUE = re.compile(r'(?P<key>\w+) *(?P<plus>[+])?= *(?P<value>.*)$')
++
++def get_top_builddir():
++    if '--top-builddir' in sys.argv:
++        index = sys.argv.index('--top-builddir')
++        sys.argv.pop(index)
++        return sys.argv.pop(index)
++    else:
++        return os.path.join(srcdir, '..')
+ 
++top_builddir = get_top_builddir()
+ 
+ def ParseMakefile(fname):
+     """Parse a Makefile to obtain its variables.
+@@ -86,7 +108,7 @@ def GetEnvFromMakefiles():
+     makevars = ParseMakefile(os.path.join(basedir, 'libfdt', 'Makefile.libfdt'))
+     files = makevars['LIBFDT_SRCS'].split()
+     files = [os.path.join(basedir, 'libfdt', fname) for fname in files]
+-    files.append('pylibfdt/libfdt.i')
++    files.append('libfdt.i')
+     cflags = ['-I%s' % basedir, '-I%s/libfdt' % basedir]
+     objdir = ''
+     return swig_opts, version, files, cflags, objdir
+@@ -96,7 +118,10 @@ progname = sys.argv[0]
+ files = os.environ.get('SOURCES', '').split()
+ cflags = os.environ.get('CPPFLAGS', '').split()
+ objdir = os.environ.get('OBJDIR')
+-version = os.environ.get('VERSION')
++try:
++    version = sic(os.environ.get('VERSION'))
++except:
++    version = os.environ.get('VERSION')
+ swig_opts = os.environ.get('SWIG_OPTS', '').split()
+ 
+ # If we were called directly rather than through our Makefile (which is often
+@@ -107,17 +132,39 @@ if not all((swig_opts, version, files, cflags, objdir)):
+ 
+ libfdt_module = Extension(
+     '_libfdt',
+-    sources = files,
+-    extra_compile_args = cflags,
+-    swig_opts = swig_opts,
++    sources=files,
++    include_dirs=[os.path.join(srcdir, 'libfdt')],
++    library_dirs=[os.path.join(top_builddir, 'libfdt')],
++    swig_opts=swig_opts,
+ )
+ 
++class build_py(_build_py):
++    def run(self):
++        self.run_command("build_ext")
++        return super().run()
++
+ setup(
+     name='libfdt',
+-    version= version,
+-    author='Simon Glass <sjg@chromium.org>',
++    version=version,
++    cmdclass = {'build_py' : build_py},
++    author='Simon Glass',
++    author_email='sjg@chromium.org',
+     description='Python binding for libfdt',
+     ext_modules=[libfdt_module],
+     package_dir={'': objdir},
+-    py_modules=['pylibfdt/libfdt'],
++    py_modules=['libfdt'],
++
++    long_description=long_description,
++    long_description_content_type="text/plain",
++    url="https://git.kernel.org/pub/scm/utils/dtc/dtc.git",
++    license="BSD",
++    license_files=["GPL", "BSD-2-Clause"],
++
++    classifiers=[
++        "Programming Language :: Python :: 3",
++        "License :: OSI Approved :: BSD License",
++        "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
++        "Operating System :: OS Independent",
++    ],
++
+ )
 diff --git a/tools/dtoc/dtb_platdata.py b/tools/dtoc/dtb_platdata.py
-index c5767e5fb4..037e82c8bb 100644
+index c5767e5fb41..037e82c8bbd 100644
 --- a/tools/dtoc/dtb_platdata.py
 +++ b/tools/dtoc/dtb_platdata.py
 @@ -1,10 +1,9 @@
@@ -1199,7 +1488,7 @@ index c5767e5fb4..037e82c8bb 100644
                              self.buf(',\n\t\t')
                          self.buf(', '.join(vals[i:i + 8]))
 diff --git a/tools/dtoc/dtoc.py b/tools/dtoc/dtoc.py
-index 6eacfc90a0..b3596a5918 100755
+index 6eacfc90a0a..b3596a5918f 100755
 --- a/tools/dtoc/dtoc.py
 +++ b/tools/dtoc/dtoc.py
 @@ -1,10 +1,9 @@
@@ -1313,7 +1602,7 @@ index 6eacfc90a0..b3596a5918 100755
  else:
      dtb_platdata.run_steps(args, options.dtb_file, options.include_disabled,
 diff --git a/tools/dtoc/fdt.py b/tools/dtoc/fdt.py
-index dbc338653b..1b7b730359 100644
+index dbc338653bc..1b7b730359a 100644
 --- a/tools/dtoc/fdt.py
 +++ b/tools/dtoc/fdt.py
 @@ -1,16 +1,17 @@
@@ -1971,7 +2260,7 @@ index dbc338653b..1b7b730359 100644
      dtb.Scan()
      return dtb
 diff --git a/tools/dtoc/fdt_util.py b/tools/dtoc/fdt_util.py
-index 338d47a5e1..b105faec74 100644
+index 338d47a5e14..b105faec749 100644
 --- a/tools/dtoc/fdt_util.py
 +++ b/tools/dtoc/fdt_util.py
 @@ -1,10 +1,12 @@
@@ -2180,7 +2469,7 @@ index 338d47a5e1..b105faec74 100644
 +                     datatype)
 diff --git a/tools/patman/test_util.py b/tools/patman/test_util.py
 new file mode 100644
-index 0000000000..09f258c26b
+index 00000000000..09f258c26b4
 --- /dev/null
 +++ b/tools/patman/test_util.py
 @@ -0,0 +1,92 @@
