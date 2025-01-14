@@ -39,9 +39,6 @@ XSERVER ?= " \
 	xserver-xorg-module-exa \
 	"
 
-PREFERRED_PROVIDER_virtual/libgl ?= "mesa-gl"
-PREFERRED_PROVIDER_virtual/mesa ?= "mesa-gl"
-
 PREFERRED_RPROVIDER_lib32-initd-functions = "lib32-initscripts"
 
 RDEPENDS:${KERNEL_PACKAGE_NAME}-base = ""
