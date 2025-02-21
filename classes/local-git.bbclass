@@ -24,7 +24,7 @@ do_fetch:prepend () {
         repourl = git._get_repo_url(ud)
 
         # Try an early full fetching
-        fetch_cmd = "LANG=C %s fetch %s" % (ud.basecmd, shlex.quote(repourl))
+        fetch_cmd = "LANG=C %s fetch --unshallow %s" % (ud.basecmd, shlex.quote(repourl))
         try:
             runfetchcmd(fetch_cmd, d, workdir=ud.clonedir)
         except bb.fetch2.FetchError:
