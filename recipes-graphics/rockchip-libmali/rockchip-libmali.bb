@@ -12,7 +12,7 @@ inherit local-git
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=libmali; \
 "
-SRCREV = "6696882361a70284cc9198f1841aff1efb760dab"
+SRCREV = "af1d910cd29d52e354f6679e46d1bf2bbc7ca476"
 S = "${WORKDIR}/git"
 
 DEPENDS = "coreutils-native libdrm"
@@ -72,6 +72,7 @@ EXTRA_OEMESON = " \
 	-Dsubversion=${MALI_SUBVERSION} \
 	-Dplatform=${MALI_PLATFORM} \
 	-Dfirmware-dir=${nonarch_base_libdir}/firmware \
+	-Dwayland-egl=false \
 "
 
 do_install:append () {
@@ -82,7 +83,7 @@ do_install:append () {
 	fi
 }
 
-INSANE_SKIP:${PN} = "already-stripped ldflags dev-so textrel"
+INSANE_SKIP:${PN} = "already-stripped ldflags dev-so textrel buildpaths"
 INSANE_SKIP:${PN}-dev = "staticdev"
 
 INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
