@@ -1,0 +1,112 @@
+From 471ec152699d57de58574a338670e24b6b1b4f21 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 25 Feb 2025 09:11:02 +0800
+Subject: [PATCH] HACK: egl: Prefer using libmali.so.1's Wayland-EGL APIs
+
+The Mali DDK may provide its own version.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ egl/meson.build   |  1 +
+ egl/wayland-egl.c | 41 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 42 insertions(+)
+
+diff --git a/egl/meson.build b/egl/meson.build
+index 5363e80..0e51c51 100644
+--- a/egl/meson.build
++++ b/egl/meson.build
+@@ -5,6 +5,7 @@ wayland_egl = library(
+ 		wayland_client_protocol_h
+ 	],
+ 	include_directories: src_inc,
++	dependencies : cc.find_library('dl', required : false),
+ 	version: meson.project_version(),
+ 	install: true
+ )
+diff --git a/egl/wayland-egl.c b/egl/wayland-egl.c
+index 36a3471..6ecc1bd 100644
+--- a/egl/wayland-egl.c
++++ b/egl/wayland-egl.c
+@@ -27,6 +27,7 @@
+  *    Benjamin Franzke <benjaminfranzke@googlemail.com>
+  */
+ 
++#include <dlfcn.h>
+ #include <stdlib.h>
+ #include <string.h>
+ 
+@@ -34,6 +35,13 @@
+ #include "wayland-egl-backend.h"
+ #include "wayland-util.h"
+ 
++static void (*window_resize)(struct wl_egl_window *egl_window,
++			     int width, int height, int dx, int dy);
++static struct wl_egl_window *(*window_create)(struct wl_surface *surface,
++					      int width, int height);
++static void (*window_destroy)(struct wl_egl_window *egl_window);
++static void (*window_get_attached_size)(struct wl_egl_window *egl_window,
++					int *width, int *height);
+ 
+ /** Resize the EGL window
+  *
+@@ -54,6 +62,9 @@ wl_egl_window_resize(struct wl_egl_window *egl_window,
+ 		     int width, int height,
+ 		     int dx, int dy)
+ {
++	if (window_resize)
++		return window_resize(egl_window, width, height, dx, dy);
++
+ 	if (width <= 0 || height <= 0)
+ 		return;
+ 
+@@ -70,6 +81,9 @@ WL_EXPORT struct wl_egl_window *
+ wl_egl_window_create(struct wl_surface *surface,
+ 		     int width, int height)
+ {
++	if (window_create)
++		return window_create(surface, width, height);
++
+ 	struct wl_egl_window *egl_window;
+ 
+ 	if (width <= 0 || height <= 0)
+@@ -102,6 +116,9 @@ wl_egl_window_create(struct wl_surface *surface,
+ WL_EXPORT void
+ wl_egl_window_destroy(struct wl_egl_window *egl_window)
+ {
++	if (window_destroy)
++		return window_destroy(egl_window);
++
+ 	if (egl_window->destroy_window_callback)
+ 		egl_window->destroy_window_callback(egl_window->driver_private);
+ 	free(egl_window);
+@@ -116,3 +133,27 @@ wl_egl_window_get_attached_size(struct wl_egl_window *egl_window,
+ 	if (height)
+ 		*height = egl_window->attached_height;
+ }
++
++#define LIBMALI_SO "libmali.so.1"
++__attribute__((constructor)) static void
++load_mali_symbols(void)
++{
++	void *handle = dlopen(LIBMALI_SO, RTLD_LAZY);
++	if (!handle)
++		return;
++
++	window_resize = dlsym(handle, "wl_egl_window_resize");
++	window_create = dlsym(handle, "wl_egl_window_create");
++	window_destroy = dlsym(handle, "wl_egl_window_destroy");
++	window_get_attached_size = dlsym(handle, "wl_egl_window_get_attached_size");
++
++	dlclose(handle);
++
++	if (!window_resize || !window_create || !window_destroy ||
++	    !window_get_attached_size) {
++		window_resize = NULL;
++		window_create = NULL;
++		window_destroy = NULL;
++		window_get_attached_size = NULL;
++	}
++}
+-- 
+2.20.1
+
