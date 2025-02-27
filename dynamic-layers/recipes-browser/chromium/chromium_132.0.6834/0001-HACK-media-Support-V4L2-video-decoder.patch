@@ -1,0 +1,580 @@
+From 4536b786deb3b13db361d749cd0fdd70d730365b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 14 Dec 2023 10:00:22 +0800
+Subject: [PATCH 01/15] HACK: media: Support V4L2 video decoder
+
+Tested on RK3588 EVB with:
+1/ Install libmali, v4l-rkmpp, mpp and custom v4l-utils.
+2/ Run "echo dec > /dev/video-dec0"
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/chromeos/fourcc.cc                  |  4 ++
+ media/gpu/chromeos/fourcc.h                   | 12 +++++
+ media/gpu/v4l2/BUILD.gn                       | 43 +++++++++---------
+ .../legacy/v4l2_video_decode_accelerator.h    |  2 +-
+ .../v4l2_video_decoder_backend_stateful.cc    |  1 +
+ media/gpu/v4l2/v4l2_device.cc                 |  9 ++--
+ media/gpu/v4l2/v4l2_queue.cc                  | 44 +++++++++++++++++++
+ media/gpu/v4l2/v4l2_utils.cc                  | 36 +++++++++++----
+ media/gpu/v4l2/v4l2_utils.h                   | 20 +++++++++
+ media/gpu/v4l2/v4l2_vda_helpers.cc            |  2 +
+ media/gpu/v4l2/v4l2_video_decoder.cc          |  8 ++++
+ 11 files changed, 148 insertions(+), 33 deletions(-)
+
+diff --git a/media/gpu/chromeos/fourcc.cc b/media/gpu/chromeos/fourcc.cc
+index ba58b518e..8a6ac466a 100644
+--- a/media/gpu/chromeos/fourcc.cc
++++ b/media/gpu/chromeos/fourcc.cc
+@@ -363,10 +363,14 @@ static_assert(Fourcc::NM12 == V4L2_PIX_FMT_NV12M, "Mismatch Fourcc");
+ static_assert(Fourcc::NM21 == V4L2_PIX_FMT_NV21M, "Mismatch Fourcc");
+ static_assert(Fourcc::YU16 == V4L2_PIX_FMT_YUV422P, "Mismatch Fourcc");
+ static_assert(Fourcc::YM16 == V4L2_PIX_FMT_YUV422M, "Mismatch Fourcc");
++#if defined(V4L2_PIX_FMT_MM21) && defined(V4L2_PIX_FMT_MT21C)
+ static_assert(Fourcc::MM21 == V4L2_PIX_FMT_MM21, "Mismatch Fourcc");
+ static_assert(Fourcc::MT21 == V4L2_PIX_FMT_MT21C, "Mismatch Fourcc");
++#endif
+ static_assert(Fourcc::AR24 == V4L2_PIX_FMT_ABGR32, "Mismatch Fourcc");
++#ifdef V4L2_PIX_FMT_P010
+ static_assert(Fourcc::P010 == V4L2_PIX_FMT_P010, "Mismatch Fourcc");
++#endif
+ // MT2T has not been upstreamed yet
+ #ifdef V4L2_PIX_FMT_MT2T
+ static_assert(Fourcc::MT2T == V4L2_PIX_FMT_MT2T, "Mismatch Fourcc");
+diff --git a/media/gpu/chromeos/fourcc.h b/media/gpu/chromeos/fourcc.h
+index 6f08dba1d..9e0ebc1be 100644
+--- a/media/gpu/chromeos/fourcc.h
++++ b/media/gpu/chromeos/fourcc.h
+@@ -14,6 +14,18 @@
+ #include "media/gpu/buildflags.h"
+ #include "media/gpu/media_gpu_export.h"
+ 
++#ifndef V4L2_PIX_FMT_MT21C
++#define V4L2_PIX_FMT_MT21C	v4l2_fourcc('M', 'T', '2', '1') /* Mediatek compressed block mode  */
++#endif
++
++#ifndef V4L2_PIX_FMT_VP9
++#define V4L2_PIX_FMT_VP9	v4l2_fourcc('V', 'P', '9', '0') /* VP9 */
++#endif
++
++#ifndef V4L2_PIX_FMT_HEVC
++#define V4L2_PIX_FMT_HEVC	v4l2_fourcc('H', 'E', 'V', 'C') /* HEVC */
++#endif
++
+ namespace media {
+ 
+ // Composes a Fourcc value.
+diff --git a/media/gpu/v4l2/BUILD.gn b/media/gpu/v4l2/BUILD.gn
+index ddde1522d..8b444e2f9 100644
+--- a/media/gpu/v4l2/BUILD.gn
++++ b/media/gpu/v4l2/BUILD.gn
+@@ -43,34 +43,37 @@ source_set("v4l2") {
+     "v4l2_video_decoder.h",
+     "v4l2_video_decoder_backend.cc",
+     "v4l2_video_decoder_backend.h",
+-    "v4l2_video_decoder_backend_stateless.cc",
+-    "v4l2_video_decoder_backend_stateless.h",
+-    "v4l2_video_decoder_delegate_h264.cc",
+-    "v4l2_video_decoder_delegate_h264.h",
+-    "v4l2_video_decoder_delegate_vp8.cc",
+-    "v4l2_video_decoder_delegate_vp8.h",
+-    "v4l2_video_decoder_delegate_vp9.cc",
+-    "v4l2_video_decoder_delegate_vp9.h",
+     "v4l2_vp9_helpers.cc",
+     "v4l2_vp9_helpers.h",
+   ]
+ 
+-  if (enable_hevc_parser_and_hw_decoder) {
++  if (is_chromeos) {
+     sources += [
+-      "v4l2_video_decoder_delegate_h265.cc",
+-      "v4l2_video_decoder_delegate_h265.h",
++      "v4l2_video_decoder_backend_stateless.cc",
++      "v4l2_video_decoder_backend_stateless.h",
++      "v4l2_video_decoder_delegate_h264.cc",
++      "v4l2_video_decoder_delegate_h264.h",
++      "v4l2_video_decoder_delegate_vp8.cc",
++      "v4l2_video_decoder_delegate_vp8.h",
++      "v4l2_video_decoder_delegate_vp9.cc",
++      "v4l2_video_decoder_delegate_vp9.h",
+     ]
+-  }
+ 
+-  if (current_cpu == "arm" || current_cpu == "arm64") {
+-    sources += [
+-      "mt21/mt21_decompressor.cc",
+-      "mt21/mt21_decompressor.h",
+-      "mt21/mt21_util.h",
+-    ]
+-  }
++    if (enable_hevc_parser_and_hw_decoder) {
++      sources += [
++        "v4l2_video_decoder_delegate_h265.cc",
++        "v4l2_video_decoder_delegate_h265.h",
++      ]
++    }
++
++    if (current_cpu == "arm" || current_cpu == "arm64") {
++      sources += [
++        "mt21/mt21_decompressor.cc",
++        "mt21/mt21_decompressor.h",
++        "mt21/mt21_util.h",
++      ]
++    }
+ 
+-  if (is_chromeos) {
+     sources += [
+       # AV1 delegate depends on header files only in ChromeOS SDK
+       "v4l2_video_decoder_delegate_av1.cc",
+diff --git a/media/gpu/v4l2/legacy/v4l2_video_decode_accelerator.h b/media/gpu/v4l2/legacy/v4l2_video_decode_accelerator.h
+index ffc76263a..7ef042660 100644
+--- a/media/gpu/v4l2/legacy/v4l2_video_decode_accelerator.h
++++ b/media/gpu/v4l2/legacy/v4l2_video_decode_accelerator.h
+@@ -20,7 +20,7 @@
+ 
+ #include "build/build_config.h"
+ 
+-#if defined(ARCH_CPU_ARM_FAMILY)
++#if defined(ARCH_CPU_ARM_FAMILY) && BUILDFLAG(IS_CHROMEOS)
+ // The MT21C software decompressor is tightly coupled to the MT8173.
+ // See mt21_decompressor.h
+ #define SUPPORT_MT21_PIXEL_FORMAT_SOFTWARE_DECOMPRESSION
+diff --git a/media/gpu/v4l2/legacy/v4l2_video_decoder_backend_stateful.cc b/media/gpu/v4l2/legacy/v4l2_video_decoder_backend_stateful.cc
+index 88ffd0825..9c1662e35 100644
+--- a/media/gpu/v4l2/legacy/v4l2_video_decoder_backend_stateful.cc
++++ b/media/gpu/v4l2/legacy/v4l2_video_decoder_backend_stateful.cc
+@@ -755,6 +755,7 @@ bool V4L2StatefulVideoDecoderBackend::IsSupportedProfile(
+   DCHECK(device_);
+   if (supported_profiles_.empty()) {
+     const std::vector<uint32_t> kSupportedInputFourccs = {
++      V4L2_PIX_FMT_AV1,
+       V4L2_PIX_FMT_H264,
+ #if BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
+       V4L2_PIX_FMT_HEVC,
+diff --git a/media/gpu/v4l2/v4l2_device.cc b/media/gpu/v4l2/v4l2_device.cc
+index 8ac19fab6..5bde28547 100644
+--- a/media/gpu/v4l2/v4l2_device.cc
++++ b/media/gpu/v4l2/v4l2_device.cc
+@@ -370,7 +370,8 @@ bool V4L2Device::SetDevicePollInterrupt() {
+   if (HANDLE_EINTR(write(device_poll_interrupt_fd_.get(), &buf, sizeof(buf))) ==
+       -1) {
+     VPLOGF(1) << "write() failed";
+-    return false;
++    // HACK: Fake success for eventfd
++    // return false;
+   }
+   return true;
+ }
+@@ -386,7 +387,8 @@ bool V4L2Device::ClearDevicePollInterrupt() {
+       return true;
+     } else {
+       VPLOGF(1) << "read() failed";
+-      return false;
++      // HACK: Fake success for eventfd
++      // return false;
+     }
+   }
+   return true;
+@@ -856,7 +858,8 @@ void V4L2Device::CloseDevice() {
+ }
+ 
+ void V4L2Device::EnumerateDevicesForType(Type type) {
+-#if BUILDFLAG(IS_CHROMEOS)
++// HACK: We are using chromeos style devices.
++#if 1 //BUILDFLAG(IS_CHROMEOS)
+   static const std::string kDecoderDevicePattern = "/dev/video-dec";
+   static const std::string kEncoderDevicePattern = "/dev/video-enc";
+   static const std::string kImageProcessorDevicePattern = "/dev/image-proc";
+diff --git a/media/gpu/v4l2/v4l2_queue.cc b/media/gpu/v4l2/v4l2_queue.cc
+index bd6b3f527..feb783042 100644
+--- a/media/gpu/v4l2/v4l2_queue.cc
++++ b/media/gpu/v4l2/v4l2_queue.cc
+@@ -1060,10 +1060,14 @@ V4L2Queue::V4L2Queue(const IoctlAsCallback& ioctl_cb,
+       weak_this_factory_(this) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   struct v4l2_requestbuffers reqbufs = {
+       .count = 0, .type = type_, .memory = V4L2_MEMORY_MMAP};
+   supports_requests_ = (ioctl_cb_.Run(VIDIOC_REQBUFS, &reqbufs) == kIoctlOk) &&
+                        (reqbufs.capabilities & V4L2_BUF_CAP_SUPPORTS_REQUESTS);
++#else
++  supports_requests_ = false;
++#endif
+ 
+   // Stateful backends for example do not support requests.
+   VPLOG_IF(4, supports_requests_)
+@@ -1180,6 +1184,7 @@ size_t V4L2Queue::AllocateBuffers(size_t count,
+   planes_count_ = format->fmt.pix_mp.num_planes;
+   DCHECK_LE(planes_count_, static_cast<size_t>(VIDEO_MAX_PLANES));
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   __u8 flags = incoherent ? V4L2_MEMORY_FLAG_NON_COHERENT : 0;
+   if (allocate_secure_cb_) {
+     flags |= V4L2_MEMORY_FLAG_SECURE;
+@@ -1191,6 +1196,13 @@ size_t V4L2Queue::AllocateBuffers(size_t count,
+       .flags = flags};
+   DVQLOGF(3) << "Requesting " << count << " buffers ("
+              << (incoherent ? "incoherent" : "coherent") << ")";
++#else
++  struct v4l2_requestbuffers reqbufs = {
++      .count = base::checked_cast<decltype(v4l2_requestbuffers::count)>(count),
++      .type = type_,
++      .memory = memory};
++  DVQLOGF(3) << "Requesting " << count << " buffers";
++#endif
+ 
+   int ret = ioctl_cb_.Run(VIDIOC_REQBUFS, &reqbufs);
+   if (ret) {
+@@ -1256,12 +1268,17 @@ bool V4L2Queue::DeallocateBuffers() {
+   secure_buffers_.clear();
+ 
+   // Free all buffers.
++#if BUILDFLAG(IS_CHROMEOS)
+   __u8 flags = incoherent_ ? V4L2_MEMORY_FLAG_NON_COHERENT : 0;
+   if (allocate_secure_cb_) {
+     flags |= V4L2_MEMORY_FLAG_SECURE;
+   }
+   struct v4l2_requestbuffers reqbufs = {
+       .count = 0, .type = type_, .memory = memory_, .flags = flags};
++#else
++  struct v4l2_requestbuffers reqbufs = {
++      .count = 0, .type = type_, .memory = memory_};
++#endif
+ 
+   int ret = ioctl_cb_.Run(VIDIOC_REQBUFS, &reqbufs);
+   if (ret) {
+@@ -1580,6 +1597,8 @@ std::optional<struct v4l2_format> V4L2Queue::SetModifierFormat(
+     uint64_t modifier,
+     const gfx::Size& size) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++
++#if BUILDFLAG(IS_CHROMEOS)
+   if (DRM_FORMAT_MOD_QCOM_COMPRESSED == modifier) {
+     auto format = SetFormat(V4L2_PIX_FMT_QC08C, size, 0);
+ 
+@@ -1588,6 +1607,7 @@ std::optional<struct v4l2_format> V4L2Queue::SetModifierFormat(
+     }
+     return format;
+   }
++#endif
+   return std::nullopt;
+ }
+ 
+@@ -1699,6 +1719,7 @@ bool V4L2Request::ApplyCtrls(struct v4l2_ext_controls* ctrls) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   DCHECK_NE(ctrls, nullptr);
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   if (!request_fd_.is_valid()) {
+     VPLOGF(1) << "Invalid request";
+     return false;
+@@ -1708,12 +1729,16 @@ bool V4L2Request::ApplyCtrls(struct v4l2_ext_controls* ctrls) {
+   ctrls->request_fd = request_fd_.get();
+ 
+   return true;
++#else
++  return false;
++#endif
+ }
+ 
+ bool V4L2Request::ApplyQueueBuffer(struct v4l2_buffer* buffer) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   DCHECK_NE(buffer, nullptr);
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   if (!request_fd_.is_valid()) {
+     VPLOGF(1) << "Invalid request";
+     return false;
+@@ -1723,11 +1748,15 @@ bool V4L2Request::ApplyQueueBuffer(struct v4l2_buffer* buffer) {
+   buffer->request_fd = request_fd_.get();
+ 
+   return true;
++#else
++  return false;
++#endif
+ }
+ 
+ bool V4L2Request::Submit() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   if (!request_fd_.is_valid()) {
+     VPLOGF(1) << "No valid request file descriptor to submit request.";
+     return false;
+@@ -1739,6 +1768,9 @@ bool V4L2Request::Submit() {
+   }
+ 
+   return true;
++#else
++  return false;
++#endif
+ }
+ 
+ bool V4L2Request::IsCompleted() {
+@@ -1775,6 +1807,7 @@ bool V4L2Request::WaitForCompletion(int poll_timeout_ms) {
+ bool V4L2Request::Reset() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   if (!request_fd_.is_valid()) {
+     VPLOGF(1) << "Invalid request";
+     return false;
+@@ -1788,6 +1821,9 @@ bool V4L2Request::Reset() {
+   }
+ 
+   return true;
++#else
++  return false;
++#endif
+ }
+ 
+ V4L2RequestRefBase::V4L2RequestRefBase(V4L2RequestRefBase&& req_base) {
+@@ -1864,6 +1900,7 @@ V4L2RequestsQueue::~V4L2RequestsQueue() {
+ std::optional<base::ScopedFD> V4L2RequestsQueue::CreateRequestFD() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   int request_fd;
+   int ret = HANDLE_EINTR(
+       ioctl(media_fd_.get(), MEDIA_IOC_REQUEST_ALLOC, &request_fd));
+@@ -1874,11 +1911,15 @@ std::optional<base::ScopedFD> V4L2RequestsQueue::CreateRequestFD() {
+   }
+ 
+   return base::ScopedFD(request_fd);
++#else
++  return std::nullopt;
++#endif
+ }
+ 
+ std::optional<V4L2RequestRef> V4L2RequestsQueue::GetFreeRequest() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
++#if BUILDFLAG(IS_CHROMEOS)
+   V4L2Request* request_ptr =
+       free_requests_.empty() ? nullptr : free_requests_.front();
+   if (request_ptr && request_ptr->IsCompleted()) {
+@@ -1916,6 +1957,9 @@ std::optional<V4L2RequestRef> V4L2RequestsQueue::GetFreeRequest() {
+   }
+ 
+   return V4L2RequestRef(request_ptr);
++#else
++  return std::nullopt;
++#endif
+ }
+ 
+ void V4L2RequestsQueue::ReturnRequest(V4L2Request* request) {
+diff --git a/media/gpu/v4l2/v4l2_utils.cc b/media/gpu/v4l2/v4l2_utils.cc
+index 9646e8be7..26b93d81b 100644
+--- a/media/gpu/v4l2/v4l2_utils.cc
++++ b/media/gpu/v4l2/v4l2_utils.cc
+@@ -16,6 +16,19 @@
+ #include "build/build_config.h"
+ #if BUILDFLAG(IS_CHROMEOS)
+ #include <linux/media/av1-ctrls.h>
++#else
++#ifndef V4L2_CID_MPEG_VIDEO_AV1_PROFILE
++#ifdef V4L2_CID_CODEC_BASE
++#define V4L2_CID_MPEG_VIDEO_AV1_PROFILE (V4L2_CID_CODEC_BASE + 655)
++#else
++#define V4L2_CID_MPEG_VIDEO_AV1_PROFILE (V4L2_CID_MPEG_BASE + 655)
++#endif
++enum v4l2_mpeg_video_av1_profile {
++	V4L2_MPEG_VIDEO_AV1_PROFILE_MAIN = 0,
++	V4L2_MPEG_VIDEO_AV1_PROFILE_HIGH = 1,
++	V4L2_MPEG_VIDEO_AV1_PROFILE_PROFESSIONAL = 2,
++};
++#endif
+ #endif
+ 
+ #include "base/containers/contains.h"
+@@ -205,7 +218,6 @@ VideoCodecProfile V4L2ProfileToVideoCodecProfile(uint32_t v4l2_codec,
+       }
+       break;
+ #endif
+-#if BUILDFLAG(IS_CHROMEOS)
+     case V4L2_CID_MPEG_VIDEO_AV1_PROFILE:
+       switch (v4l2_profile) {
+         case V4L2_MPEG_VIDEO_AV1_PROFILE_MAIN:
+@@ -216,7 +228,6 @@ VideoCodecProfile V4L2ProfileToVideoCodecProfile(uint32_t v4l2_codec,
+           return AV1PROFILE_PROFILE_PRO;
+       }
+       break;
+-#endif
+   }
+   return VIDEO_CODEC_PROFILE_UNKNOWN;
+ }
+@@ -338,10 +349,8 @@ static const std::map<v4l2_enum_type, v4l2_enum_type>
+         {V4L2_PIX_FMT_VP8_FRAME, V4L2_CID_MPEG_VIDEO_VP8_PROFILE},
+         {V4L2_PIX_FMT_VP9, V4L2_CID_MPEG_VIDEO_VP9_PROFILE},
+         {V4L2_PIX_FMT_VP9_FRAME, V4L2_CID_MPEG_VIDEO_VP9_PROFILE},
+-#if BUILDFLAG(IS_CHROMEOS)
+         {V4L2_PIX_FMT_AV1, V4L2_CID_MPEG_VIDEO_AV1_PROFILE},
+         {V4L2_PIX_FMT_AV1_FRAME, V4L2_CID_MPEG_VIDEO_AV1_PROFILE},
+-#endif
+ };
+ 
+ // Default VideoCodecProfiles associated to a V4L2 Codec Control ID.
+@@ -359,9 +368,7 @@ static const std::map<v4l2_enum_type, std::vector<VideoCodecProfile>>
+ #endif  // BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
+         {V4L2_CID_MPEG_VIDEO_VP8_PROFILE, {VP8PROFILE_ANY}},
+         {V4L2_CID_MPEG_VIDEO_VP9_PROFILE, {VP9PROFILE_PROFILE0}},
+-#if BUILDFLAG(IS_CHROMEOS)
+         {V4L2_CID_MPEG_VIDEO_AV1_PROFILE, {AV1PROFILE_PROFILE_MAIN}},
+-#endif
+ };
+ 
+ // Correspondence from a VideoCodecProfiles to V4L2 codec described
+@@ -379,10 +386,8 @@ static const std::map<VideoCodecProfile,
+         {VP8PROFILE_ANY, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_VP8, FRAME)},
+         {VP9PROFILE_PROFILE0, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_VP9, FRAME)},
+         {VP9PROFILE_PROFILE2, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_VP9, FRAME)},
+-#if BUILDFLAG(IS_CHROMEOS)
+         {AV1PROFILE_PROFILE_MAIN,
+          MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_AV1, FRAME)},
+-#endif
+ };
+ 
+ }  // namespace
+@@ -548,6 +553,13 @@ uint32_t VideoCodecProfileToV4L2PixFmt(VideoCodecProfile profile,
+   CHECK(base::Contains(kVideoCodecProfileToV4L2CodecPixFmt, profile))
+       << "Unsupported profile: " << GetProfileName(profile);
+ 
++#if !BUILDFLAG(IS_CHROMEOS)
++  if (slice_based) {
++    LOG(ERROR) << "Slice is not supported";
++    return 0;
++  }
++#endif
++
+   const auto& v4l2_pix_fmt = kVideoCodecProfileToV4L2CodecPixFmt.at(profile);
+   return slice_based ? v4l2_pix_fmt.first : v4l2_pix_fmt.second;
+ }
+@@ -572,7 +584,8 @@ std::optional<SupportedVideoDecoderConfigs> GetSupportedV4L2DecoderConfigs() {
+   SupportedVideoDecoderConfigs supported_media_configs;
+   std::vector<std::string> candidate_paths;
+ 
+-#if BUILDFLAG(IS_CHROMEOS)
++// HACK: We are using chromeos style devices.
++#if 1 //BUILDFLAG(IS_CHROMEOS)
+   constexpr char kVideoDevicePattern[] = "/dev/video-dec0";
+   candidate_paths.push_back(kVideoDevicePattern);
+ #else
+@@ -633,6 +646,7 @@ std::optional<SupportedVideoDecoderConfigs> GetSupportedV4L2DecoderConfigs() {
+ }
+ 
+ bool IsV4L2DecoderStateful() {
++#if 0
+   constexpr char kVideoDeviceDriverPath[] = "/dev/video-dec0";
+   base::ScopedFD device_fd(HANDLE_EINTR(
+       open(kVideoDeviceDriverPath, O_RDWR | O_NONBLOCK | O_CLOEXEC)));
+@@ -658,6 +672,10 @@ bool IsV4L2DecoderStateful() {
+                             kSupportedStatefulInputCodecs.begin(),
+                             kSupportedStatefulInputCodecs.end()) !=
+          v4l2_codecs.end();
++#else
++  /* HACK: Force disabling stateful decoder. */
++  return false;
++#endif
+ }
+ 
+ bool IsVislDriver() {
+diff --git a/media/gpu/v4l2/v4l2_utils.h b/media/gpu/v4l2/v4l2_utils.h
+index 6fc7193d3..a323bd9d6 100644
+--- a/media/gpu/v4l2/v4l2_utils.h
++++ b/media/gpu/v4l2/v4l2_utils.h
+@@ -29,6 +29,26 @@
+ #define V4L2_PIX_FMT_INVALID v4l2_fourcc('0', '0', '0', '0')
+ #endif
+ 
++#ifndef V4L2_PIX_FMT_H264_SLICE
++#define V4L2_PIX_FMT_H264_SLICE v4l2_fourcc('S', '2', '6', '4')
++#endif
++
++#ifndef V4L2_PIX_FMT_HEVC_SLICE
++#define V4L2_PIX_FMT_HEVC_SLICE v4l2_fourcc('S', '2', '6', '5')
++#endif
++
++#ifndef V4L2_PIX_FMT_VP8_FRAME
++#define V4L2_PIX_FMT_VP8_FRAME v4l2_fourcc('V', 'P', '8', 'F')
++#endif
++
++#ifndef V4L2_PIX_FMT_VP9_FRAME
++#define V4L2_PIX_FMT_VP9_FRAME v4l2_fourcc('V', 'P', '9', 'F')
++#endif
++
++#ifndef V4L2_PIX_FMT_AV1_FRAME
++#define V4L2_PIX_FMT_AV1_FRAME v4l2_fourcc('A', 'V', '1', 'F')
++#endif
++
+ namespace gfx {
+ class Size;
+ }
+diff --git a/media/gpu/v4l2/v4l2_vda_helpers.cc b/media/gpu/v4l2/v4l2_vda_helpers.cc
+index e6a285e41..f45a0cfd7 100644
+--- a/media/gpu/v4l2/v4l2_vda_helpers.cc
++++ b/media/gpu/v4l2/v4l2_vda_helpers.cc
+@@ -158,6 +158,8 @@ InputBufferFragmentSplitter::CreateFromProfile(
+       return std::make_unique<
+           v4l2_vda_helpers::HEVCInputBufferFragmentSplitter>();
+ #endif  // BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
++    case VideoCodec::kAV1:
++      // HACK: Use the default implementation for AV1.
+     case VideoCodec::kVP8:
+     case VideoCodec::kVP9:
+       // VP8/VP9 don't need any frame splitting, use the default implementation.
+diff --git a/media/gpu/v4l2/v4l2_video_decoder.cc b/media/gpu/v4l2/v4l2_video_decoder.cc
+index 5a9b9a546..1e8291690 100644
+--- a/media/gpu/v4l2/v4l2_video_decoder.cc
++++ b/media/gpu/v4l2/v4l2_video_decoder.cc
+@@ -67,11 +67,13 @@ constexpr size_t kInputBufferMaxSizeFor4k = 2 * kInputBufferMaxSizeFor1080p;
+ 
+ // Input format V4L2 fourccs this class supports.
+ const std::vector<uint32_t> kSupportedInputFourccs = {
++#if BUILDFLAG(IS_CHROMEOS)
+     // V4L2 stateless formats
+     V4L2_PIX_FMT_H264_SLICE,
+ #if BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
+     V4L2_PIX_FMT_HEVC_SLICE,
+ #endif  // BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
++#endif
+     V4L2_PIX_FMT_VP8_FRAME,
+     V4L2_PIX_FMT_VP9_FRAME,
+     V4L2_PIX_FMT_AV1_FRAME,
+@@ -469,6 +471,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
+              << " and fourcc: " << FourccToString(input_format_fourcc_);
+     backend_ = std::make_unique<V4L2StatefulVideoDecoderBackend>(
+         this, device_, profile_, color_space_, decoder_task_runner_);
++#if BUILDFLAG(IS_CHROMEOS)
+   } else {
+     DCHECK_EQ(preferred_api_and_format.first, kStateless);
+     VLOGF(1) << "Using a stateless API for profile: "
+@@ -477,6 +480,7 @@ V4L2Status V4L2VideoDecoder::InitializeBackend() {
+     backend_ = std::make_unique<V4L2StatelessVideoDecoderBackend>(
+         this, device_, profile_, color_space_, decoder_task_runner_,
+         cdm_context_ref_ ? cdm_context_ref_->GetCdmContext() : nullptr);
++#endif
+   }
+ 
+   if (!backend_->Initialize()) {
+@@ -767,6 +771,7 @@ CroStatus V4L2VideoDecoder::SetupOutputFormat(const gfx::Size& size,
+ }
+ 
+ CroStatus V4L2VideoDecoder::SetExtCtrls10Bit(const gfx::Size& size) {
++#if BUILDFLAG(IS_CHROMEOS)
+   std::vector<struct v4l2_ext_control> ctrls;
+   struct v4l2_ctrl_hevc_sps v4l2_sps;
+   struct v4l2_ctrl_vp9_frame v4l2_vp9_frame;
+@@ -841,6 +846,9 @@ CroStatus V4L2VideoDecoder::SetExtCtrls10Bit(const gfx::Size& size) {
+   }
+ 
+   return CroStatus::Codes::kOk;
++#else
++  return CroStatus::Codes::kNoDecoderOutputFormatCandidates;
++#endif
+ }
+ 
+ void V4L2VideoDecoder::Reset(base::OnceClosure closure) {
+-- 
+2.38.5
+
