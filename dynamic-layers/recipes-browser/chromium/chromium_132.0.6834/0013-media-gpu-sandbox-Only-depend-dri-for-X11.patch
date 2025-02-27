@@ -1,0 +1,26 @@
+From 833fd4f4087f670a5092c43d0e59c2ddf75d7ec5 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 20 Mar 2023 15:00:44 +0800
+Subject: [PATCH 13/15] media: gpu: sandbox: Only depend dri for X11
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/sandbox/BUILD.gn | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/media/gpu/sandbox/BUILD.gn b/media/gpu/sandbox/BUILD.gn
+index cfcb7fa80..8d8cd0455 100644
+--- a/media/gpu/sandbox/BUILD.gn
++++ b/media/gpu/sandbox/BUILD.gn
+@@ -31,7 +31,7 @@ source_set("sandbox") {
+     deps += [ "//media/gpu/v4l2" ]
+   }
+   if (current_cpu != "s390x" && current_cpu != "ppc64" && is_linux &&
+-      !is_castos) {
++      !is_castos && ozone_platform_x11) {
+     # For DRI_DRIVER_DIR.
+     configs += [ "//build/config/linux/dri" ]
+   }
+-- 
+2.38.5
+
