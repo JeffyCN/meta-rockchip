@@ -50,6 +50,16 @@ do_generate_toolchain_file:append () {
 }
 
 do_install:append () {
+	# libdir might not equal /usr/lib which is assumed by rkaiq's cmake (e.g. when using multilib)
+	if [ "${libdir}" != "/usr/lib" ]; then
+		mkdir -p ${D}${libdir}
+		mv ${D}/usr/lib/*.a ${D}${libdir}/ || true
+		mv ${D}/usr/lib/*.so ${D}${libdir}/ || true
+
+		# Remove the empty /usr/lib directory to prevent packaging issues
+		rmdir --ignore-fail-on-non-empty ${D}/usr/lib
+	fi
+
 	# rkaiq installed 3A server to the wrong dir.
 	[ ! -d ${D}/usr/usr ] || cp -rp ${D}/usr/usr ${D}/
 
@@ -57,7 +67,7 @@ do_install:append () {
 	rm -rf ${D}/usr/etc ${D}/usr/usr ${D}/usr/bin/*demo \
 		${D}/usr/bin/rkaiq_tool_server ${D}/usr/bin/dumpcam
 
-	chrpath -d ${D}/${libdir}/libsmartIr.so
+	chrpath -d ${D}${libdir}/libsmartIr.so
 
 	install -d ${D}${sysconfdir}/iqfiles
 	ln -sf isp3x ${S}/rkaiq/iqfiles/isp30
