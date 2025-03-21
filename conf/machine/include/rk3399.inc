@@ -6,9 +6,6 @@ require conf/machine/include/mali.inc
 
 RK_SOC_FAMILY := "rk3399"
 
-PREFERRED_VERSION_linux-rockchip := "6.1%"
-LINUXLIBCVERSION := "6.1-custom%"
-
 MALI_GPU := "midgard-t86x"
 MALI_VERSION := "r18p0"
 
