@@ -1,0 +1,30 @@
+From a8aaa5c9a404f8a28646e8d1a2d1ab4e29295485 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 16 Jul 2018 09:53:40 +0800
+Subject: [PATCH] Rebooting with arg by default
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ src/halt.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/halt.c b/src/halt.c
+index a1d6cef..d230661 100644
+--- a/src/halt.c
++++ b/src/halt.c
+@@ -263,7 +263,11 @@ int main(int argc, char **argv)
+ 				usage();
+ 		}
+ 	 }
+-	if (argc != optind) usage();
++
++	if (argc != optind) {
++		user_message = argv[optind];
++		do_sync = do_hard = 1;
++	}
+ 
+ 	if (geteuid() != 0) {
+ 		fprintf(stderr, "%s: must be superuser.\n", progname);
+-- 
+2.20.1
+
