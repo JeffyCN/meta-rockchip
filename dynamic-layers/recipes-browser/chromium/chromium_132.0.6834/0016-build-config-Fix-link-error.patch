@@ -1,0 +1,31 @@
+From 3a5fe207170d7ccab9446ab94380860a3f163e22 Mon Sep 17 00:00:00 2001
+From: Caesar Wang <wxt@rock-chips.com>
+Date: Tue, 25 Mar 2025 11:40:44 +0800
+Subject: [PATCH] build: config: Fix link error
+
+Remove -disable-auto-upgrade-debug-info for old linker.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ build/config/compiler/BUILD.gn | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/build/config/compiler/BUILD.gn b/build/config/compiler/BUILD.gn
+index 548f821..2eabea4 100644
+--- a/build/config/compiler/BUILD.gn
++++ b/build/config/compiler/BUILD.gn
+@@ -787,9 +787,10 @@ config("compiler") {
+         ldflags += [ "-Wcrl,object_path_lto" ]
+       }
+ 
++      # HACK: Not supported for old linker
+       # We only use one version of LLVM within a build so there's no need to
+       # upgrade debug info, which can be expensive since it runs the verifier.
+-      ldflags += [ "-Wl,-mllvm,-disable-auto-upgrade-debug-info" ]
++      # ldflags += [ "-Wl,-mllvm,-disable-auto-upgrade-debug-info" ]
+     }
+ 
+     if (!optimize_for_size) {
+-- 
+2.38.5
+
