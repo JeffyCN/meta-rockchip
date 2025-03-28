@@ -1,7 +1,8 @@
-# Copyright (c) 2019, Fuzhou Rockchip Electronics Co., Ltd
+# Copyright (c) 2025, Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-require conf/machine/include/rockchip-arm64-common.inc
+require conf/machine/include/arm/armv8a/tune-cortexa35.inc
+require conf/machine/include/rockchip-common.inc
 
 RK_SOC_FAMILY := "rk3308"
 
