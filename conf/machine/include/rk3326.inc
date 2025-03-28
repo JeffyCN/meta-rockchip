@@ -1,4 +1,4 @@
-# Copyright (c) 2019, Fuzhou Rockchip Electronics Co., Ltd
+# Copyright (c) 2025, Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
 require conf/machine/include/px30.inc
