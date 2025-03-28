@@ -5,6 +5,8 @@ require conf/machine/include/arm/armv7a/tune-cortexa17.inc
 require conf/machine/include/rockchip-common.inc
 require conf/machine/include/mali.inc
 
+SERIAL_CONSOLES ?= "115200;ttyFIQ0"
+
 RK_SOC_FAMILY := "rk3288"
 
 MALI_GPU := "midgard-t76x"
