@@ -29,6 +29,5 @@ do_fetch:prepend () {
         try:
             runfetchcmd(fetch_cmd, d, workdir=ud.clonedir)
         except bb.fetch2.FetchError:
-            # Ignoring errors
-            return
+            pass # Ignoring errors
 }
