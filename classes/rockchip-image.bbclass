@@ -97,7 +97,7 @@ do_image_wic_ufs() {
 		START=$(expr ${START} / 8)
 		END=$(expr ${END} / 8)
 
-		echo "Adding partition($INDEX): $NAME $START-$END ($UUID)..."
+		echo "Adding part-${INDEX}: ${NAME} ${START}-${END} ${UUID}..."
 
 		sgdisk -a 1 -n ${INDEX}:${START}:${END} "${UFS_IMAGE}"
 		sgdisk -c ${INDEX}:${NAME} "${UFS_IMAGE}"
@@ -162,7 +162,7 @@ gen_rkparameter() {
 	done
 	echo >> "${OUT}"
 
-	if [ "$RK_PARTITION_GROW" = "1" ];then
+	if [ "${RK_PARTITION_GROW}" = "1" ];then
 		sed -i "s/[^,]*\(@[^,]*\)),$/-\1:grow)/" "${OUT}"
 	fi
 
@@ -212,7 +212,7 @@ gen_rkupdateimg() {
 			*) IMAGE="${NAME}.img" ;;
 		esac
 
-		[ ! -r "$IMAGE" ] || echo "$NAME $IMAGE" >> "${OUT}"
+		[ ! -r "${IMAGE}" ] || echo "${NAME} ${IMAGE}" >> "${OUT}"
 	done
 
 	PSEUDO_DISABLED=1

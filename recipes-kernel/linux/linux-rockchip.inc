@@ -53,9 +53,9 @@ do_kernel_metadata:prepend() {
 	cd "${S}/arch/${ARCH}/configs"
 	if [ ! -f "${KBUILD_DEFCONFIG}" ]; then
 		DEFCONFIGS="rockchip_linux_defconfig ${RK_SOC_FAMILY}_linux.config"
-		[ "$KBUILD_DEFCONFIGS" ] || KBUILD_DEFCONFIGS="$DEFCONFIGS"
+		[ "${KBUILD_DEFCONFIGS}" ] || KBUILD_DEFCONFIGS="$DEFCONFIGS"
 
-		echo "Merging $KBUILD_DEFCONFIGS into $KBUILD_DEFCONFIG..."
+		echo "Merging ${KBUILD_DEFCONFIGS} into ${KBUILD_DEFCONFIG}..."
 		cat ${KBUILD_DEFCONFIGS:-$CONFIGS} > ${KBUILD_DEFCONFIG} || true
 	fi
 	cd -
