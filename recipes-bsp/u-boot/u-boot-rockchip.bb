@@ -70,7 +70,7 @@ do_compile:append() {
 	done
 
 	# Pack Rockchip loader images
-	if [ "$RK_UBOOT_SPL" ]; then
+	if [ "${RK_UBOOT_SPL}" ]; then
 		# Use U-Boot's SPL
 		./make.sh --spl-new
 		if ! grep -q "ROCKCHIP_FIT_IMAGE_PACK=y" .config; then
