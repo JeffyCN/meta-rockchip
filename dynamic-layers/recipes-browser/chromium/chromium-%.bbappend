@@ -21,7 +21,7 @@ CHROMIUM_EXTRA_ARGS:append = " --no-sandbox --gpu-sandbox-start-early --ignore-g
 # HACK: VDA and VEA might depend on Vaapi on linux in some old versions.
 # CHROMIUM_EXTRA_ARGS:append = " --enable-features=VaapiVideoDecoder,VaapiVideoEncoder"
 
-CHROMIUM_EXTRA_ARGS:append = " --enable-features=AcceleratedVideoDecoder,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,kAcceleratedVideoEncodeLinux"
+CHROMIUM_EXTRA_ARGS:append = " --enable-features=AcceleratedVideoEncoder,AcceleratedVideoDecoder,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
