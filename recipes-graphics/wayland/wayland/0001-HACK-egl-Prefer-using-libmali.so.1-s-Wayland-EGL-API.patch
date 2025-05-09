@@ -1,4 +1,4 @@
-From 471ec152699d57de58574a338670e24b6b1b4f21 Mon Sep 17 00:00:00 2001
+From f7bd21d0ba1267db6a6f640717b283f93006ba5f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 25 Feb 2025 09:11:02 +0800
 Subject: [PATCH] HACK: egl: Prefer using libmali.so.1's Wayland-EGL APIs
@@ -8,8 +8,8 @@ The Mali DDK may provide its own version.
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  egl/meson.build   |  1 +
- egl/wayland-egl.c | 41 +++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 42 insertions(+)
+ egl/wayland-egl.c | 44 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 45 insertions(+)
 
 diff --git a/egl/meson.build b/egl/meson.build
 index 5363e80..0e51c51 100644
@@ -24,7 +24,7 @@ index 5363e80..0e51c51 100644
  	install: true
  )
 diff --git a/egl/wayland-egl.c b/egl/wayland-egl.c
-index 36a3471..6ecc1bd 100644
+index 36a3471..29f94cb 100644
 --- a/egl/wayland-egl.c
 +++ b/egl/wayland-egl.c
 @@ -27,6 +27,7 @@
@@ -79,7 +79,17 @@ index 36a3471..6ecc1bd 100644
  	if (egl_window->destroy_window_callback)
  		egl_window->destroy_window_callback(egl_window->driver_private);
  	free(egl_window);
-@@ -116,3 +133,27 @@ wl_egl_window_get_attached_size(struct wl_egl_window *egl_window,
+@@ -111,8 +128,35 @@ WL_EXPORT void
+ wl_egl_window_get_attached_size(struct wl_egl_window *egl_window,
+ 				int *width, int *height)
+ {
++	if (window_get_attached_size) {
++		window_get_attached_size(egl_window, width, height);
++		return;
++	}
++
+ 	if (width)
+ 		*width = egl_window->attached_width;
  	if (height)
  		*height = egl_window->attached_height;
  }
@@ -96,8 +106,6 @@ index 36a3471..6ecc1bd 100644
 +	window_create = dlsym(handle, "wl_egl_window_create");
 +	window_destroy = dlsym(handle, "wl_egl_window_destroy");
 +	window_get_attached_size = dlsym(handle, "wl_egl_window_get_attached_size");
-+
-+	dlclose(handle);
 +
 +	if (!window_resize || !window_create || !window_destroy ||
 +	    !window_get_attached_size) {
