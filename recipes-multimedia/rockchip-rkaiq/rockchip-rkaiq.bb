@@ -73,8 +73,12 @@ do_install:append () {
 	ln -sf isp3x ${S}/rkaiq/iqfiles/isp30
 
 	IQFILES_DIR="$(echo isp${RK_ISP_VERSION} | tr 'A-Z' 'a-z' | tr -d '.')"
-	install -m 0644 ${S}/rkaiq/iqfiles/${IQFILES_DIR}/*.json \
-		${D}${sysconfdir}/iqfiles/
+	cd ${S}/rkaiq/iqfiles/${IQFILES_DIR}/
+	if [ -d common ]; then
+		cd common
+	fi
+
+	install -m 0644 *.json ${D}${sysconfdir}/iqfiles/
 
 	install -d ${D}${sysconfdir}/init.d
 	install -m 0755 ${WORKDIR}/rkaiq_daemons.sh ${D}${sysconfdir}/init.d/
