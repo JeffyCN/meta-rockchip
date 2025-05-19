@@ -23,8 +23,8 @@ do_fetch:prepend () {
 
         repourl = git._get_repo_url(ud)
 
-        # Try an early full fetching
-        fetch_cmd = "LANG=C %s fetch --unshallow %s" % (ud.basecmd, shlex.quote(repourl))
+        # Fetch the latest remote repository and switch to the new HEAD
+        fetch_cmd = "%s fetch %s; mv FETCH_HEAD HEAD" % (ud.basecmd, shlex.quote(repourl))
         try:
             runfetchcmd(fetch_cmd, d, workdir=ud.clonedir)
         except bb.fetch2.FetchError:
