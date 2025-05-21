@@ -69,17 +69,21 @@ do_compile:append() {
 		cp -rT ${S}/${d} ${d}
 	done
 
+	if [ -z "${RK_UBOOT_CFG}" ]; then
+		RK_UBOOT_CFG=${RK_SOC_FAMILY}
+	fi
+
 	# Pack Rockchip loader images
 	if [ "${RK_UBOOT_SPL}" ]; then
 		# Use U-Boot's SPL
-		./make.sh --spl-new
+		./make.sh ${RK_UBOOT_CFG} --spl-new
 		if ! grep -q "ROCKCHIP_FIT_IMAGE_PACK=y" .config; then
 			# Repack SPL for non-FIT U-Boot
 			./make.sh --spl
 		fi
 	else
 		# Use Rockchip Miniloader
-		./make.sh
+		./make.sh ${RK_UBOOT_CFG}
 	fi
 	ln -sf *_loader*.bin "${RK_LOADER_BIN}"
 
