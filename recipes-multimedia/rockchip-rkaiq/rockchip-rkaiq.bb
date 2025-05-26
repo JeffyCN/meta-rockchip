@@ -96,4 +96,7 @@ FILES:${PN}-server = " \
 	${sysconfdir}/init.d/ \
 "
 FILES:${PN}-iqfiles = "${sysconfdir}/iqfiles/"
-FILES:${PN} = "${libdir}"
+FILES:${PN} = " \
+	${libdir} \
+	${datadir} \
+"
