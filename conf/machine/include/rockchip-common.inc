@@ -3,13 +3,13 @@
 
 require conf/machine/include/soc-family.inc
 
-RK_WIFIBT_RRECOMMENDS ?= ""
+RK_WIFIBT_RRECOMMENDS ??= ""
 MACHINE_EXTRA_RRECOMMENDS:append = " \
 	${RK_WIFIBT_RRECOMMENDS} \
 	kernel-modules \
 "
 
-RK_ISP_VERSION := ""
+RK_ISP_VERSION ??= ""
 
 SERIAL_CONSOLES ?= "115200;ttyFIQ0"
 KERNEL_IMAGETYPE ?= "Image"
@@ -20,8 +20,8 @@ PREFERRED_PROVIDER_virtual/bootloader ?= "u-boot-rockchip"
 
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-rockchip"
 
-ROCKCHIP_KERNEL_COMPRESSED ?= "1"
-ROCKCHIP_KERNEL_IMAGES ?= "1"
+ROCKCHIP_KERNEL_COMPRESSED ??= "1"
+ROCKCHIP_KERNEL_IMAGES ??= "1"
 
 # Prefer using Rockchip BSP kernel 5.10
 PREFERRED_VERSION_linux-rockchip ?= "5.10%"
