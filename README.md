@@ -70,6 +70,12 @@ To enable a particular machine, you need to add a MACHINE line naming the BSP to
 
 All supported machines can be found in meta-rockchip/conf/machine.
 
+And skip a few patch checks:
+```makefile
+  WARN_QA:remove = "patch-fuzz"
+  ERROR_QA:remove = "patch-status"
+```
+
 ### II. Building meta-rockchip BSP Layers
 
 You should then be able to build a image with "rockchip-image" enabled in the local.conf file:
