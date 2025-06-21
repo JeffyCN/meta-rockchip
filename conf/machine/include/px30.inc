@@ -10,6 +10,6 @@ RK_SOC_FAMILY := "px30"
 KBUILD_DEFCONFIG := "px30_linux_defconfig"
 
 MALI_GPU := "bifrost-g31"
-MALI_VERSION := "g2p0"
+MALI_VERSION ?= "g2p0"
 
 RK_ISP_VERSION := "1"

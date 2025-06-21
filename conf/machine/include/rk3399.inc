@@ -8,7 +8,7 @@ require conf/machine/include/mali.inc
 RK_SOC_FAMILY := "rk3399"
 
 MALI_GPU := "midgard-t86x"
-MALI_VERSION := "r18p0"
+MALI_VERSiON ?= "r18p0"
 
 RK_ISP_VERSION := "1"
 
