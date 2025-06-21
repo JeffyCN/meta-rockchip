@@ -10,7 +10,7 @@ SERIAL_CONSOLES ?= "115200;ttyFIQ0"
 RK_SOC_FAMILY := "rk3288"
 
 MALI_GPU := "midgard-t76x"
-MALI_VERSION := "r18p0"
+MALI_VERSION ?= "r18p0"
 MALI_SUBVERSION := "${@bb.utils.contains('MACHINE_FEATURES', 'rk3288w', 'r1p0', 'r0p0', d)}"
 
 RK_ISP_VERSION := "1"

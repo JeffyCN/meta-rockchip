@@ -8,4 +8,4 @@ require conf/machine/include/mali.inc
 RK_SOC_FAMILY := "rk3328"
 
 MALI_GPU := "utgard-450"
-MALI_VERSION := "r7p0"
+MALI_VERSION ?= "r7p0"
