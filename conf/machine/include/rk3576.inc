@@ -8,6 +8,6 @@ require conf/machine/include/mali.inc
 RK_SOC_FAMILY := "rk3576"
 
 MALI_GPU := "bifrost-g52"
-MALI_VERSION := "g13p0"
+MALI_VERSION ?= "g13p0"
 
 RK_ISP_VERSION := "3.9"
