@@ -25,13 +25,13 @@ STRIP = "echo"
 UNINATIVE_LOADER := ""
 
 do_install () {
-	install -d ${D}/usr/bin/
+	install -d ${D}${bindir}
 
 	TOOLS="boot_merger trust_merger firmwareMerger kernelimage loaderimage \
 		mkkrnlimg resource_tool upgrade_tool afptool rkImageMaker"
 
 	for tool in ${TOOLS}; do
-		find ${S} -type f -name ${tool} -exec \
-			install -v -m 0755 {} ${D}/usr/bin/ \;
+		find ${S}/rkbin ${S}/tools/linux/Linux_Pack_Firmware/rockdev -type f -name ${tool} -exec \
+			install -v -m 0755 {} ${D}${bindir} \;
 	done
 }
