@@ -12,11 +12,11 @@ Please see the corresponding sections below for details.
 This layer depends on:
 
 * URI: git://git.yoctoproject.org/poky
-* branch: styhead
+* branch: whinlatter
 
 * URI: git://git.openembedded.org/meta-openembedded
 * layers: meta-oe
-* branch: styhead
+* branch: whinlatter
 
 ## Table of Contents
 
@@ -36,8 +36,8 @@ In order to build an image with BSP support for a given release, you need to dow
 
 ```shell
 ~ $ mkdir yocto; cd yocto
-~/yocto $ git clone git://git.yoctoproject.org/poky -b styhead
-~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b styhead
+~/yocto $ git clone git://git.yoctoproject.org/poky -b whinlatter
+~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b whinlatter
 ```
 
 And put the meta-rockchip layer here too.

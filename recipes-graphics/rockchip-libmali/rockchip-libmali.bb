@@ -13,7 +13,6 @@ SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=libmali; \
 "
 SRCREV = "af1d910cd29d52e354f6679e46d1bf2bbc7ca476"
-S = "${WORKDIR}/git"
 
 DEPENDS = "coreutils-native libdrm"
 

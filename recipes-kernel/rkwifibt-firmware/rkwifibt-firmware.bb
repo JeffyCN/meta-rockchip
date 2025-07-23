@@ -12,8 +12,6 @@ inherit local-git
 SRCREV = "f4b13f7af66eaa023f942150fb3b1c6e79ddb90e"
 SRC_URI = "git://github.com/JeffyCN/mirrors.git;protocol=https;branch=rkwifibt;"
 
-S = "${WORKDIR}/git"
-
 inherit allarch deploy
 
 do_install() {

@@ -9,9 +9,6 @@ SRC_URI = " \
 	file://99-rockchip-permissions.rules \
 "
 
-S = "${WORKDIR}/sources"
-UNPACKDIR = "${S}"
-
 do_install() {
 	install -d ${D}${nonarch_base_libdir}/udev/rules.d
 	install -m 0644 ${UNPACKDIR}/99-rockchip-permissions.rules ${D}${nonarch_base_libdir}/udev/rules.d/99-rockchip-permissions.rules

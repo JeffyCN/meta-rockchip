@@ -13,7 +13,6 @@ SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=alsa-config; \
 "
 SRCREV = "1e0c4b5382b84ed629b1ca9e40c814103b92ee93"
-S = "${WORKDIR}/git"
 
 inherit meson
 

@@ -16,7 +16,7 @@ SRCREV_rkbin = "c41b714cacd249e3ef69b2bbe774da5095eefd72"
 SRCREV_tools = "1a32bc776af52494144fcef6641a73850cee628a"
 SRCREV_FORMAT ?= "rkbin_tools"
 
-S = "${WORKDIR}/sources"
+S = "${UNPACKDIR}/sources"
 
 INSANE_SKIP:${PN} = "already-stripped"
 STRIP = "echo"

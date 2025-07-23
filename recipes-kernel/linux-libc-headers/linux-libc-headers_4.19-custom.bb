@@ -12,6 +12,7 @@ SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=kernel-4.19-2022_01_10; \
 "
 
-S = "${WORKDIR}/git"
+# Reset to the original value
+S = "${UNPACKDIR}/${BP}"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"

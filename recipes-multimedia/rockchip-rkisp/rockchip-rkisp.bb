@@ -20,7 +20,9 @@ SRC_URI = " \
 	file://rkisp_daemons.sh \
 "
 
-S = "${WORKDIR}/git"
+EXTRA_OECMAKE = " \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+"
 
 do_configure() {
 	if echo ${TUNE_FEATURES} | grep -wq arm; then

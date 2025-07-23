@@ -17,8 +17,6 @@ inherit local-git
 SRCREV = "c37e7cf10283521c262f9e71fd9be0422a457989"
 SRC_URI = "git://github.com/JeffyCN/mirrors.git;protocol=https;branch=gstreamer-rockchip;"
 
-S = "${WORKDIR}/git"
-
 PATCHPATH = "${THISDIR}/files"
 inherit auto-patch
 

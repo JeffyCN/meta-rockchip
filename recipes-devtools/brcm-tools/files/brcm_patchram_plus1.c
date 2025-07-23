@@ -585,7 +585,7 @@ parse_cmd_line(int argc, char **argv)
 	int c;
 	int ret = 0;
 
-	typedef int (*PFI)();
+	typedef int (*PFI)(char *);
 
 	PFI parse[] = { parse_patchram, parse_baudrate,
 		parse_bdaddr,parse_bdaddr_rand, parse_enable_lpm, parse_enable_hci,

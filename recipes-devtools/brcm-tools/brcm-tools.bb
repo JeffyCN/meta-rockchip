@@ -11,8 +11,7 @@ SRC_URI = " \
 	file://brcm_patchram_plus1.c \
 "
 
-S = "${WORKDIR}/sources"
-UNPACKDIR = "${S}"
+S = "${UNPACKDIR}"
 
 do_compile() {
 	${CC} ${CFLAGS} ${LDFLAGS} dhd_priv.c -o dhd_priv

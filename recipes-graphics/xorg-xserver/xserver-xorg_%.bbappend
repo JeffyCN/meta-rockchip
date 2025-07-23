@@ -6,7 +6,6 @@ DEPENDS:append = " automake-native autoconf-native util-macros-native font-util-
 SRCREV = "${AUTOREV}"
 SRC_URI:append = " git://github.com/JeffyCN/xorg-xserver;protocol=https;nobranch=1;branch=${PV}_2025_03_13;"
 SRC_URI:remove = "https://www.x.org/releases//individual/xserver/xorg-server-${PV}.tar.bz2"
-S = "${WORKDIR}/git"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 

@@ -17,8 +17,7 @@ SRC_URI = " \
 	file://rtb_fwc.h \
 "
 
-S = "${WORKDIR}/sources"
-UNPACKDIR = "${S}"
+S = "${UNPACKDIR}"
 
 EXTRA_OEMAKE = 'CC="${CC} ${LDFLAGS}"'
 
