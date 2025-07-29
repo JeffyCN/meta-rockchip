@@ -1,0 +1,28 @@
+From 50fe2c04057d7b6cab4e0bab53a02e263b0c3429 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 26 Nov 2020 12:19:54 +0800
+Subject: [PATCH 10/42] waylandsink: Fix random crash
+
+By adding a sanity check for wl window when exposing.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ ext/wayland/gstwaylandsink.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
+index d68b795..6bac5d5 100644
+--- a/ext/wayland/gstwaylandsink.c
++++ b/ext/wayland/gstwaylandsink.c
+@@ -1205,7 +1205,7 @@ gst_wayland_sink_expose (GstVideoOverlay * overlay)
+   GST_DEBUG_OBJECT (self, "expose");
+ 
+   g_mutex_lock (&self->render_lock);
+-  if (self->last_buffer) {
++  if (self->window && self->last_buffer) {
+     GST_DEBUG_OBJECT (self, "redrawing last buffer");
+     render_last_buffer (self, TRUE);
+   }
+-- 
+2.20.1
+

@@ -1,0 +1,252 @@
+From b4d94d4b331e3177ae43bc633cf2a1171a01429c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 24 May 2022 16:16:33 +0800
+Subject: [PATCH 12/23] glupload: Support NV12_10LE40 and NV12|NV12_10LE40|NV16
+ (AFBC)
+
+Tested on RK356x with:
+export GST_MPP_VIDEODEC_DEFAULT_ARM_AFBC=1
+gst-play-1.0 video.mp4 --videosink=glimagesink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/gl/egl/gsteglimage.c   | 22 +++++++++++++--
+ gst-libs/gst/gl/egl/gsteglimage.h   |  2 ++
+ gst-libs/gst/gl/gstglmemory.h       |  2 +-
+ gst-libs/gst/gl/gstglupload.c       | 15 ++++++++++-
+ gst-libs/gst/gl/meson.build         |  4 ++-
+ gst-libs/gst/video/video-info-dma.c | 14 ++++++++++
+ gst-libs/gst/video/video-info-dma.h | 42 +++++++++++++++++++++++++++++
+ 7 files changed, 96 insertions(+), 5 deletions(-)
+
+diff --git a/gst-libs/gst/gl/egl/gsteglimage.c b/gst-libs/gst/gl/egl/gsteglimage.c
+index c3ee82a..0b6b601 100644
+--- a/gst-libs/gst/gl/egl/gsteglimage.c
++++ b/gst-libs/gst/gl/egl/gsteglimage.c
+@@ -856,8 +856,9 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
+ {
+   EGLImageKHR img;
+   const GstVideoInfo *in_info = &in_info_dma->vinfo;
++  GstVideoFormat format = GST_VIDEO_INFO_FORMAT (in_info);
+   guint32 fourcc;
+-  guint64 modifier;
++  guint64 modifier = DRM_FORMAT_MOD_LINEAR;
+   gint i;
+   gboolean with_modifiers;
+ 
+@@ -869,6 +870,7 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
+    */
+   guintptr attribs[41];         /* 6 + 10 * 3 + 4 + 1 */
+   gint atti = 0;
++  gfloat stride_scale = 1.0f;
+ 
+   if (!gst_egl_image_check_dmabuf_direct_with_dma_drm (context, in_info_dma,
+           target))
+@@ -882,6 +884,22 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
+   if (!with_modifiers && modifier != DRM_FORMAT_MOD_LINEAR)
+     return NULL;
+ 
++  if (GST_VIDEO_INFO_IS_AFBC (in_info)) {
++    if (!with_modifiers)
++      return NULL;
++
++    /* Mali uses these formats instead */
++    if (format == GST_VIDEO_FORMAT_NV12)
++      stride_scale = 1.5;
++    else if (format == GST_VIDEO_FORMAT_NV12_10LE40)
++      stride_scale = 1.5;
++    else if (format == GST_VIDEO_FORMAT_NV16)
++      stride_scale = 2;
++
++    modifier = DRM_AFBC_MODIFIER;
++    n_planes = 1;
++  }
++
+   /* EGL DMABuf importation supports a maximum of 3 planes */
+   if (G_UNLIKELY (n_planes > 3))
+     return NULL;
+@@ -900,7 +918,7 @@ gst_egl_image_from_dmabuf_direct_target_with_dma_drm (GstGLContext * context,
+     attribs[atti++] = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
+     attribs[atti++] = offset[0];
+     attribs[atti++] = EGL_DMA_BUF_PLANE0_PITCH_EXT;
+-    attribs[atti++] = get_egl_stride (in_info, 0);
++    attribs[atti++] = get_egl_stride (in_info, 0) * stride_scale;
+     if (with_modifiers && modifier != DRM_FORMAT_MOD_INVALID) {
+       attribs[atti++] = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT;
+       attribs[atti++] = modifier & 0xffffffff;
+diff --git a/gst-libs/gst/gl/egl/gsteglimage.h b/gst-libs/gst/gl/egl/gsteglimage.h
+index b34607d..8ad6e6d 100644
+--- a/gst-libs/gst/gl/egl/gsteglimage.h
++++ b/gst-libs/gst/gl/egl/gsteglimage.h
+@@ -26,6 +26,8 @@
+ #include <gst/gl/gstgl_fwd.h>
+ #include <gst/gl/gstglformat.h>
+ 
++#include <libdrm/drm_fourcc.h>
++
+ G_BEGIN_DECLS
+ 
+ GST_GL_API GType gst_egl_image_get_type (void);
+diff --git a/gst-libs/gst/gl/gstglmemory.h b/gst-libs/gst/gl/gstglmemory.h
+index bf2d752..9fd17d1 100644
+--- a/gst-libs/gst/gl/gstglmemory.h
++++ b/gst-libs/gst/gl/gstglmemory.h
+@@ -68,7 +68,7 @@ GType gst_gl_memory_allocator_get_type(void);
+ #define GST_GL_MEMORY_VIDEO_FORMATS_STR \
+     "{ RGBA, BGRA, RGBx, BGRx, ARGB, ABGR, xRGB, xBGR, GBRA, GBR, RGBP, BGRP, RGB, BGR, RGB16, BGR16, " \
+     "AYUV, VUYA, A444, A422, Y410, I420, YV12, NV12, NV21, NV16, NV61, YUY2, UYVY, Y210, Y41B, " \
+-    "Y42B, Y444, GRAY8, GRAY16_LE, GRAY16_BE, ARGB64, A420, AV12, NV12_16L32S, NV12_4L4, RBGA" \
++    "Y42B, Y444, GRAY8, GRAY16_LE, GRAY16_BE, ARGB64, A420, AV12, NV12_10LE40, NV12_16L32S, NV12_4L4, RBGA" \
+     GST_GL_MEMORY_VIDEO_EXT_FORMATS "}"
+ 
+ /**
+diff --git a/gst-libs/gst/gl/gstglupload.c b/gst-libs/gst/gl/gstglupload.c
+index 0cec3f8..5c0de8b 100644
+--- a/gst-libs/gst/gl/gstglupload.c
++++ b/gst-libs/gst/gl/gstglupload.c
+@@ -697,7 +697,8 @@ _gl_memory_upload_free (gpointer impl)
+ 
+ static GstStaticCaps _gl_memory_upload_caps =
+ GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE_WITH_FEATURES
+-    (GST_CAPS_FEATURE_MEMORY_GL_MEMORY, GST_GL_MEMORY_VIDEO_FORMATS_STR));
++    (GST_CAPS_FEATURE_MEMORY_GL_MEMORY, GST_GL_MEMORY_VIDEO_FORMATS_STR) ";"
++    GST_VIDEO_CAPS_MAKE ("{NV12, NV12_10LE40}") ", arm-afbc = (int) 1");
+ 
+ static const UploadMethod _gl_memory_upload = {
+   "GLMemory",
+@@ -3417,6 +3418,9 @@ static gboolean
+ _gst_gl_upload_set_caps_unlocked (GstGLUpload * upload, GstCaps * in_caps,
+     GstCaps * out_caps)
+ {
++  GstStructure *s;
++  gint value;
++
+   g_return_val_if_fail (upload != NULL, FALSE);
+   g_return_val_if_fail (gst_caps_is_fixed (in_caps), FALSE);
+ 
+@@ -3438,6 +3442,15 @@ _gst_gl_upload_set_caps_unlocked (GstGLUpload * upload, GstCaps * in_caps,
+   }
+   gst_video_info_from_caps (&upload->priv->out_info, out_caps);
+ 
++  /* parse AFBC from caps */
++  s = gst_caps_get_structure (in_caps, 0);
++  if (gst_structure_get_int (s, "arm-afbc", &value)) {
++    if (value)
++      GST_VIDEO_INFO_SET_AFBC (&upload->priv->in_info);
++    else
++      GST_VIDEO_INFO_UNSET_AFBC (&upload->priv->in_info);
++  }
++
+   upload->priv->method = NULL;
+   upload->priv->method_impl = NULL;
+   upload->priv->method_i = 0;
+diff --git a/gst-libs/gst/gl/meson.build b/gst-libs/gst/gl/meson.build
+index 4e4087f..990725e 100644
+--- a/gst-libs/gst/gl/meson.build
++++ b/gst-libs/gst/gl/meson.build
+@@ -1093,6 +1093,8 @@ if build_gstgl
+   # case-insensitive FS would include gst-libs/gl/egl/egl.h as EGL/egl.h.
+   common_args += '-I@0@'.format(meson.current_build_dir())
+ 
++  libdrm_dep = dependency('libdrm')
++
+   gstgl = library('gstgl-' + api_version,
+     gl_sources, gl_egl_sources, gl_x11_sources, gl_wayland_sources, gl_viv_fb_sources, gl_priv_sources, gl_enumtypes_c, gl_enumtypes_h,
+     c_args : common_args,
+@@ -1104,7 +1106,7 @@ if build_gstgl
+     darwin_versions : osxversion,
+     install : true,
+     dependencies : [gst_base_dep, video_dep, gmodule_dep, gl_lib_deps,
+-                    gl_platform_deps, gl_winsys_deps, gl_misc_deps],
++                    gl_platform_deps, gl_winsys_deps, gl_misc_deps, libdrm_dep],
+     # don't confuse EGL/egl.h with gst-libs/gl/egl/egl.h on case-insensitive file systems
+     implicit_include_directories : false)
+ 
+diff --git a/gst-libs/gst/video/video-info-dma.c b/gst-libs/gst/video/video-info-dma.c
+index c2d7d48..499e310 100644
+--- a/gst-libs/gst/video/video-info-dma.c
++++ b/gst-libs/gst/video/video-info-dma.c
+@@ -465,6 +465,19 @@ gst_video_info_dma_drm_from_video_info (GstVideoInfoDmaDrm * drm_info,
+   if (fourcc == DRM_FORMAT_INVALID)
+     return FALSE;
+ 
++  if (GST_VIDEO_INFO_IS_AFBC (info)) {
++    /* Mali uses these formats instead */
++    if (format == GST_VIDEO_FORMAT_NV12)
++      fourcc = DRM_FORMAT_YUV420_8BIT;
++    else if (format == GST_VIDEO_FORMAT_NV12_10LE40)
++      fourcc = DRM_FORMAT_YUV420_10BIT;
++    else if (format == GST_VIDEO_FORMAT_NV16)
++      fourcc = DRM_FORMAT_YUYV;
++
++    GST_INFO ("unsupported format for AFBC");
++    return FALSE;
++  }
++
+   drm_info->vinfo = *info;
+   drm_info->drm_fourcc = fourcc;
+   drm_info->drm_modifier = modifier;
+@@ -668,6 +681,7 @@ static const struct FormatMap
+   {GST_VIDEO_FORMAT_P010_10LE, DRM_FORMAT_P010},
+   {GST_VIDEO_FORMAT_P012_LE, DRM_FORMAT_P012},
+   {GST_VIDEO_FORMAT_BGR10A2_LE, DRM_FORMAT_ARGB2101010},
++  {GST_VIDEO_FORMAT_NV12_10LE40, DRM_FORMAT_NV15},
+ };
+ /* *INDENT-ON* */
+ 
+diff --git a/gst-libs/gst/video/video-info-dma.h b/gst-libs/gst/video/video-info-dma.h
+index a0f9246..8510ab2 100644
+--- a/gst-libs/gst/video/video-info-dma.h
++++ b/gst-libs/gst/video/video-info-dma.h
+@@ -25,6 +25,48 @@
+ 
+ G_BEGIN_DECLS
+ 
++#ifndef DRM_FORMAT_NV15
++#define DRM_FORMAT_NV15 fourcc_code('N', 'V', '1', '5')
++#endif
++
++#ifndef DRM_FORMAT_YUV420_8BIT
++#define DRM_FORMAT_YUV420_8BIT fourcc_code('Y', 'U', '0', '8')
++#endif
++
++#ifndef DRM_FORMAT_YUV420_10BIT
++#define DRM_FORMAT_YUV420_10BIT fourcc_code('Y', 'U', '1', '0')
++#endif
++
++#ifndef DRM_FORMAT_MOD_VENDOR_ARM
++#define DRM_FORMAT_MOD_VENDOR_ARM 0x08
++#endif
++
++#ifndef DRM_FORMAT_MOD_ARM_AFBC
++#define DRM_FORMAT_MOD_ARM_AFBC(__afbc_mode) fourcc_mod_code(ARM, __afbc_mode)
++#endif
++
++#ifndef AFBC_FORMAT_MOD_BLOCK_SIZE_16x16
++#define AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 (1ULL)
++#endif
++
++#ifndef AFBC_FORMAT_MOD_SPARSE
++#define AFBC_FORMAT_MOD_SPARSE (((__u64)1) << 6)
++#endif
++
++#define DRM_AFBC_MODIFIER \
++  (DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_SPARSE) | \
++   DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16))
++
++#ifndef GST_VIDEO_FLAG_ARM_AFBC
++#define GST_VIDEO_FLAG_ARM_AFBC (1UL << 31)
++#define GST_VIDEO_INFO_SET_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_SET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#define GST_VIDEO_INFO_UNSET_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_UNSET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#define GST_VIDEO_INFO_IS_AFBC(i) \
++  GST_VIDEO_INFO_FLAG_IS_SET (i, GST_VIDEO_FLAG_ARM_AFBC)
++#endif
++
+ /**
+  * GST_VIDEO_DMA_DRM_CAPS_MAKE:
+  *
+-- 
+2.20.1
+

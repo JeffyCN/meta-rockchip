@@ -1,0 +1,45 @@
+From 59502bf7606d4274099a9882726790394dc6919d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 29 Jul 2025 16:08:30 +0800
+Subject: [PATCH 01/42] gsth265parser: Allow for non-fatal VUI errors
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/codecparsers/gsth265parser.c | 21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
+
+diff --git a/gst-libs/gst/codecparsers/gsth265parser.c b/gst-libs/gst/codecparsers/gsth265parser.c
+index 6ff51ca..6570781 100644
+--- a/gst-libs/gst/codecparsers/gsth265parser.c
++++ b/gst-libs/gst/codecparsers/gsth265parser.c
+@@ -590,11 +590,22 @@ gst_h265_parse_vui_parameters (GstH265SPS * sps, NalReader * nr)
+     READ_UINT8 (nr, vui->tiles_fixed_structure_flag, 1);
+     READ_UINT8 (nr, vui->motion_vectors_over_pic_boundaries_flag, 1);
+     READ_UINT8 (nr, vui->restricted_ref_pic_lists_flag, 1);
+-    READ_UE_MAX (nr, vui->min_spatial_segmentation_idc, 4096);
+-    READ_UE_MAX (nr, vui->max_bytes_per_pic_denom, 16);
+-    READ_UE_MAX (nr, vui->max_bits_per_min_cu_denom, 16);
+-    READ_UE_MAX (nr, vui->log2_max_mv_length_horizontal, 16);
+-    READ_UE_MAX (nr, vui->log2_max_mv_length_vertical, 15);
++
++#define READ_UE_MAX_WARN(nr, val, max) { \
++  guint32 tmp; \
++  READ_UE (nr, tmp); \
++  if (tmp > max) { \
++    GST_WARNING ("value for '" G_STRINGIFY (tmp) \
++                 "' greater than max. value: %d, max %d", tmp, max); \
++  } \
++  val = tmp; \
++}
++
++    READ_UE_MAX_WARN (nr, vui->min_spatial_segmentation_idc, 4096);
++    READ_UE_MAX_WARN (nr, vui->max_bytes_per_pic_denom, 16);
++    READ_UE_MAX_WARN (nr, vui->max_bits_per_min_cu_denom, 16);
++    READ_UE_MAX_WARN (nr, vui->log2_max_mv_length_horizontal, 16);
++    READ_UE_MAX_WARN (nr, vui->log2_max_mv_length_vertical, 15);
+   }
+ 
+   vui->parsed = TRUE;
+-- 
+2.20.1
+
