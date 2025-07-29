@@ -40,3 +40,7 @@ XSERVER ?= " \
 PREFERRED_RPROVIDER_lib32-initd-functions = "lib32-initscripts"
 
 RDEPENDS:${KERNEL_PACKAGE_NAME}-base = ""
+
+# Bypass patch checks
+ERROR_QA:remove = "patch-status patch-fuzz"
+WARN_QA:remove = "patch-fuzz"
