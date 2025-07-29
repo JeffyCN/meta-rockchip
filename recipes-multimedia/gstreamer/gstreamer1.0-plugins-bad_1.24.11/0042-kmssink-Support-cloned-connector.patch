@@ -1,0 +1,66 @@
+From 17dbfd31107a5850bac799cf2031019279950058 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 16 Jun 2025 16:48:40 +0800
+Subject: [PATCH 42/42] kmssink: Support cloned connector
+
+Set env DRM_CONNECTOR_CLONE_<selected connector id>=<cloned connector id>
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmssink.c | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index e4d9f67..b3093ab 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -58,6 +58,7 @@
+ #include <xf86drm.h>
+ #include <xf86drmMode.h>
+ #include <string.h>
++#include <stdio.h>
+ 
+ #include "gstkmssink.h"
+ #include "gstkmsutils.h"
+@@ -972,6 +973,18 @@ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo, guint32 fb_id)
+   drmModeModeInfo *mode, *preferred;
+   GstKMSMemory *kmsmem;
+   GstVideoInfo *info;
++  const gchar *env;
++  gchar buf[256];
++  gint connectors[2] = {0};
++
++  connectors[0] = self->conn_id;
++  snprintf(buf, sizeof(buf), "DRM_CONNECTOR_CLONE_%d", connectors[0]);
++  env = getenv(buf);
++  if (env) {
++    connectors[1] = atoi(env);
++    GST_INFO_OBJECT (self, "using connector %d as a clone of connector %d",
++        connectors[1], connectors[0]);
++  }
+ 
+   ret = FALSE;
+   conn = NULL;
+@@ -1024,11 +1037,18 @@ retry_tmp:
+ 
+ try_orig:
+   err = drmModeSetCrtc (self->fd, self->crtc_id, fb_id, 0, 0,
+-      (uint32_t *) & self->conn_id, 1, mode);
++      (uint32_t *) connectors, connectors[1] ? 2 : 1, mode);
+   if (err) {
+     if (!kmsmem)
+       goto retry_tmp;
+ 
++    if (connectors[1]) {
++      GST_INFO_OBJECT (self, "unable to use cloned connector %d",
++          connectors[1]);
++      connectors[1] = 0;
++      goto retry_tmp;
++    }
++
+     goto modesetting_failed;
+   }
+ 
+-- 
+2.20.1
+
