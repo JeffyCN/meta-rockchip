@@ -5,7 +5,7 @@ MAJ_VER = "${@oe.utils.trim_version("${PV}", 3)}"
 PATCHPATH = "${CURDIR}/chromium_${MAJ_VER}"
 inherit auto-patch
 
-PACKAGECONFIG ??= "use-egl use-linux-v4l2 proprietary-codecs"
+PACKAGECONFIG ??= "use-egl use-v4l2 use-linux-v4l2 proprietary-codecs"
 PACKAGECONFIG[use-linux-v4l2] = "use_v4l2_codec=true use_v4lplugin=true use_linux_v4l2_only=true"
 
 GN_ARGS:append = " fatal_linker_warnings=false"
