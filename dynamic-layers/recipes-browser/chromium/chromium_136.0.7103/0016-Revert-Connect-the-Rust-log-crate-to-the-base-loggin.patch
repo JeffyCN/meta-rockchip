@@ -1,0 +1,346 @@
+From e29ed772165eb6e8b88479865cdabc02d5918556 Mon Sep 17 00:00:00 2001
+From: Ariel D'Alessandro <ariel.dalessandro@collabora.com>
+Date: Fri, 1 Nov 2024 08:48:02 -0300
+Subject: [PATCH 16/16] Revert "Connect the Rust log crate to the //base
+ logging implementation"
+
+This reverts chromium commit 7ea0a5e831dd5 ("Connect the Rust log crate
+to the //base logging implementation".
+
+The above commit enabled bindgen for the Rust logger. Similar to patch
+0011-Disable-crabbyavif-to-fix-build-errors.patch added in commit [0],
+this fixes a build error that's most likely because the way upstream
+configures bindgen makes it incompatible with our cross-architecture
+builds.
+
+```
+| FAILED: gen/base/logging_rust_log_integration_bindgen_generator/bindings.rs
+| [...]
+| panicked at bindgen-cli/main.rs:52:36:
+| Unable to generate bindings: ClangDiagnostic("error: unsupported option '-mbranch-protection=' for target 'x86_64-unknown-linux-gnu'\n")
+```
+
+[0] meta-browser commit fd347dc ("chromium: Update to 127.0.6533.99")
+
+Upstream-Status: Inappropriate [specific to our build setup]
+Signed-off-by: Ariel D'Alessandro <ariel.dalessandro@collabora.com>
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ base/BUILD.gn                                 | 47 ------------
+ base/logging.cc                               |  9 ---
+ base/logging/rust_log_integration_unittest.cc | 76 -------------------
+ base/test/BUILD.gn                            | 13 ----
+ .../test/logging/test_rust_logger_consumer.rs | 41 ----------
+ .../rust/chromium_crates_io/gnrt_config.toml  |  1 +
+ third_party/rust/log/v0_4/BUILD.gn            |  2 +
+ 7 files changed, 3 insertions(+), 186 deletions(-)
+ delete mode 100644 base/logging/rust_log_integration_unittest.cc
+ delete mode 100644 base/test/logging/test_rust_logger_consumer.rs
+
+diff --git a/base/BUILD.gn b/base/BUILD.gn
+index 2703e8142..bf7ee56c2 100644
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -36,8 +36,6 @@ import("//build/config/sanitizers/sanitizers.gni")
+ import("//build/config/sysroot.gni")
+ import("//build/config/ui.gni")
+ import("//build/nocompile.gni")
+-import("//build/rust/rust_bindgen.gni")
+-import("//build/rust/rust_static_library.gni")
+ import("//build/timestamp.gni")
+ import("//build/util/process_version.gni")
+ import("//build_overrides/build.gni")
+@@ -1046,9 +1044,7 @@ component("base") {
+     # Used by metrics/crc32, except on NaCl builds.
+     deps += [ "//third_party/zlib" ]
+ 
+-    # NaCl does not support Rust.
+     deps += [
+-      ":rust_logger",
+       "//third_party/rust/serde_json_lenient/v0_2/wrapper",
+     ]
+   }
+@@ -1582,8 +1578,6 @@ component("base") {
+       "files/scoped_temp_file.h",
+       "json/json_file_value_serializer.cc",
+       "json/json_file_value_serializer.h",
+-      "logging/rust_log_integration.cc",
+-      "logging/rust_log_integration.h",
+       "memory/discardable_memory.cc",
+       "memory/discardable_memory.h",
+       "memory/discardable_memory_allocator.cc",
+@@ -2516,46 +2510,6 @@ component("base") {
+   }
+ }
+ 
+-rust_bindgen("logging_log_severity_bindgen") {
+-  # TODO(danakj): Maybe combine all base bindgen targets, or all base/logging
+-  # ones even) into a single GN target? But the GN rule needs to handle multiple
+-  # headers then.
+-  header = "logging/log_severity.h"
+-  cpp = true
+-  visibility = [ ":*" ]
+-
+-  # Transitive generated header dependency.
+-  deps = [ ":debugging_buildflags" ]
+-}
+-
+-rust_static_library("rust_logger") {
+-  allow_unsafe = true  # Unsafe needed for FFI.
+-  deps = [
+-    ":debugging_buildflags",
+-    ":logging_log_severity_bindgen",
+-    ":tracing_buildflags",
+-    "//build:chromeos_buildflags",
+-    "//third_party/rust/log/v0_4:lib",
+-
+-    # Needed because of circular dependency: base depends on this target and by
+-    # extension the cxx-generated C++ code, but the cxx-generated code includes
+-    # base headers and calls base code. This seems to generally not cause
+-    # issues, except for partition_alloc which applies configs when depended on.
+-    #
+-    # This allows the generated C++ code to transitively include partition alloc
+-    # headers without issue.
+-    #
+-    # TODO(collinbaker): determine how to handle these cxx bindings-induced
+-    # circular dependencies more robustly.
+-    "//base/allocator/partition_allocator:raw_ptr",
+-  ]
+-  visibility = [ ":base" ]
+-  sources = [ "logging/rust_logger.rs" ]
+-  crate_root = "logging/rust_logger.rs"
+-
+-  cxx_bindings = [ "logging/rust_logger.rs" ]
+-}
+-
+ if (is_linux || is_chromeos) {
+   # Split out as a separate target for two reasons:
+   # - the line number reader is 2x slower in debug builds if not optimized,
+@@ -3371,7 +3325,6 @@ test("base_unittests") {
+     "json/string_escape_unittest.cc",
+     "json/values_util_unittest.cc",
+     "lazy_instance_unittest.cc",
+-    "logging/rust_log_integration_unittest.cc",
+     "logging_unittest.cc",
+     "macros/is_empty_unittest.cc",
+     "memory/aligned_memory_unittest.cc",
+diff --git a/base/logging.cc b/base/logging.cc
+index 26ba1a286..7bde37bb7 100644
+--- a/base/logging.cc
++++ b/base/logging.cc
+@@ -118,10 +118,6 @@ typedef FILE* FileHandle;
+ #include "base/fuchsia/scoped_fx_logger.h"
+ #endif
+ 
+-#if !BUILDFLAG(IS_NACL)
+-#include "base/logging/rust_logger.rs.h"
+-#endif
+-
+ namespace logging {
+ 
+ namespace {
+@@ -530,11 +526,6 @@ bool BaseInitLoggingImpl(const LoggingSettings& settings) {
+   }
+ #endif
+ 
+-#if !BUILDFLAG(IS_NACL)
+-  // Connects Rust logging with the //base logging functionality.
+-  internal::init_rust_log_crate();
+-#endif
+-
+   // Ignore file options unless logging to file is set.
+   if ((g_logging_destination & LOG_TO_FILE) == 0) {
+     return true;
+diff --git a/base/logging/rust_log_integration_unittest.cc b/base/logging/rust_log_integration_unittest.cc
+deleted file mode 100644
+index 8fc0fec7e..000000000
+--- a/base/logging/rust_log_integration_unittest.cc
++++ /dev/null
+@@ -1,76 +0,0 @@
+-// Copyright 2024 The Chromium Authors
+-// Use of this source code is governed by a BSD-style license that can be
+-// found in the LICENSE file.
+-
+-#include "base/logging.h"
+-#include "base/test/logging/test_rust_logger_consumer.rs.h"
+-#include "base/test/mock_log.h"
+-
+-using testing::_;
+-
+-namespace logging {
+-namespace {
+-
+-class RustLogIntegrationTest : public testing::Test {
+- public:
+-  void SetUp() override { log_.StartCapturingLogs(); }
+-
+-  void TearDown() override { log_.StopCapturingLogs(); }
+-
+-  base::test::MockLog log_;
+-};
+-
+-// TODO(crbug.com/374023535): Logging does not work in component builds.
+-#if defined(COMPONENT_BUILD)
+-#define MAYBE_CheckAllSeverity DISABLED_CheckAllSeverity
+-#else
+-#define MAYBE_CheckAllSeverity CheckAllSeverity
+-#endif
+-TEST_F(RustLogIntegrationTest, MAYBE_CheckAllSeverity) {
+-#if DCHECK_IS_ON()
+-  // Debug and Trace logs from Rust are discarded when DCHECK_IS_ON() is false;
+-  // otherwise, they are logged as info.
+-  EXPECT_CALL(log_,
+-              Log(LOGGING_INFO, _, _, _, testing::HasSubstr("test trace log")))
+-      .WillOnce(testing::Return(true));
+-
+-  EXPECT_CALL(log_,
+-              Log(LOGGING_INFO, _, _, _, testing::HasSubstr("test debug log")))
+-      .WillOnce(testing::Return(true));
+-#endif
+-
+-  EXPECT_CALL(log_,
+-              Log(LOGGING_INFO, _, _, _, testing::HasSubstr("test info log")))
+-      .WillOnce(testing::Return(true));
+-
+-  EXPECT_CALL(log_, Log(LOGGING_WARNING, _, _, _,
+-                        testing::HasSubstr("test warning log")))
+-      .WillOnce(testing::Return(true));
+-
+-  EXPECT_CALL(log_,
+-              Log(LOGGING_ERROR, _, _, _, testing::HasSubstr("test error log")))
+-      .WillOnce(testing::Return(true));
+-
+-  base::test::print_test_trace_log();
+-  base::test::print_test_debug_log();
+-  base::test::print_test_info_log();
+-  base::test::print_test_warning_log();
+-  base::test::print_test_error_log();
+-}
+-
+-// TODO(crbug.com/374023535): Logging does not work in component builds.
+-#if defined(COMPONENT_BUILD)
+-#define MAYBE_Placeholders DISABLED_Placeholders
+-#else
+-#define MAYBE_Placeholders Placeholders
+-#endif
+-TEST_F(RustLogIntegrationTest, MAYBE_Placeholders) {
+-  EXPECT_CALL(log_, Log(LOGGING_ERROR, _, _, _,
+-                        testing::HasSubstr("test log with placeholder 2")))
+-      .WillOnce(testing::Return(true));
+-
+-  base::test::print_test_error_log_with_placeholder(2);
+-}
+-
+-}  // namespace
+-}  // namespace logging
+diff --git a/base/test/BUILD.gn b/base/test/BUILD.gn
+index 5beef03e5..282354c53 100644
+--- a/base/test/BUILD.gn
++++ b/base/test/BUILD.gn
+@@ -6,7 +6,6 @@ import("//build/compiled_action.gni")
+ import("//build/config/features.gni")
+ import("//build/config/nacl/config.gni")
+ import("//build/config/ui.gni")
+-import("//build/rust/rust_static_library.gni")
+ import("//build_overrides/build.gni")
+ import("//third_party/protobuf/proto_library.gni")
+ 
+@@ -38,17 +37,6 @@ static_library("test_config") {
+   ]
+ }
+ 
+-rust_static_library("test_rust_logger_consumer") {
+-  allow_unsafe = true  # Unsafe needed for FFI
+-  testonly = true
+-  deps = [ "//third_party/rust/log/v0_4:lib" ]
+-  sources = [ "logging/test_rust_logger_consumer.rs" ]
+-
+-  crate_root = "logging/test_rust_logger_consumer.rs"
+-
+-  cxx_bindings = [ "logging/test_rust_logger_consumer.rs" ]
+-}
+-
+ static_library("test_support") {
+   testonly = true
+   sources = [
+@@ -192,7 +180,6 @@ static_library("test_support") {
+ 
+   public_deps = [
+     ":test_config",
+-    ":test_rust_logger_consumer",
+     "//base",
+     "//base:base_static",
+     "//base:i18n",
+diff --git a/base/test/logging/test_rust_logger_consumer.rs b/base/test/logging/test_rust_logger_consumer.rs
+deleted file mode 100644
+index dc8adc6b8..000000000
+--- a/base/test/logging/test_rust_logger_consumer.rs
++++ /dev/null
+@@ -1,41 +0,0 @@
+-// Copyright 2024 The Chromium Authors
+-// Use of this source code is governed by a BSD-style license that can be
+-// found in the LICENSE file.
+-
+-use log::{debug, error, info, trace, warn};
+-
+-#[cxx::bridge(namespace = "base::test")]
+-mod ffi {
+-    extern "Rust" {
+-        fn print_test_info_log();
+-        fn print_test_warning_log();
+-        fn print_test_error_log();
+-        fn print_test_debug_log();
+-        fn print_test_trace_log();
+-        fn print_test_error_log_with_placeholder(i: i32);
+-    }
+-}
+-
+-pub fn print_test_info_log() {
+-    info!("test info log");
+-}
+-
+-pub fn print_test_warning_log() {
+-    warn!("test warning log");
+-}
+-
+-pub fn print_test_error_log() {
+-    error!("test error log");
+-}
+-
+-pub fn print_test_debug_log() {
+-    debug!("test debug log");
+-}
+-
+-pub fn print_test_trace_log() {
+-    trace!("test trace log");
+-}
+-
+-fn print_test_error_log_with_placeholder(i: i32) {
+-    error!("test log with placeholder {}", i);
+-}
+diff --git a/third_party/rust/chromium_crates_io/gnrt_config.toml b/third_party/rust/chromium_crates_io/gnrt_config.toml
+index 84de45c33..121b4d192 100644
+--- a/third_party/rust/chromium_crates_io/gnrt_config.toml
++++ b/third_party/rust/chromium_crates_io/gnrt_config.toml
+@@ -207,6 +207,7 @@ ban_features = [
+ license_files= ["LICENSE.txt"]
+ 
+ [crate.log]
++group = 'test'
+ 
+ [crate.miniz_oxide.extra_kv]
+ # Web tests (aka WPT tests, also formerly known as Layout Tests) require fast
+diff --git a/third_party/rust/log/v0_4/BUILD.gn b/third_party/rust/log/v0_4/BUILD.gn
+index f2f0679a8..73c3a8ace 100644
+--- a/third_party/rust/log/v0_4/BUILD.gn
++++ b/third_party/rust/log/v0_4/BUILD.gn
+@@ -47,4 +47,6 @@ cargo_crate("lib") {
+   rustflags = [
+     "--cap-lints=allow",  # Suppress all warnings in crates.io crates
+   ]
++
++  testonly = true
+ }
+-- 
+2.38.5
+
