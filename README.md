@@ -158,7 +158,7 @@ For example using the kernel/ and u-boot/ in the same directory of meta-rockchip
 ```makefile
 # build/conf/local.conf
 PREFERRED_VERSION_linux-rockchip := "6.1%"
-LINUXLIBCVERSION := "6.1-custom%"
+PREFERRED_VERSION_linux-libc-headers := "6.1-custom%"
 
 SRC_URI:pn-linux-rockchip = " \
         git://${TOPDIR}/../kernel;protocol=file;usehead=1 \
