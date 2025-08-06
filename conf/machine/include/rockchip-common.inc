@@ -25,7 +25,7 @@ ROCKCHIP_KERNEL_IMAGES ??= "1"
 
 # Prefer using Rockchip BSP kernel 6.1
 PREFERRED_VERSION_linux-rockchip ?= "6.1%"
-LINUXLIBCVERSION ?= "6.1-custom%"
+LINUXLIBCVERSION ?= "5.10-custom%"
 # Avoid old kernel version error
 OLDEST_KERNEL = "${@d.getVar('LINUXLIBCVERSION').split('-')[0]}"
 
