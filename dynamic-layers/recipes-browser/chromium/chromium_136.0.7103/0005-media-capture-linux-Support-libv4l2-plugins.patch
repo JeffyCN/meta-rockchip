@@ -1,4 +1,4 @@
-From 532c43af46705b0303f70f7f78467cffaefe94b6 Mon Sep 17 00:00:00 2001
+From a41ce0bd04785468108523547adc2f39de0e8f8f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 1 Jul 2019 10:37:35 +0800
 Subject: [PATCH 05/16] media: capture: linux: Support libv4l2 plugins

@@ -1,0 +1,28 @@
+From 3ac3467c5bb7f13989f59ad369a6b46932384bff Mon Sep 17 00:00:00 2001
+From: Caesar Wang <wxt@rock-chips.com>
+Date: Fri, 12 Sep 2025 16:58:06 +0800
+Subject: [PATCH 16/16] ui: ozone: wayland: Prefer rockchip drm render node
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../platform/wayland/common/drm_render_node_path_finder.cc    | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ui/ozone/platform/wayland/common/drm_render_node_path_finder.cc b/ui/ozone/platform/wayland/common/drm_render_node_path_finder.cc
+index 2fca3836b..e7abd533c 100644
+--- a/ui/ozone/platform/wayland/common/drm_render_node_path_finder.cc
++++ b/ui/ozone/platform/wayland/common/drm_render_node_path_finder.cc
+@@ -100,8 +100,8 @@ void DrmRenderNodePathFinder::FindDrmRenderNodePath() {
+     return;
+   }
+ 
+-  static constexpr const char* preferred_drivers[3] = {"i915", "amdgpu",
+-                                                       "virtio_gpu"};
++  static constexpr const char* preferred_drivers[4] = {"i915", "amdgpu",
++                                                       "virtio_gpu", "rockchip"};
+   for (const char* preferred_driver : preferred_drivers) {
+     for (const auto& [driver, node] : driver_to_nodes) {
+       if (driver == preferred_driver) {
+-- 
+2.38.5
+

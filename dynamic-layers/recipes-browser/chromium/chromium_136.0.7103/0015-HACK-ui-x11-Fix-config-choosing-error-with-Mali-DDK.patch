@@ -1,4 +1,4 @@
-From a99aac0575d57184e1b1c01e071efeaf9b00b92c Mon Sep 17 00:00:00 2001
+From 1fb35b74fbc2ae932b6798ec58cadae390d6d7b6 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 22 May 2024 18:45:56 +0800
 Subject: [PATCH 15/16] HACK: ui: x11: Fix config choosing error with Mali DDK
