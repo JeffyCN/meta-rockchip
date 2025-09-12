@@ -1,4 +1,4 @@
-From cf082cdc107cc44641236db973ae2db10dce31ac Mon Sep 17 00:00:00 2001
+From 3064906c904c83e11fc64e37850016d1580701ee Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 31 May 2021 01:41:57 +0800
 Subject: [PATCH 10/16] HACK: [ozone/wayland]: Force disable implicit external

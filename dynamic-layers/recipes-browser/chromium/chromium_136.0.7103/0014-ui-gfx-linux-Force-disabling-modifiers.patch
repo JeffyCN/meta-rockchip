@@ -1,4 +1,4 @@
-From a37c31a7bd3e9066cd773309add9541c6b031ba8 Mon Sep 17 00:00:00 2001
+From 6c6ce5d0f35238c5151f38ac24471b1d7bae3aa7 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 7 Aug 2023 18:05:41 +0800
 Subject: [PATCH 14/16] ui: gfx: linux: Force disabling modifiers
