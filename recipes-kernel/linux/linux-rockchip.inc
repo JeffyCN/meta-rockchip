@@ -52,11 +52,13 @@ do_kernel_metadata:prepend() {
 	# Support defconfig fragments
 	cd "${S}/arch/${ARCH}/configs"
 	if [ ! -f "${KBUILD_DEFCONFIG}" ]; then
-		DEFCONFIGS="rockchip_linux_defconfig ${RK_SOC_FAMILY}_linux.config"
-		[ "${KBUILD_DEFCONFIGS}" ] || KBUILD_DEFCONFIGS="$DEFCONFIGS"
-
-		echo "Merging ${KBUILD_DEFCONFIGS} into ${KBUILD_DEFCONFIG}..."
-		cat ${KBUILD_DEFCONFIGS:-$CONFIGS} > ${KBUILD_DEFCONFIG} || true
+		for cfg in rockchip_linux_defconfig ${RK_SOC_FAMILY}.config \
+			${RK_SOC_FAMILY}_linux.config; do
+			if [ -r ${cfg} ]; then
+				echo "Merging ${cfg} into ${KBUILD_DEFCONFIG}..."
+				cat ${cfg} >> ${KBUILD_DEFCONFIG}
+			fi
+		done
 	fi
 	cd -
 }
