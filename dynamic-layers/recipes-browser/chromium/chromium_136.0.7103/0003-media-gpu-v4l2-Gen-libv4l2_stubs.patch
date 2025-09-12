@@ -1,4 +1,4 @@
-From 5db19625b58b4f199318236cca4d30ba8af90031 Mon Sep 17 00:00:00 2001
+From 05f496f2835cf108e00f720f81d6c6aa4146af3f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 2 Nov 2023 16:08:22 +0800
 Subject: [PATCH 03/16] media: gpu: v4l2: Gen libv4l2_stubs

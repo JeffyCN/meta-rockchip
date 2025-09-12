@@ -1,4 +1,4 @@
-From 2ba8ba83bf54fd05104c4763d132579b0113e4d6 Mon Sep 17 00:00:00 2001
+From 61894c8795fc8a3cc9687dd67f89c7926f2bf853 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 10 Apr 2020 16:16:08 +0800
 Subject: [PATCH 07/16] media: gpu: v4l2: Use POLLIN for pending event
