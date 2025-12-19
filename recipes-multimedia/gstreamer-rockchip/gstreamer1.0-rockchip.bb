@@ -26,7 +26,7 @@ inherit meson pkgconfig
 
 PACKAGECONFIG ??= "mpp ${@bb.utils.filter('DISTRO_FEATURES', 'x11', d)} rga kmssrc"
 
-PACKAGECONFIG[mpp] = "-Drockchipmpp=enabled,-Drockchipmpp=disabled,rockchip-mpp"
+PACKAGECONFIG[mpp] = "-Drockchipmpp=enabled,-Drockchipmpp=disabled,rockchip-mpp,${PN}-rockchipmpp"
 PACKAGECONFIG[x11] = "-Drkximage=enabled,-Drkximage=disabled,libx11 libdrm"
 PACKAGECONFIG[rga] = "-Drga=enabled,-Drga=disabled,rockchip-librga"
 PACKAGECONFIG[kmssrc] = "-Dkmssrc=enabled,-Dkmssrc=disabled,libdrm"
