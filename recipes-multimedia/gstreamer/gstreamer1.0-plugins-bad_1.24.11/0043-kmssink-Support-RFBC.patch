@@ -1,0 +1,230 @@
+From a1d2cdc798fbfd434a5348ce14938a5d89b292e8 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 4 Aug 2025 13:12:48 +0800
+Subject: [PATCH 43/43] kmssink: Support RFBC
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ sys/kms/gstkmsallocator.c |  7 +++---
+ sys/kms/gstkmssink.c      | 51 +++++++++++++++++++++++++--------------
+ sys/kms/gstkmsutils.h     | 40 ++++++++++++++++++++++++++++++
+ 3 files changed, 77 insertions(+), 21 deletions(-)
+
+diff --git a/sys/kms/gstkmsallocator.c b/sys/kms/gstkmsallocator.c
+index 4a50564e..f0c3b6f6 100644
+--- a/sys/kms/gstkmsallocator.c
++++ b/sys/kms/gstkmsallocator.c
+@@ -372,11 +372,12 @@ gst_kms_allocator_add_fb (GstKMSAllocator * alloc, GstKMSMemory * kmsmem,
+   GST_DEBUG_OBJECT (alloc, "bo handles: %d, %d, %d, %d", bo_handles[0],
+       bo_handles[1], bo_handles[2], bo_handles[3]);
+ 
+-  if (GST_VIDEO_INFO_IS_AFBC (vinfo)) {
++  if (GST_VIDEO_INFO_IS_AFBC (vinfo) || GST_VIDEO_INFO_IS_RFBC (vinfo)) {
+     guint64 modifiers[4] = { 0 };
+ 
+     for (i = 0; i < num_planes; i++)
+-      modifiers[i] = DRM_AFBC_MODIFIER;
++      modifiers[i] =
++        GST_VIDEO_INFO_IS_AFBC (vinfo) ? DRM_AFBC_MODIFIER : DRM_RFBC_MODIFIER;
+ 
+     if (fmt == DRM_FORMAT_NV12 || fmt == DRM_FORMAT_NV12_10 ||
+         fmt == DRM_FORMAT_NV16) {
+@@ -397,7 +398,7 @@ gst_kms_allocator_add_fb (GstKMSAllocator * alloc, GstKMSMemory * kmsmem,
+         _pitches[0] *= 1.5;
+       } else {
+         _fmt = DRM_FORMAT_YUYV;
+-        /* The bpp of YUYV (AFBC) is 16 */
++        /* The bpp of YUYV (FBC) is 16 */
+         _pitches[0] *= 2;
+       }
+ 
+diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
+index b3093ab3..0aee8b7f 100644
+--- a/sys/kms/gstkmssink.c
++++ b/sys/kms/gstkmssink.c
+@@ -1105,8 +1105,8 @@ no_disp_ratio:
+ }
+ 
+ static void
+-check_afbc (GstKMSSink * self, drmModePlane * plane, guint32 drmfmt,
+-    gboolean * linear, gboolean * afbc)
++check_fbc (GstKMSSink * self, drmModePlane * plane, guint32 drmfmt,
++    gboolean * linear, gboolean * afbc, gboolean * rfbc)
+ {
+   drmModeObjectPropertiesPtr props;
+   drmModePropertyBlobPtr blob;
+@@ -1118,7 +1118,7 @@ check_afbc (GstKMSSink * self, drmModePlane * plane, guint32 drmfmt,
+   guint64 value = 0;
+   gint i, j;
+ 
+-  *linear = *afbc = FALSE;
++  *linear = *afbc = *rfbc = FALSE;
+ 
+   res = drmModeGetResources (self->fd);
+   if (!res)
+@@ -1174,6 +1174,8 @@ check_afbc (GstKMSSink * self, drmModePlane * plane, guint32 drmfmt,
+ 
+       if (mod->modifier == DRM_AFBC_MODIFIER)
+         *afbc = TRUE;
++      else if (mod->modifier == DRM_RFBC_MODIFIER)
++        *rfbc = TRUE;
+       else if (mod->modifier == DRM_FORMAT_MOD_LINEAR)
+         *linear = TRUE;
+     }
+@@ -1215,9 +1217,9 @@ ensure_allowed_caps (GstKMSSink * self, drmModeConnector * conn,
+       mode = &conn->modes[i];
+ 
+     for (j = 0; j < plane->count_formats; j++) {
+-      gboolean linear = FALSE, afbc = FALSE;
++      gboolean linear = FALSE, afbc = FALSE, rfbc = FALSE;
+ 
+-      check_afbc (self, plane, plane->formats[j], &linear, &afbc);
++      check_fbc (self, plane, plane->formats[j], &linear, &afbc, &rfbc);
+ 
+       if (plane->formats[j] == DRM_FORMAT_YUV420_8BIT)
+         fmt = GST_VIDEO_FORMAT_NV12;
+@@ -1258,13 +1260,18 @@ ensure_allowed_caps (GstKMSSink * self, drmModeConnector * conn,
+         GstCaps *afbc_caps = gst_caps_copy (caps);
+         gst_caps_set_simple (afbc_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
+ 
+-        if (linear)
+-          gst_caps_append (caps, afbc_caps);
+-        else
+-          gst_caps_replace (&caps, afbc_caps);
++        tmp_caps = gst_caps_merge (tmp_caps, afbc_caps);
+       }
+ 
+-      tmp_caps = gst_caps_merge (tmp_caps, caps);
++      if (rfbc) {
++        GstCaps *rfbc_caps = gst_caps_copy (caps);
++        gst_caps_set_simple (rfbc_caps, "rfbc", G_TYPE_INT, 1, NULL);
++
++        tmp_caps = gst_caps_merge (tmp_caps, rfbc_caps);
++      }
++
++      if ((!afbc && !rfbc) || linear)
++        tmp_caps = gst_caps_merge (tmp_caps, caps);
+     }
+ 
+     out_caps = gst_caps_merge (out_caps, gst_caps_simplify (tmp_caps));
+@@ -1912,7 +1919,7 @@ gst_kms_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+   if (!gst_video_info_from_caps (&vinfo, caps))
+     goto invalid_format;
+ 
+-  /* parse AFBC from caps */
++  /* parse FBC from caps */
+   s = gst_caps_get_structure (caps, 0);
+   if (gst_structure_get_int (s, "arm-afbc", &value)) {
+     if (value)
+@@ -1920,6 +1927,12 @@ gst_kms_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+     else
+       GST_VIDEO_INFO_UNSET_AFBC (&vinfo);
+   }
++  if (gst_structure_get_int (s, "rfbc", &value)) {
++    if (value)
++      GST_VIDEO_INFO_SET_RFBC (&vinfo);
++    else
++      GST_VIDEO_INFO_UNSET_RFBC (&vinfo);
++  }
+ 
+   self->vinfo = vinfo;
+ 
+@@ -1999,7 +2012,9 @@ gst_kms_sink_propose_allocation (GstBaseSink * bsink, GstQuery * query)
+ 
+   s = gst_caps_get_structure (caps, 0);
+   if (gst_structure_get_int (s, "arm-afbc", &value) && value)
+-    goto afbc_caps;
++    goto fbc_caps;
++  if (gst_structure_get_int (s, "rfbc", &value) && value)
++    goto fbc_caps;
+ 
+   size = GST_VIDEO_INFO_SIZE (&vinfo);
+ 
+@@ -2039,9 +2054,9 @@ invalid_caps:
+     GST_DEBUG_OBJECT (bsink, "invalid caps specified");
+     return FALSE;
+   }
+-afbc_caps:
++fbc_caps:
+   {
+-    GST_DEBUG_OBJECT (bsink, "no allocation for AFBC");
++    GST_DEBUG_OBJECT (bsink, "no allocation for FBC");
+     return FALSE;
+   }
+ no_pool:
+@@ -2301,8 +2316,8 @@ gst_kms_sink_copy_to_dumb_buffer (GstKMSSink * self, GstVideoInfo * vinfo,
+   gboolean success;
+   GstBuffer *buf = NULL;
+ 
+-  if (GST_VIDEO_INFO_IS_AFBC (vinfo)) {
+-    GST_ERROR_OBJECT (self, "unable to copy AFBC");
++  if (GST_VIDEO_INFO_IS_AFBC (vinfo) || GST_VIDEO_INFO_IS_RFBC (vinfo)) {
++    GST_ERROR_OBJECT (self, "unable to copy FBC");
+     return NULL;
+   }
+ 
+@@ -2499,8 +2514,8 @@ retry_set_plane:
+   gst_kms_push_hdr_infoframe (self, FALSE);
+ #endif
+ 
+-  if (GST_VIDEO_INFO_IS_AFBC (vinfo))
+-    /* The AFBC's width should align to 4 */
++  if (GST_VIDEO_INFO_IS_AFBC (vinfo) || GST_VIDEO_INFO_IS_RFBC (vinfo))
++    /* The FBC's width should align to 4 */
+     src.w &= ~3;
+ 
+   /* to make sure it can be show when driver don't support scale */
+diff --git a/sys/kms/gstkmsutils.h b/sys/kms/gstkmsutils.h
+index 500405a1..8d470efe 100644
+--- a/sys/kms/gstkmsutils.h
++++ b/sys/kms/gstkmsutils.h
+@@ -80,6 +80,46 @@ G_BEGIN_DECLS
+   GST_VIDEO_INFO_FLAG_IS_SET (i, GST_VIDEO_FLAG_ARM_AFBC)
+ #endif
+ 
++#ifndef DRM_FORMAT_MOD_VENDOR_ROCKCHIP
++#define DRM_FORMAT_MOD_VENDOR_ROCKCHIP 0x0b
++#endif
++
++#ifndef DRM_FORMAT_MOD_ROCKCHIP_TYPE_SHIFT
++#define DRM_FORMAT_MOD_ROCKCHIP_TYPE_SHIFT  52
++#endif
++
++#ifndef DRM_FORMAT_MOD_ROCKCHIP_TYPE_RFBC
++#define DRM_FORMAT_MOD_ROCKCHIP_TYPE_RFBC 0x1
++#endif
++
++#ifndef ROCKCHIP_RFBC_BLOCK_SIZE_64x4
++#define ROCKCHIP_RFBC_BLOCK_SIZE_64x4   (1ULL)
++#endif
++
++#ifndef DRM_FORMAT_MOD_ROCKCHIP_CODE
++#define DRM_FORMAT_MOD_ROCKCHIP_CODE(__type, __val) \
++  fourcc_mod_code(ROCKCHIP, ((__u64)(__type) << DRM_FORMAT_MOD_ROCKCHIP_TYPE_SHIFT) | \
++      ((__val) & 0x000fffffffffffffULL))
++#endif
++
++#ifndef DRM_FORMAT_MOD_ROCKCHIP_RFBC
++#define DRM_FORMAT_MOD_ROCKCHIP_RFBC(mode) \
++  DRM_FORMAT_MOD_ROCKCHIP_CODE(DRM_FORMAT_MOD_ROCKCHIP_TYPE_RFBC, mode)
++#endif
++
++#define DRM_RFBC_MODIFIER \
++  DRM_FORMAT_MOD_ROCKCHIP_RFBC(ROCKCHIP_RFBC_BLOCK_SIZE_64x4)
++
++#ifndef GST_VIDEO_FLAG_RFBC
++#define GST_VIDEO_FLAG_RFBC (1UL << 30)
++#define GST_VIDEO_INFO_SET_RFBC(i) \
++  GST_VIDEO_INFO_FLAG_SET (i, GST_VIDEO_FLAG_RFBC)
++#define GST_VIDEO_INFO_UNSET_RFBC(i) \
++  GST_VIDEO_INFO_FLAG_UNSET (i, GST_VIDEO_FLAG_RFBC)
++#define GST_VIDEO_INFO_IS_RFBC(i) \
++  GST_VIDEO_INFO_FLAG_IS_SET (i, GST_VIDEO_FLAG_RFBC)
++#endif
++
+ GstVideoFormat gst_video_format_from_drm (guint32 drmfmt);
+ guint32        gst_drm_format_from_video (GstVideoFormat fmt);
+ guint32        gst_drm_bpp_from_drm (guint32 drmfmt);
+-- 
+2.39.5
+

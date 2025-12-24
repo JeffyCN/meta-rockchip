@@ -1,7 +1,7 @@
-From d175a3a7bd8e84a5d663ad2b5fa9a5c6cf2a859b Mon Sep 17 00:00:00 2001
+From f7bc13c364214f46002271c409f3aa2571b4993f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 25 Feb 2022 17:48:58 +0800
-Subject: [PATCH 29/42] kmssink: Support setting prefered frame syncing mode
+Subject: [PATCH 29/43] kmssink: Support setting prefered frame syncing mode
 
 Tested with:
 gst-launch-1.0 videotestsrc ! kmssink sync-mode=vblank
@@ -14,7 +14,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 82 insertions(+), 15 deletions(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index acba81a..05d06ec 100644
+index acba81a1..05d06ec5 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -107,11 +107,14 @@ enum
@@ -214,7 +214,7 @@ index acba81a..05d06ec 100644
  
    gst_video_overlay_install_properties (gobject_class, PROP_N);
 diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
-index 21e998d..bb553c4 100644
+index 21e998d6..bb553c48 100644
 --- a/sys/kms/gstkmssink.h
 +++ b/sys/kms/gstkmssink.h
 @@ -45,6 +45,14 @@ G_BEGIN_DECLS
@@ -241,5 +241,5 @@ index 21e998d..bb553c4 100644
  
  struct _GstKMSSinkClass {
 -- 
-2.20.1
+2.39.5
 

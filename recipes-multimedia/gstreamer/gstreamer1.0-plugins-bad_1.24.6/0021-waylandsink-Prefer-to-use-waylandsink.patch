@@ -1,7 +1,7 @@
-From a05cab4e4a4ae90cfa265bfaba26baf86427663b Mon Sep 17 00:00:00 2001
+From 3a6ef23e98089fc2957a794d6a8c8c5b17c938de Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 27 Dec 2021 21:37:06 +0800
-Subject: [PATCH 21/40] waylandsink: Prefer to use waylandsink
+Subject: [PATCH 21/43] waylandsink: Prefer to use waylandsink
 
 Increase rank to primary.
 
@@ -11,10 +11,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index 67e477a..7be8459 100644
+index 4f5c4ed1..62bd0b78 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
-@@ -115,7 +115,7 @@ static void gst_wayland_sink_expose (GstVideoOverlay * overlay);
+@@ -116,7 +116,7 @@ static void gst_wayland_sink_expose (GstVideoOverlay * overlay);
  G_DEFINE_TYPE_WITH_CODE (GstWaylandSink, gst_wayland_sink, GST_TYPE_VIDEO_SINK,
      G_IMPLEMENT_INTERFACE (GST_TYPE_VIDEO_OVERLAY,
          gst_wayland_sink_videooverlay_init));
@@ -24,5 +24,5 @@ index 67e477a..7be8459 100644
  
  #define GST_TYPE_WL_WINDOW_LAYER (gst_wl_window_layer_get_type ())
 -- 
-2.20.1
+2.39.5
 

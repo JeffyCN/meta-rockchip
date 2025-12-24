@@ -1,7 +1,7 @@
 From 296cb557fe85d62cfed59ef445181aeb2f032324 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 5 Mar 2021 10:15:51 +0800
-Subject: [PATCH 14/40] waylandsink: Support window layer property
+Subject: [PATCH 14/43] waylandsink: Support window layer property
 
 Support setting top|normal|bottom window layer.
 
@@ -17,7 +17,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  4 files changed, 103 insertions(+), 5 deletions(-)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index b65277a..1c153d4 100644
+index b65277a0..1c153d41 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
 @@ -63,6 +63,7 @@ enum
@@ -129,7 +129,7 @@ index b65277a..1c153d4 100644
            G_CALLBACK (on_window_closed), self, 0);
        gst_wl_window_set_rotate_method (self->window,
 diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
-index abba263..db6b953 100644
+index abba263c..db6b9532 100644
 --- a/ext/wayland/gstwaylandsink.h
 +++ b/ext/wayland/gstwaylandsink.h
 @@ -57,6 +57,7 @@ struct _GstWaylandSink
@@ -141,7 +141,7 @@ index abba263..db6b953 100644
    gchar *display_name;
  
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index efe0474..b05b858 100644
+index efe0474f..b05b8589 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -282,6 +282,43 @@ gst_wl_window_new_internal (GstWlDisplay * display, GMutex * render_lock)
@@ -206,7 +206,7 @@ index efe0474..b05b858 100644
      /* Finally, commit the xdg_surface state as toplevel */
      priv->configured = FALSE;
 diff --git a/gst-libs/gst/wayland/gstwlwindow.h b/gst-libs/gst/wayland/gstwlwindow.h
-index c4e8fc0..65f3c4f 100644
+index c4e8fc02..65f3c4f2 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.h
 +++ b/gst-libs/gst/wayland/gstwlwindow.h
 @@ -30,19 +30,30 @@ G_BEGIN_DECLS
@@ -243,5 +243,5 @@ index c4e8fc0..65f3c4f 100644
  GST_WL_API
  GstWlWindow *gst_wl_window_new_in_surface (GstWlDisplay * display,
 -- 
-2.20.1
+2.39.5
 

@@ -1,7 +1,7 @@
-From 2534a067d19c060fe1f73971a5577c0a7f69cc65 Mon Sep 17 00:00:00 2001
+From abdb7d897287569d1b1706ec9c59828b89a10e79 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 19 Jan 2022 16:37:40 +0800
-Subject: [PATCH 23/42] kmssink: Support ignoring aspect ratio
+Subject: [PATCH 23/43] kmssink: Support ignoring aspect ratio
 
 Set "force-aspect-ratio" property to false to ignore aspect ratio.
 
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index d530c5b..0d3ae65 100644
+index d530c5be..0d3ae65e 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -106,6 +106,7 @@ enum
@@ -83,7 +83,7 @@ index d530c5b..0d3ae65 100644
  
    gst_video_overlay_install_properties (gobject_class, PROP_N);
 diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
-index 4e18bec..1c75b9e 100644
+index 4e18becc..1c75b9e0 100644
 --- a/sys/kms/gstkmssink.h
 +++ b/sys/kms/gstkmssink.h
 @@ -110,6 +110,8 @@ struct _GstKMSSink {
@@ -96,5 +96,5 @@ index 4e18bec..1c75b9e 100644
  
  struct _GstKMSSinkClass {
 -- 
-2.20.1
+2.39.5
 

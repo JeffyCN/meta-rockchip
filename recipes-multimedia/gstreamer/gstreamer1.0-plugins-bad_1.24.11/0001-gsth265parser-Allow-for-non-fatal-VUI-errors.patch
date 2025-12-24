@@ -1,7 +1,7 @@
 From 59502bf7606d4274099a9882726790394dc6919d Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 29 Jul 2025 16:08:30 +0800
-Subject: [PATCH 01/42] gsth265parser: Allow for non-fatal VUI errors
+Subject: [PATCH 01/43] gsth265parser: Allow for non-fatal VUI errors
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -9,7 +9,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 16 insertions(+), 5 deletions(-)
 
 diff --git a/gst-libs/gst/codecparsers/gsth265parser.c b/gst-libs/gst/codecparsers/gsth265parser.c
-index 6ff51ca..6570781 100644
+index 6ff51ca0..65707814 100644
 --- a/gst-libs/gst/codecparsers/gsth265parser.c
 +++ b/gst-libs/gst/codecparsers/gsth265parser.c
 @@ -590,11 +590,22 @@ gst_h265_parse_vui_parameters (GstH265SPS * sps, NalReader * nr)
@@ -41,5 +41,5 @@ index 6ff51ca..6570781 100644
  
    vui->parsed = TRUE;
 -- 
-2.20.1
+2.39.5
 

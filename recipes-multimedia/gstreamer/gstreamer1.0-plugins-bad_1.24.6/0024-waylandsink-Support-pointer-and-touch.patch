@@ -1,7 +1,7 @@
-From 2749e0d7f695444fea0aad72a6071fb2f7bc8f35 Mon Sep 17 00:00:00 2001
+From 22b043507924af4f7f2a0aeac60396d0a29297d6 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 5 May 2022 17:56:46 +0800
-Subject: [PATCH 24/40] waylandsink: Support pointer and touch
+Subject: [PATCH 24/43] waylandsink: Support pointer and touch
 
 Based on weston's client window and simple-egl.
 
@@ -15,7 +15,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  5 files changed, 322 insertions(+), 3 deletions(-)
 
 diff --git a/gst-libs/gst/wayland/gstwldisplay.c b/gst-libs/gst/wayland/gstwldisplay.c
-index 98becf0..1484912 100644
+index 38107355..565f9b62 100644
 --- a/gst-libs/gst/wayland/gstwldisplay.c
 +++ b/gst-libs/gst/wayland/gstwldisplay.c
 @@ -25,6 +25,7 @@
@@ -125,7 +125,7 @@ index 98becf0..1484912 100644
    /* to avoid buffers being unregistered from another thread
     * at the same time, take their ownership */
    g_mutex_lock (&priv->buffers_mutex);
-@@ -309,6 +372,222 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
+@@ -312,6 +375,222 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
    handle_xdg_wm_base_ping
  };
  
@@ -348,7 +348,7 @@ index 98becf0..1484912 100644
  static void
  registry_handle_global (void *data, struct wl_registry *registry,
      uint32_t id, const char *interface, uint32_t version)
-@@ -332,6 +611,18 @@ registry_handle_global (void *data, struct wl_registry *registry,
+@@ -335,6 +614,18 @@ registry_handle_global (void *data, struct wl_registry *registry,
    } else if (g_strcmp0 (interface, "wl_shm") == 0) {
      priv->shm = wl_registry_bind (registry, id, &wl_shm_interface, 1);
      wl_shm_add_listener (priv->shm, &shm_listener, self);
@@ -367,7 +367,7 @@ index 98becf0..1484912 100644
    } else if (g_strcmp0 (interface, "wp_viewporter") == 0) {
      priv->viewporter =
          wl_registry_bind (registry, id, &wp_viewporter_interface, 1);
-@@ -434,6 +725,8 @@ gst_wl_display_new_existing (struct wl_display *display,
+@@ -437,6 +728,8 @@ gst_wl_display_new_existing (struct wl_display *display,
    priv->display_wrapper = wl_proxy_create_wrapper (display);
    priv->own_display = take_ownership;
  
@@ -377,7 +377,7 @@ index 98becf0..1484912 100644
    priv->queue = wl_display_create_queue_with_name (priv->display,
        "GStreamer display queue");
 diff --git a/gst-libs/gst/wayland/gstwldisplay.h b/gst-libs/gst/wayland/gstwldisplay.h
-index a7f8c8d..9a260da 100644
+index a7f8c8d7..9a260da6 100644
 --- a/gst-libs/gst/wayland/gstwldisplay.h
 +++ b/gst-libs/gst/wayland/gstwldisplay.h
 @@ -37,6 +37,10 @@ struct _GstWlDisplay
@@ -392,7 +392,7 @@ index a7f8c8d..9a260da 100644
  GstWlDisplay *gst_wl_display_new (const gchar * name, GError ** error);
  
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index ba17d9f..9c368ac 100644
+index 0cde0be0..38ee6d61 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -112,6 +112,19 @@ static void gst_wl_window_update_borders (GstWlWindow * self);
@@ -434,7 +434,7 @@ index ba17d9f..9c368ac 100644
    fullscreen_shell = gst_wl_display_get_fullscreen_shell_v1 (display);
  
 diff --git a/gst-libs/gst/wayland/gstwlwindow.h b/gst-libs/gst/wayland/gstwlwindow.h
-index bdb7306..ec1a3d5 100644
+index bdb7306d..ec1a3d5b 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.h
 +++ b/gst-libs/gst/wayland/gstwlwindow.h
 @@ -49,6 +49,10 @@ struct _GstWlWindow
@@ -449,7 +449,7 @@ index bdb7306..ec1a3d5 100644
  void gst_wl_window_ensure_crop (GstWlWindow * self,
          gint x, gint y, gint w, gint h);
 diff --git a/gst-libs/gst/wayland/meson.build b/gst-libs/gst/wayland/meson.build
-index 75251db..547cf66 100644
+index 75251dbe..547cf66a 100644
 --- a/gst-libs/gst/wayland/meson.build
 +++ b/gst-libs/gst/wayland/meson.build
 @@ -1,11 +1,12 @@
@@ -485,5 +485,5 @@ index 75251db..547cf66 100644
    install_headers(wl_headers, subdir: 'gstreamer-1.0/gst/wayland')
    meson.override_dependency(pkg_name, gstwayland_dep)
 -- 
-2.20.1
+2.39.5
 
