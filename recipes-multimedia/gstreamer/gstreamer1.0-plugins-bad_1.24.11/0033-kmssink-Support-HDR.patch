@@ -1,7 +1,7 @@
-From 2c73002e068f630ca91ac18503a7eb826ce7906d Mon Sep 17 00:00:00 2001
+From fb8fcf64d3e3a5fefa5913ab913ec02b0185f4b2 Mon Sep 17 00:00:00 2001
 From: Jiajian Wu <jair.wu@rock-chips.com>
 Date: Mon, 3 Jul 2023 15:26:53 +0800
-Subject: [PATCH 33/42] kmssink: Support HDR
+Subject: [PATCH 33/43] kmssink: Support HDR
 
 Signed-off-by: Jiajian Wu <jair.wu@rock-chips.com>
 ---
@@ -10,7 +10,7 @@ Signed-off-by: Jiajian Wu <jair.wu@rock-chips.com>
  2 files changed, 196 insertions(+), 18 deletions(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 8663483..9e7ab4c 100644
+index 86634831..9e7ab4cf 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -110,6 +110,8 @@ enum
@@ -370,7 +370,7 @@ index 8663483..9e7ab4c 100644
  
    gst_video_overlay_install_properties (gobject_class, PROP_N);
 diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
-index 43ae49a..4cbdd9e 100644
+index 43ae49ac..4cbdd9e6 100644
 --- a/sys/kms/gstkmssink.h
 +++ b/sys/kms/gstkmssink.h
 @@ -29,6 +29,8 @@
@@ -403,5 +403,5 @@ index 43ae49a..4cbdd9e 100644
    GstVideoContentLightLevel hdr_cll;
  #endif
 -- 
-2.20.1
+2.39.5
 

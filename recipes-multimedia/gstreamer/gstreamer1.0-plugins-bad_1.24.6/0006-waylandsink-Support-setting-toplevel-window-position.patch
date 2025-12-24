@@ -1,7 +1,7 @@
 From d85bc073f5823f26b7f640ea7c5489d7421eb3ee Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 15 Jun 2020 10:11:42 +0800
-Subject: [PATCH 06/40] waylandsink: Support setting toplevel window position
+Subject: [PATCH 06/43] waylandsink: Support setting toplevel window position
 
 Needs hacked wayland server, tested with:
 gst-launch-1.0 videotestsrc ! waylandsink render-rectangle="<100,200,300,400>"
@@ -16,7 +16,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  5 files changed, 42 insertions(+), 21 deletions(-)
 
 diff --git a/ext/gtk/gstgtkwaylandsink.c b/ext/gtk/gstgtkwaylandsink.c
-index 8fcbabe..816913d 100644
+index 8fcbabe4..816913d2 100644
 --- a/ext/gtk/gstgtkwaylandsink.c
 +++ b/ext/gtk/gstgtkwaylandsink.c
 @@ -266,7 +266,7 @@ widget_size_allocate_cb (GtkWidget * widget, GtkAllocation * allocation,
@@ -47,7 +47,7 @@ index 8fcbabe..816913d 100644
    /* Make subsurfaces syncronous during resizes.
     * Unfortunately GTK/GDK does not provide easier to use signals.
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index 1bf537c..a19c664 100644
+index 1bf537c9..a19c664a 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
 @@ -855,7 +855,8 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
@@ -90,7 +90,7 @@ index 1bf537c..a19c664 100644
    g_mutex_unlock (&self->render_lock);
  }
 diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
-index 5bbb10a..abba263 100644
+index 5bbb10a8..abba263c 100644
 --- a/ext/wayland/gstwaylandsink.h
 +++ b/ext/wayland/gstwaylandsink.h
 @@ -63,6 +63,8 @@ struct _GstWaylandSink
@@ -103,7 +103,7 @@ index 5bbb10a..abba263 100644
    GstVideoOrientationMethod tag_rotate_method;
    GstVideoOrientationMethod current_rotate_method;
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index eb809ca..0008ed6 100644
+index eb809ca4..0008ed6c 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -138,7 +138,7 @@ handle_xdg_toplevel_configure (void *data, struct xdg_toplevel *xdg_toplevel,
@@ -171,7 +171,7 @@ index eb809ca..0008ed6 100644
  
  const GstVideoRectangle *
 diff --git a/gst-libs/gst/wayland/gstwlwindow.h b/gst-libs/gst/wayland/gstwlwindow.h
-index 4cd85ac..c4e8fc0 100644
+index 4cd85ac3..c4e8fc02 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.h
 +++ b/gst-libs/gst/wayland/gstwlwindow.h
 @@ -41,7 +41,8 @@ void gst_wl_window_ensure_fullscreen (GstWlWindow * self,
@@ -194,5 +194,5 @@ index 4cd85ac..c4e8fc0 100644
  GST_WL_API
  const GstVideoRectangle *gst_wl_window_get_render_rectangle (GstWlWindow * self);
 -- 
-2.20.1
+2.39.5
 

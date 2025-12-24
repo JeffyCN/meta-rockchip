@@ -1,7 +1,7 @@
-From 3025180b806be8158ffaf8b662d284538de9807b Mon Sep 17 00:00:00 2001
+From c2adcc4b2c9fadfd5db6361e52929791b02fbe7f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 21 Apr 2021 04:44:38 +0800
-Subject: [PATCH 18/40] kmssink: Support NV12_10LE40 NV16_10LE40 and
+Subject: [PATCH 18/43] kmssink: Support NV12_10LE40 NV16_10LE40 and
  NV12|NV12_10LE40|NV16 (AFBC)
 
 Support using NV12_10LE40 NV16_10LE40 and ARM AFBC compressed format.
@@ -18,7 +18,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  4 files changed, 245 insertions(+), 5 deletions(-)
 
 diff --git a/sys/kms/gstkmsallocator.c b/sys/kms/gstkmsallocator.c
-index 3ec2fdb..6535ed3 100644
+index 3ec2fdb3..6535ed31 100644
 --- a/sys/kms/gstkmsallocator.c
 +++ b/sys/kms/gstkmsallocator.c
 @@ -36,6 +36,7 @@
@@ -92,7 +92,7 @@ index 3ec2fdb..6535ed3 100644
      GST_ERROR_OBJECT (alloc, "Failed to bind to framebuffer: %s (%d)",
          g_strerror (errno), errno);
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index a42196b..46683d9 100644
+index a42196b7..46683d9e 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -47,6 +47,8 @@
@@ -328,7 +328,7 @@ index a42196b..46683d9 100644
      self->last_buffer = dumb_buf;
  
 diff --git a/sys/kms/gstkmsutils.c b/sys/kms/gstkmsutils.c
-index cc719fc..a0d52ef 100644
+index cc719fcd..a0d52ef3 100644
 --- a/sys/kms/gstkmsutils.c
 +++ b/sys/kms/gstkmsutils.c
 @@ -68,6 +68,9 @@ static const struct
@@ -369,7 +369,7 @@ index cc719fc..a0d52ef 100644
        break;
      case DRM_FORMAT_NV24:
 diff --git a/sys/kms/gstkmsutils.h b/sys/kms/gstkmsutils.h
-index 6570070..500405a 100644
+index 65700706..500405a1 100644
 --- a/sys/kms/gstkmsutils.h
 +++ b/sys/kms/gstkmsutils.h
 @@ -30,6 +30,56 @@
@@ -430,5 +430,5 @@ index 6570070..500405a 100644
  guint32        gst_drm_format_from_video (GstVideoFormat fmt);
  guint32        gst_drm_bpp_from_drm (guint32 drmfmt);
 -- 
-2.20.1
+2.39.5
 

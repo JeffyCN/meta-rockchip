@@ -1,7 +1,7 @@
-From 928b2dc2dec7fc919161bcc437df4e1b0e4c9ecb Mon Sep 17 00:00:00 2001
+From b49928a89e01f828a1be736ca20d658c9fd5b80c Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 5 Aug 2022 11:39:00 +0800
-Subject: [PATCH 27/40] waylandsink: Support transparent video
+Subject: [PATCH 27/43] waylandsink: Support transparent video
 
 Tested with transparent png picture.
 
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 28 insertions(+), 10 deletions(-)
 
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index ac0f474..f7308b4 100644
+index 46554de4..47ca0a91 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -70,6 +70,9 @@ typedef struct _GstWlWindowPrivate
@@ -24,7 +24,7 @@ index ac0f474..f7308b4 100644
    gint par_n;
    gint par_d;
  
-@@ -714,20 +717,23 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
+@@ -708,20 +711,23 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
  }
  
  static void
@@ -41,7 +41,8 @@ index ac0f474..f7308b4 100644
 -  wl_region_add (region, 0, 0, G_MAXINT32, G_MAXINT32);
 -  wl_surface_set_opaque_region (priv->area_surface, region);
 -  wl_region_destroy (region);
-+ 
+ 
+-  if (!GST_VIDEO_INFO_HAS_ALPHA (info)) {
 +  if (priv->area_opaque) {
 +    /* Set area opaque */
 +    region = wl_compositor_create_region (compositor);
@@ -49,13 +50,12 @@ index ac0f474..f7308b4 100644
 +    wl_surface_set_opaque_region (priv->area_surface, region);
 +    wl_region_destroy (region);
 +  }
- 
--  if (!GST_VIDEO_INFO_HAS_ALPHA (info)) {
++
 +  if (priv->video_opaque) {
      /* Set video opaque */
      region = wl_compositor_create_region (compositor);
      wl_region_add (region, 0, 0, G_MAXINT32, G_MAXINT32);
-@@ -777,9 +783,15 @@ gst_wl_window_commit_buffer (GstWlWindow * self, GstWlBuffer * buffer)
+@@ -771,9 +777,15 @@ gst_wl_window_commit_buffer (GstWlWindow * self, GstWlBuffer * buffer)
      priv->video_width = info->width;
      priv->video_height = info->height;
  
@@ -72,7 +72,7 @@ index ac0f474..f7308b4 100644
    } else if (priv->crop_dirty) {
      gst_wl_window_resize_video_surface (self, FALSE);
    }
-@@ -924,8 +936,14 @@ gst_wl_window_update_borders (GstWlWindow * self)
+@@ -918,8 +930,14 @@ gst_wl_window_update_borders (GstWlWindow * self)
      GstVideoInfo info;
      GstAllocator *alloc;
  
@@ -90,5 +90,5 @@ index ac0f474..f7308b4 100644
      alloc = gst_shm_allocator_get ();
  
 -- 
-2.20.1
+2.39.5
 

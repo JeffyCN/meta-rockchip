@@ -1,7 +1,7 @@
-From 85a5863e4e3c61376d2c76c9a36ddf8395d3fe8e Mon Sep 17 00:00:00 2001
+From 2f50f5b2f484361e12514991d9da8932b54e50a6 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 16 Oct 2024 08:38:51 +0800
-Subject: [PATCH 19/40] waylandsink: Consider linear and invalid modifier are
+Subject: [PATCH 19/43] waylandsink: Consider linear and invalid modifier are
  the same
 
 That is true with Rockchip BSP drivers and packages.
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 8 insertions(+)
 
 diff --git a/gst-libs/gst/wayland/gstwldisplay.c b/gst-libs/gst/wayland/gstwldisplay.c
-index 9119f1d..ef0bb7f 100644
+index 9119f1df..ef0bb7f4 100644
 --- a/gst-libs/gst/wayland/gstwldisplay.c
 +++ b/gst-libs/gst/wayland/gstwldisplay.c
 @@ -211,6 +211,7 @@ dmabuf_modifier (void *data, struct zwp_linux_dmabuf_v1 *zwp_linux_dmabuf,
@@ -38,5 +38,5 @@ index 9119f1d..ef0bb7f 100644
      if (table_header == TRUE) {
        GST_INFO ("===== All DMA Formats With Modifiers =====");
 -- 
-2.20.1
+2.39.5
 

@@ -1,7 +1,7 @@
 From 134394fb7e792777c20ba0ef07882eddc0a79681 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 24 Dec 2020 10:16:44 +0800
-Subject: [PATCH 11/42] camerabin2: Support setting default filters
+Subject: [PATCH 11/43] camerabin2: Support setting default filters
 
 Use env "CAMERABIN2_PREVIEW_FILTER", "CAMERABIN2_IMAGE_FILTER",
 "CAMERABIN2_VIDEO_FILTER", "CAMERABIN2_VIEWFINDER_FILTER" to set default
@@ -17,7 +17,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 13 insertions(+), 1 deletion(-)
 
 diff --git a/gst/camerabin2/gstcamerabin2.c b/gst/camerabin2/gstcamerabin2.c
-index f05192b..c12dfa6 100644
+index f05192be..c12dfa64 100644
 --- a/gst/camerabin2/gstcamerabin2.c
 +++ b/gst/camerabin2/gstcamerabin2.c
 @@ -1507,6 +1507,19 @@ gst_camera_bin_create_elements (GstCameraBin2 * camera)
@@ -49,5 +49,5 @@ index f05192b..c12dfa6 100644
      case GST_STATE_CHANGE_NULL_TO_READY:
        if (!gst_camera_bin_create_elements (camera)) {
 -- 
-2.20.1
+2.39.5
 

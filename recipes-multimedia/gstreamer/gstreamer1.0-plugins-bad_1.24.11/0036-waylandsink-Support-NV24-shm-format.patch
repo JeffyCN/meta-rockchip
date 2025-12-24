@@ -1,7 +1,7 @@
-From 50c61eb70788cb24174e9c7ee822bfa134e1547d Mon Sep 17 00:00:00 2001
+From 2edc1f156f00567c5cceb6c22d19f7cdd132aade Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 29 Mar 2024 17:29:09 +0800
-Subject: [PATCH 36/42] waylandsink: Support NV24 shm format
+Subject: [PATCH 36/43] waylandsink: Support NV24 shm format
 
 Tested with:
 gst-launch-1.0 videotestsrc ! 'video/x-raw,format=NV24' ! waylandsink
@@ -13,7 +13,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/gst-libs/gst/wayland/gstwlvideoformat.c b/gst-libs/gst/wayland/gstwlvideoformat.c
-index 3346a02..e8cf1fe 100644
+index 3346a02d..e8cf1fe4 100644
 --- a/gst-libs/gst/wayland/gstwlvideoformat.c
 +++ b/gst-libs/gst/wayland/gstwlvideoformat.c
 @@ -89,6 +89,7 @@ static const wl_VideoFormat wl_formats[] = {
@@ -25,7 +25,7 @@ index 3346a02..e8cf1fe 100644
    {WL_SHM_FORMAT_NV15, DRM_FORMAT_NV15, GST_VIDEO_FORMAT_NV12_10LE40},
    {WL_SHM_FORMAT_YUV410, DRM_FORMAT_YUV410, GST_VIDEO_FORMAT_YUV9},
 diff --git a/gst-libs/gst/wayland/gstwlvideoformat.h b/gst-libs/gst/wayland/gstwlvideoformat.h
-index 7155e00..b1d6866 100644
+index 7155e009..b1d68666 100644
 --- a/gst-libs/gst/wayland/gstwlvideoformat.h
 +++ b/gst-libs/gst/wayland/gstwlvideoformat.h
 @@ -39,12 +39,12 @@ G_BEGIN_DECLS
@@ -44,5 +44,5 @@ index 7155e00..b1d6866 100644
  #endif
  
 -- 
-2.20.1
+2.39.5
 
