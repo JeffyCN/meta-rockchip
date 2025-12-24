@@ -1,7 +1,7 @@
-From 45b3975acaad4fbf6667e3ede489812a1abec6ed Mon Sep 17 00:00:00 2001
+From 86ae46a039431142960a05a5aa17ceb159c44a49 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 30 May 2024 17:24:59 +0800
-Subject: [PATCH 39/40] kmssink: Allow out of screen size
+Subject: [PATCH 39/43] kmssink: Allow out of screen size
 
 Tested with on RK3588 EVB:
 gst-launch-1.0 videotestsrc ! 'video/x-raw,width=2000,height=2000' ! kmssink render-rectangle='<-100,-100,5000,5000>'
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 7 deletions(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 1df466c..a8b5aa7 100644
+index 1df466c2..a8b5aa75 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -2468,13 +2468,6 @@ retry_set_plane:
@@ -30,5 +30,5 @@ index 1df466c..a8b5aa7 100644
      GST_WARNING_OBJECT (self, "video is out of display range");
      goto sync_frame;
 -- 
-2.20.1
+2.39.5
 

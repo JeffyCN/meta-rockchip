@@ -1,4 +1,4 @@
-From 41e75041d12f259583b699fe98a0b7f143b6c72c Mon Sep 17 00:00:00 2001
+From bd1c6afb00d958a47d8ba2336cd4fed7be83eaaf Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 16 Jun 2025 16:48:40 +0800
 Subject: [PATCH 42/43] kmssink: Support cloned connector
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 21 insertions(+), 1 deletion(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index e4d9f675..b3093ab3 100644
+index 2fc0cd14..b334ff8e 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -58,6 +58,7 @@
@@ -22,7 +22,7 @@ index e4d9f675..b3093ab3 100644
  
  #include "gstkmssink.h"
  #include "gstkmsutils.h"
-@@ -972,6 +973,18 @@ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo, guint32 fb_id)
+@@ -971,6 +972,18 @@ configure_mode_setting (GstKMSSink * self, GstVideoInfo * vinfo, guint32 fb_id)
    drmModeModeInfo *mode, *preferred;
    GstKMSMemory *kmsmem;
    GstVideoInfo *info;
@@ -41,7 +41,7 @@ index e4d9f675..b3093ab3 100644
  
    ret = FALSE;
    conn = NULL;
-@@ -1024,11 +1037,18 @@ retry_tmp:
+@@ -1023,11 +1036,18 @@ retry_tmp:
  
  try_orig:
    err = drmModeSetCrtc (self->fd, self->crtc_id, fb_id, 0, 0,

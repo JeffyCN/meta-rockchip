@@ -1,7 +1,7 @@
 From aacef6ff61938572d3cc8acca2bc7c060828ebfb Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 28 Dec 2021 14:06:19 +0800
-Subject: [PATCH 15/42] waylandsink: Support window alpha property
+Subject: [PATCH 15/43] waylandsink: Support window alpha property
 
 Tested with:
 gst-launch-1.0 videotestsrc ! waylandsink alpha=0.5
@@ -15,7 +15,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  4 files changed, 45 insertions(+)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index 350863b..8594c39 100644
+index 350863b8..8594c39a 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
 @@ -64,6 +64,7 @@ enum
@@ -106,7 +106,7 @@ index 350863b..8594c39 100644
      } else {
        GST_ERROR_OBJECT (self, "Failed to find display handle, "
 diff --git a/ext/wayland/gstwaylandsink.h b/ext/wayland/gstwaylandsink.h
-index db6b953..44ba3a7 100644
+index db6b9532..44ba3a73 100644
 --- a/ext/wayland/gstwaylandsink.h
 +++ b/ext/wayland/gstwaylandsink.h
 @@ -58,6 +58,7 @@ struct _GstWaylandSink
@@ -118,7 +118,7 @@ index db6b953..44ba3a7 100644
    gchar *display_name;
  
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index b05b858..434b829 100644
+index b05b8589..434b8295 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -24,6 +24,7 @@
@@ -146,7 +146,7 @@ index b05b858..434b829 100644
  gst_wl_window_ensure_layer (GstWlWindow * self, GstWlWindowLayer layer)
  {
 diff --git a/gst-libs/gst/wayland/gstwlwindow.h b/gst-libs/gst/wayland/gstwlwindow.h
-index 65f3c4f..f67be70 100644
+index 65f3c4f2..f67be70b 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.h
 +++ b/gst-libs/gst/wayland/gstwlwindow.h
 @@ -42,6 +42,9 @@ struct _GstWlWindow
@@ -160,5 +160,5 @@ index 65f3c4f..f67be70 100644
  void gst_wl_window_ensure_layer (GstWlWindow * self,
          GstWlWindowLayer layer);
 -- 
-2.20.1
+2.39.5
 

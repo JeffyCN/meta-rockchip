@@ -1,7 +1,7 @@
-From fb92607b38e7f41435609c0c848d8d5befb23317 Mon Sep 17 00:00:00 2001
+From d955d18602011799d701affecf3a25e3d72fdb07 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 12 Apr 2024 17:14:40 +0800
-Subject: [PATCH 38/42] HACK: kmssink: Use rockchip driver
+Subject: [PATCH 38/43] HACK: kmssink: Use rockchip driver
 
 To speed it up.
 
@@ -14,7 +14,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 4 insertions(+)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 79ff373..5f29fe1 100644
+index 79ff3732..5f29fe1c 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -623,12 +623,16 @@ gst_kms_sink_video_overlay_init (GstVideoOverlayInterface * iface)
@@ -35,5 +35,5 @@ index 79ff373..5f29fe1 100644
  
    for (i = 0; i < G_N_ELEMENTS (drivers); i++) {
 -- 
-2.20.1
+2.39.5
 

@@ -1,7 +1,7 @@
-From 17aa2f218d8290b6da772774cf422d5a81bb8c3b Mon Sep 17 00:00:00 2001
+From b6cdd3b104f11b31f0d5188c030314ab4c7e512f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 15 Sep 2022 18:01:12 +0800
-Subject: [PATCH 30/40] kmssink: Support scaling in modesetting
+Subject: [PATCH 30/43] kmssink: Support scaling in modesetting
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
@@ -10,7 +10,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 90 insertions(+), 42 deletions(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 34877aa..9368918 100644
+index 34877aad..9368918c 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -80,6 +80,7 @@ static GstFlowReturn gst_kms_sink_show_frame (GstVideoSink * vsink,
@@ -306,7 +306,7 @@ index 34877aa..9368918 100644
    {
      GST_OBJECT_UNLOCK (self);
 diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
-index bb553c4..0a08637 100644
+index bb553c48..0a08637d 100644
 --- a/sys/kms/gstkmssink.h
 +++ b/sys/kms/gstkmssink.h
 @@ -76,6 +76,7 @@ struct _GstKMSSink {
@@ -318,5 +318,5 @@ index bb553c4..0a08637 100644
    GstStructure *connector_props;
    GstStructure *plane_props;
 -- 
-2.20.1
+2.39.5
 

@@ -1,7 +1,7 @@
 From 8eb187308f20112c4e98cea59f8ae4e1b8264a0a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 11 Apr 2023 12:02:50 +0800
-Subject: [PATCH 13/42] waylandsink: Fix crash when setting fullscreen property
+Subject: [PATCH 13/43] waylandsink: Fix crash when setting fullscreen property
 
 Tested on RK3588 EVB with:
 gst-launch-1.0 videotestsrc ! waylandsink fullscreen=1
@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index 0008ed6..efe0474 100644
+index 0008ed6c..efe0474f 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -287,7 +287,8 @@ gst_wl_window_ensure_fullscreen (GstWlWindow * self, gboolean fullscreen)
@@ -26,5 +26,5 @@ index 0008ed6..efe0474 100644
    priv = gst_wl_window_get_instance_private (self);
    if (fullscreen)
 -- 
-2.20.1
+2.39.5
 

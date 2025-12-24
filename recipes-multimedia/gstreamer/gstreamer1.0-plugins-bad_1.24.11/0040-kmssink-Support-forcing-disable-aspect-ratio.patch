@@ -1,7 +1,7 @@
-From dbd144159c6ac2273be67332aff43a1407378ea2 Mon Sep 17 00:00:00 2001
+From 9ef9cc5942cd6ee4a0b6c5318969e854ec504537 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 30 May 2024 17:53:49 +0800
-Subject: [PATCH 40/42] kmssink: Support forcing disable aspect ratio
+Subject: [PATCH 40/43] kmssink: Support forcing disable aspect ratio
 
 Tested on RK3588 EVB with:
 export KMSSINK_IGNORE_ASPECT=1
@@ -14,7 +14,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 7 insertions(+), 2 deletions(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 52d45e8..e4d9f67 100644
+index 52d45e87..e4d9f675 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -1834,7 +1834,7 @@ gst_kms_sink_calculate_display_ratio (GstKMSSink * self, GstVideoInfo * vinfo,
@@ -54,7 +54,7 @@ index 52d45e8..e4d9f67 100644
      sink->skip_vsync = TRUE;
  
 diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
-index 4cbdd9e..43e051b 100644
+index 4cbdd9e6..43e051b5 100644
 --- a/sys/kms/gstkmssink.h
 +++ b/sys/kms/gstkmssink.h
 @@ -132,6 +132,7 @@ struct _GstKMSSink {
@@ -66,5 +66,5 @@ index 4cbdd9e..43e051b 100644
  };
  
 -- 
-2.20.1
+2.39.5
 
