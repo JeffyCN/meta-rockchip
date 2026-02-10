@@ -1,0 +1,28 @@
+From 9d9058b391a7d3909caf1f9cd0891e9d04dbbe1f Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 10 Feb 2026 18:19:58 +0800
+Subject: [PATCH] media: gpu: chromeos: Fix SIGTRAP during dynamic video
+ resolution switching
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/chromeos/video_decoder_pipeline.cc | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/media/gpu/chromeos/video_decoder_pipeline.cc b/media/gpu/chromeos/video_decoder_pipeline.cc
+index 23d3d7e..68f7838 100644
+--- a/media/gpu/chromeos/video_decoder_pipeline.cc
++++ b/media/gpu/chromeos/video_decoder_pipeline.cc
+@@ -1117,7 +1117,9 @@ VideoDecoderPipeline::PickDecoderOutputFormat(
+     // This is not compatible with VdVideoDecodeAccelerator, which
+     // expects GPU buffers in VdVideoDecodeAccelerator::GetPicture()
+     frame_converter_->set_get_original_frame_cb(base::NullCallback());
++#if 0 // HACK: Workaround for CHECK(main_frame_pool_) failure during reinit.
+     main_frame_pool_.reset();
++#endif
+     return *viable_candidate;
+   }
+ #elif BUILDFLAG(IS_CHROMEOS_LACROS)
+-- 
+2.38.5
+
