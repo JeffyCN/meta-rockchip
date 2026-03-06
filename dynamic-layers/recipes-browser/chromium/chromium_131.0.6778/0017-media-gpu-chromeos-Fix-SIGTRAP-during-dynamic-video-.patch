@@ -6,42 +6,24 @@ Subject: [PATCH] media: gpu: chromeos: Fix SIGTRAP during dynamic video
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- media/gpu/chromeos/video_decoder_pipeline.cc     |  2 ++
- media/gpu/chromeos/video_decoder_pipeline.cc.rej | 11 +++++++++++
- 2 files changed, 13 insertions(+)
- create mode 100644 media/gpu/chromeos/video_decoder_pipeline.cc.rej
+ media/gpu/chromeos/video_decoder_pipeline.cc | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/media/gpu/chromeos/video_decoder_pipeline.cc b/media/gpu/chromeos/video_decoder_pipeline.cc
-index c00c7b5..9af3286 100644
+index c00c7b5..b2b1435 100644
 --- a/media/gpu/chromeos/video_decoder_pipeline.cc
 +++ b/media/gpu/chromeos/video_decoder_pipeline.cc
-@@ -1115,7 +1115,9 @@ VideoDecoderPipeline::PickDecoderOutputFormat(
-     // This is not compatible with VdVideoDecodeAccelerator, which
-     // expects GPU buffers in VdVideoDecodeAccelerator::GetPicture()
-     frame_converter_->set_get_original_frame_cb(base::NullCallback());
-+#if 0 // HACK: Workaround for CHECK(main_frame_pool_) failure during reinit.
-     main_frame_pool_.reset();
-+#endif
-     return *viable_candidate;
+@@ -634,7 +634,9 @@ void VideoDecoderPipeline::InitializeTask(const VideoDecoderConfig& config,
+     return;
    }
- #elif BUILDFLAG(IS_CHROMEOS_LACROS)
-diff --git a/media/gpu/chromeos/video_decoder_pipeline.cc.rej b/media/gpu/chromeos/video_decoder_pipeline.cc.rej
-new file mode 100644
-index 0000000..db16e34
---- /dev/null
-+++ b/media/gpu/chromeos/video_decoder_pipeline.cc.rej
-@@ -0,0 +1,11 @@
-+diff a/media/gpu/chromeos/video_decoder_pipeline.cc b/media/gpu/chromeos/video_decoder_pipeline.cc	(rejected hunks)
-+@@ -1142,7 +1142,9 @@ VideoDecoderPipeline::PickDecoderOutputFormat(
-+     // This is not compatible with VdVideoDecodeAccelerator, which
-+     // expects GPU buffers in VdVideoDecodeAccelerator::GetPicture()
-+     frame_converter_->set_get_original_frame_cb(base::NullCallback());
-++#if 0 // HACK: Workaround for CHECK(main_frame_pool_) failure during reinit.
-+     main_frame_pool_.reset();
-++#endif
-+     return *viable_candidate;
-+   }
-+ #elif BUILDFLAG(IS_CHROMEOS)
+ 
+-  if (frame_converter_->UsesGetOriginalFrameCB()) {
++  // HACK: Workaround for CHECK(main_frame_pool_) failure during reinit.
++  // if (frame_converter_->UsesGetOriginalFrameCB()) {
++  if (main_frame_pool_ && frame_converter_->UsesGetOriginalFrameCB()) {
+     FrameResourceConverter::GetOriginalFrameCB get_original_frame_cb;
+ 
+     if (uses_oop_video_decoder_) {
 -- 
 2.38.5
 
