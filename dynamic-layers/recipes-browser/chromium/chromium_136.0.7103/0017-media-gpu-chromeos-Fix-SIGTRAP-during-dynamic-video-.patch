@@ -6,23 +6,24 @@ Subject: [PATCH] media: gpu: chromeos: Fix SIGTRAP during dynamic video
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- media/gpu/chromeos/video_decoder_pipeline.cc | 2 ++
- 1 file changed, 2 insertions(+)
+ media/gpu/chromeos/video_decoder_pipeline.cc | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/media/gpu/chromeos/video_decoder_pipeline.cc b/media/gpu/chromeos/video_decoder_pipeline.cc
-index b2f1d19..1019c91 100644
+index b2f1d19..f5e5c3c 100644
 --- a/media/gpu/chromeos/video_decoder_pipeline.cc
 +++ b/media/gpu/chromeos/video_decoder_pipeline.cc
-@@ -1142,7 +1142,9 @@ VideoDecoderPipeline::PickDecoderOutputFormat(
-     // This is not compatible with VdVideoDecodeAccelerator, which
-     // expects GPU buffers in VdVideoDecodeAccelerator::GetPicture()
-     frame_converter_->set_get_original_frame_cb(base::NullCallback());
-+#if 0 // HACK: Workaround for CHECK(main_frame_pool_) failure during reinit.
-     main_frame_pool_.reset();
-+#endif
-     return *viable_candidate;
+@@ -659,7 +659,9 @@ void VideoDecoderPipeline::InitializeTask(const VideoDecoderConfig& config,
+     return;
    }
- #elif BUILDFLAG(IS_CHROMEOS)
+ 
+-  if (frame_converter_->UsesGetOriginalFrameCB()) {
++  // HACK: Workaround for CHECK(main_frame_pool_) failure during reinit.
++  // if (frame_converter_->UsesGetOriginalFrameCB()) {
++  if (main_frame_pool_ && frame_converter_->UsesGetOriginalFrameCB()) {
+     FrameResourceConverter::GetOriginalFrameCB get_original_frame_cb;
+ 
+     if (uses_oop_video_decoder_) {
 -- 
 2.38.5
 
