@@ -23,12 +23,12 @@ MALI_VERSION ??= "r18p0"
 MALI_SUBVERSION ??= "none"
 MALI_PLATFORM ??= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'wayland', bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11', 'gbm', d), d)}"
 
-# The utgard DDK would not provide OpenCL.
 # The ICD OpenCL implementation should work with opencl-icd-loader.
+PACKAGECONFIG[opencl] = "-Dopencl-icd=true, opencl-icd-loader, -Dopencl-icd=false"
+
 RDEPENDS:${PN} = " \
 	${@ 'wayland' if 'wayland' == d.getVar('MALI_PLATFORM') else ''} \
 	${@ 'libx11 libxcb' if 'x11' == d.getVar('MALI_PLATFORM') else ''} \
-	${@ 'opencl-icd-loader' if not d.getVar('MALI_GPU').startswith('utgard') else ''} \
 "
 
 DEPENDS:append = " \
