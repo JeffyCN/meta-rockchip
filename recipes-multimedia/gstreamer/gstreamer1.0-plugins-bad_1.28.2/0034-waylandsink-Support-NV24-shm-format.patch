@@ -1,0 +1,35 @@
+From 6550873941f1df463cecf464bd1d15b2bfabdc85 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 29 Mar 2024 17:29:09 +0800
+Subject: [PATCH 34/41] waylandsink: Support NV24 shm format
+
+Tested with:
+gst-launch-1.0 videotestsrc ! 'video/x-raw,format=NV24' ! waylandsink
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/wayland/gstwlvideoformat.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/gst-libs/gst/wayland/gstwlvideoformat.h b/gst-libs/gst/wayland/gstwlvideoformat.h
+index 5282591..bec5f57 100644
+--- a/gst-libs/gst/wayland/gstwlvideoformat.h
++++ b/gst-libs/gst/wayland/gstwlvideoformat.h
+@@ -38,12 +38,12 @@ G_BEGIN_DECLS
+  */
+ #if G_BYTE_ORDER == G_BIG_ENDIAN
+ #define GST_WL_VIDEO_FORMATS "{ BGR10A2_LE, RGB10A2_LE, AYUV, RGBA, ARGB, " \
+-    "BGRA, ABGR, BGR10x2_LE, RGB10x2_LE, P010_10LE, NV12_10LE40, NV16_10LE40, Y444, v308, " \
++    "BGRA, ABGR, BGR10x2_LE, RGB10x2_LE, P010_10LE, NV12_10LE40, NV16_10LE40, NV24, Y444, v308, " \
+     "RGBx, xRGB, BGRx, xBGR, RGB, BGR, Y42B, NV16, NV61, YUY2, YVYU, UYVY, " \
+     "I420, YV12, NV12, NV21, Y41B, YUV9, YVU9, BGR16, RGB16 }"
+ #elif G_BYTE_ORDER == G_LITTLE_ENDIAN
+ #define GST_WL_VIDEO_FORMATS "{ BGR10A2_LE, RGB10A2_LE, AYUV, RGBA, ARGB, " \
+-    "BGRA, ABGR, BGR10x2_LE, RGB10x2_LE, P010_10LE, NV12_10LE40, NV16_10LE40, Y444, v308, " \
++    "BGRA, ABGR, BGR10x2_LE, RGB10x2_LE, P010_10LE, NV12_10LE40, NV16_10LE40, NV24, Y444, v308, " \
+     "RGBx, xRGB, BGRx, xBGR, RGB, BGR, Y42B, NV16, NV61, YUY2, YVYU, UYVY, " \
+     "I420, YV12, NV12, NV21, Y41B, YUV9, YVU9, BGR16, RGB16 }"
+ #endif
+-- 
+2.39.5
+

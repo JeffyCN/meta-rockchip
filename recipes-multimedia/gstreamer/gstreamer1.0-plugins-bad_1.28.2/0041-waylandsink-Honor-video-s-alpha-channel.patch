@@ -1,0 +1,26 @@
+From 86640af06104e4021f7a807c45a492c74cc7866c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 10 Apr 2026 21:31:11 +0800
+Subject: [PATCH 41/41] waylandsink: Honor video's alpha channel
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ gst-libs/gst/wayland/gstwlwindow.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
+index fa044b5..b84c664 100644
+--- a/gst-libs/gst/wayland/gstwlwindow.c
++++ b/gst-libs/gst/wayland/gstwlwindow.c
+@@ -1067,7 +1067,7 @@ gst_wl_window_update_borders (GstWlWindow * self)
+     buf = gst_buffer_new_allocate (NULL, 1, NULL);
+     wlbuf =
+         wp_single_pixel_buffer_manager_v1_create_u32_rgba_buffer (single_pixel,
+-        0, 0, 0, 0xffffffffU);
++        0, 0, 0, priv->area_opaque ? 0xffffffffU : 0);
+   } else {
+     GstVideoFormat format;
+     GstVideoInfo info;
+-- 
+2.39.5
+
