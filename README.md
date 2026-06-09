@@ -11,12 +11,15 @@ Please see the corresponding sections below for details.
 
 This layer depends on:
 
-* URI: git://git.yoctoproject.org/poky
-* branch: master
+* URI: git://git.yoctoproject.org/meta-yocto
+* branch: wrynose
+
+* URI: git://git.openembedded.org/openembedded-core
+* branch: wrynose
 
 * URI: git://git.openembedded.org/meta-openembedded
 * layers: meta-oe
-* branch: master
+* branch: wrynose
 
 ## Table of Contents
 
@@ -32,35 +35,7 @@ V. Supporting new Machine
 
 ### I. Configure yocto/oe Environment
 
-In order to build an image with BSP support for a given release, you need to download the corresponding layers described in the "Dependencies" section. Be sure that everything is in the same directory.
-
-```shell
-~ $ mkdir yocto; cd yocto
-~/yocto $ git clone git://git.yoctoproject.org/poky -b master
-~/yocto $ git clone git://git.openembedded.org/meta-openembedded.git -b master
-```
-
-And put the meta-rockchip layer here too.
-
-Then you need to source the configuration script:
-
-```shell
-~/yocto $ source poky/oe-init-build-env
-```
-
-Having done that, you can build a image for a rockchip board by adding the location of the meta-rockchip layer to bblayers.conf, along with any other layers needed.
-
-For example:
-
-```makefile
-# build/conf/bblayers.conf
-BBLAYERS ?= " \
-  ${TOPDIR}/../meta-rockchip \
-  ${TOPDIR}/../poky/meta \
-  ${TOPDIR}/../poky/meta-poky \
-  ${TOPDIR}/../poky/meta-yocto-bsp \
-  ${TOPDIR}/../meta-openembedded/meta-oe \
-```
+In order to build an image with BSP support for a given release, you need to download the corresponding layers described in the "Dependencies" section.
 
 To enable a particular machine, you need to add a MACHINE line naming the BSP to the local.conf file:
 
@@ -116,21 +91,7 @@ $ sudo upgrade_tool uf <IMAGE PATH>/update.img # For rockchip firmware image
 
 The following undergo regular basic testing with their respective MACHINE types.
 
-* px3se evb board
-
-* rk3308 evb board
-
-* rk3326 evb board
-
-* px30 evb board
-
-* rk3328 evb board
-
-* rk3288 evb board
-
-* rk3399 sapphire excavator board
-
-* rk3399pro evb board
+* rk3588 evb board
 
 ### V. Supporting new Machine
 
@@ -160,24 +121,24 @@ For example using the kernel/ and u-boot/ in the same directory of meta-rockchip
 PREFERRED_VERSION_linux-rockchip := "6.1%"
 PREFERRED_VERSION_linux-libc-headers := "6.1-custom%"
 
-SRC_URI:pn-linux-rockchip = " \
+SRC_URI:linux-rockchip = " \
         git://${TOPDIR}/../kernel;protocol=file;usehead=1 \
         file://cgroups.cfg \
 "
-SRCREV:pn-linux-rockchip = "${AUTOREV}"
+SRCREV:linux-rockchip = "${AUTOREV}"
 KBRANCH = "HEAD"
 
-SRC_URI:pn-linux-libc-headers = " \
+SRC_URI:linux-libc-headers = " \
         git://${TOPDIR}/../kernel;protocol=file;usehead=1 \
 "
-SRCREV:pn-linux-libc-headers = "${AUTOREV}"
+SRCREV:linux-libc-headers = "${AUTOREV}"
 
-SRC_URI:pn-u-boot-rockchip = " \
+SRC_URI:u-boot-rockchip = " \
         git://${TOPDIR}/../u-boot;protocol=file;usehead=1 \
         git://${TOPDIR}/../rkbin;protocol=file;usehead=1;name=rkbin;branch=HEAD;destsuffix=rkbin \
 "
-SRCREV:pn-u-boot-rockchip = "${AUTOREV}"
-SRCREV_rkbin:pn-u-boot-rockchip = "${AUTOREV}"
+SRCREV:u-boot-rockchip = "${AUTOREV}"
+SRCREV_rkbin:u-boot-rockchip = "${AUTOREV}"
 ```
 
 ## Maintainers

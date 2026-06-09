@@ -24,7 +24,7 @@ MALI_SUBVERSION ??= "none"
 MALI_PLATFORM ??= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'wayland', bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11', 'gbm', d), d)}"
 
 # The ICD OpenCL implementation should work with opencl-icd-loader.
-PACKAGECONFIG[opencl] = "-Dopencl-icd=true, opencl-icd-loader, -Dopencl-icd=false"
+PACKAGECONFIG[opencl] = "-Dopencl-icd=true, -Dopencl-icd=false, opencl-icd-loader"
 
 RDEPENDS:${PN} = " \
 	${@ 'wayland' if 'wayland' == d.getVar('MALI_PLATFORM') else ''} \
