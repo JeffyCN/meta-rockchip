@@ -247,7 +247,7 @@ parse_patchram(char *optarg)
 	if(len>0)
 	{
 		*p =0;
-		strcpy(fw_folder_path,optarg);
+		snprintf(fw_folder_path,sizeof(fw_folder_path),"%s",optarg);
 		fprintf(stderr,"FW folder path = %s\n", fw_folder_path);
 	}
 #if 0
@@ -783,7 +783,7 @@ proc_read_local_name()
 	p_name = &buffer[1+HCI_EVT_CMD_CMPL_LOCAL_NAME_STRING];
 	for (i=0; (i < LOCAL_NAME_BUFFER_LEN)||(*(p_name+i) != 0); i++)
 		*(p_name+i) = toupper(*(p_name+i));
-	strcpy(local_name,p_name);
+	snprintf((char*)local_name,sizeof(local_name),"%s",p_name);
 	fprintf(stderr,"chip id = %s\n", local_name);
 }
 
@@ -799,12 +799,12 @@ proc_open_patchram()
 	{
 		if (strstr(local_name, p_entry->chip_id)!=NULL)
 		{
-			strcpy(local_name,p_entry->updated_chip_id);
+			snprintf((char*)local_name,sizeof(local_name),"%s",p_entry->updated_chip_id);
 			break;
 		}
 		p_entry++;
 	}
-	sprintf(fw_path,"%s/%s.hcd",fw_folder_path,local_name);
+	snprintf(fw_path,sizeof(fw_path),"%s/%s.hcd",fw_folder_path,local_name);
 	fprintf(stderr, "FW path = %s\n", fw_path);
 	if ((hcdfile_fd = open(fw_path, O_RDONLY)) == -1) {
 		fprintf(stderr, "file %s could not be opened, error %d\n", fw_path , errno);
@@ -812,7 +812,7 @@ proc_open_patchram()
 		fprintf(stderr, "Retry lower case FW name\n");
 		for (i=0; (i < LOCAL_NAME_BUFFER_LEN)||(*(p+i) != 0); i++)
 			*(p+i) = tolower(*(p+i));
-		sprintf(fw_path,"%s/%s.hcd",fw_folder_path,local_name);
+		snprintf(fw_path,sizeof(fw_path),"%s/%s.hcd",fw_folder_path,local_name);
 		fprintf(stderr, "FW path = %s\n", fw_path);
 		if ((hcdfile_fd = open(fw_path, O_RDONLY)) == -1) {
 			fprintf(stderr, "file %s could not be opened, error %d\n", fw_path, errno);
