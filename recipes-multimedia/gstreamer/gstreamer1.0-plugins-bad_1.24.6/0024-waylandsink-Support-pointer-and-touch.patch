@@ -1,4 +1,4 @@
-From 22b043507924af4f7f2a0aeac60396d0a29297d6 Mon Sep 17 00:00:00 2001
+From 4d719ba19ab402587d5620627618a2cc26911cfc Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 5 May 2022 17:56:46 +0800
 Subject: [PATCH 24/43] waylandsink: Support pointer and touch
@@ -15,7 +15,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  5 files changed, 322 insertions(+), 3 deletions(-)
 
 diff --git a/gst-libs/gst/wayland/gstwldisplay.c b/gst-libs/gst/wayland/gstwldisplay.c
-index 38107355..565f9b62 100644
+index 98becf09..14849120 100644
 --- a/gst-libs/gst/wayland/gstwldisplay.c
 +++ b/gst-libs/gst/wayland/gstwldisplay.c
 @@ -25,6 +25,7 @@
@@ -125,7 +125,7 @@ index 38107355..565f9b62 100644
    /* to avoid buffers being unregistered from another thread
     * at the same time, take their ownership */
    g_mutex_lock (&priv->buffers_mutex);
-@@ -312,6 +375,222 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
+@@ -309,6 +372,222 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
    handle_xdg_wm_base_ping
  };
  
@@ -348,7 +348,7 @@ index 38107355..565f9b62 100644
  static void
  registry_handle_global (void *data, struct wl_registry *registry,
      uint32_t id, const char *interface, uint32_t version)
-@@ -335,6 +614,18 @@ registry_handle_global (void *data, struct wl_registry *registry,
+@@ -332,6 +611,18 @@ registry_handle_global (void *data, struct wl_registry *registry,
    } else if (g_strcmp0 (interface, "wl_shm") == 0) {
      priv->shm = wl_registry_bind (registry, id, &wl_shm_interface, 1);
      wl_shm_add_listener (priv->shm, &shm_listener, self);
@@ -367,7 +367,7 @@ index 38107355..565f9b62 100644
    } else if (g_strcmp0 (interface, "wp_viewporter") == 0) {
      priv->viewporter =
          wl_registry_bind (registry, id, &wp_viewporter_interface, 1);
-@@ -437,6 +728,8 @@ gst_wl_display_new_existing (struct wl_display *display,
+@@ -434,6 +725,8 @@ gst_wl_display_new_existing (struct wl_display *display,
    priv->display_wrapper = wl_proxy_create_wrapper (display);
    priv->own_display = take_ownership;
  

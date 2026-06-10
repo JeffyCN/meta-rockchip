@@ -1,4 +1,4 @@
-From a9faf986bfdf77c1d817bca81252263637a1bd1d Mon Sep 17 00:00:00 2001
+From c1969942359c8669ff1e89c3983c440c8e5f1a8a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 15 Sep 2022 17:56:40 +0800
 Subject: [PATCH 28/43] kmssink: Improve monitor and plane selection
@@ -16,7 +16,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 112 insertions(+), 33 deletions(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 0d3ae65e..acba81a1 100644
+index 0d3ae65..acba81a 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -502,32 +502,89 @@ kms_open (gchar ** driver)
@@ -249,7 +249,7 @@ index 0d3ae65e..acba81a1 100644
  
  allowed_caps_failed:
 diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
-index 1c75b9e0..21e998d6 100644
+index 1c75b9e..21e998d 100644
 --- a/sys/kms/gstkmssink.h
 +++ b/sys/kms/gstkmssink.h
 @@ -53,6 +53,7 @@ struct _GstKMSSink {

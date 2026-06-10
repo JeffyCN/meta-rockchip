@@ -1,4 +1,4 @@
-From f43dedb8b340481f95868a88407ab388c902277e Mon Sep 17 00:00:00 2001
+From 407619ddb949eebf47a7c39959ec020c290f48ff Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 25 Feb 2022 17:48:58 +0800
 Subject: [PATCH 29/43] kmssink: Support setting prefered frame syncing mode

@@ -1,4 +1,4 @@
-From 1690b6339d10dbcd9127fc1b2c983162e4ae2e77 Mon Sep 17 00:00:00 2001
+From 137a8f43916b661635d932107f9baeb9685ea34d Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 29 Feb 2024 15:18:46 +0800
 Subject: [PATCH 34/43] kmssink: Avoid choosing disconnected connector

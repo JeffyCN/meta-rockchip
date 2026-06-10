@@ -1,4 +1,4 @@
-From 12691bf74c7fbb44e3a3f6f53c4a71472394f7fa Mon Sep 17 00:00:00 2001
+From a7f84d878a6c14e0df251a94b1740c993442cc51 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 14 Jun 2023 10:04:42 +0800
 Subject: [PATCH 32/43] waylandsink: Support force trying dmabuf
@@ -19,10 +19,10 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 28 insertions(+), 9 deletions(-)
 
 diff --git a/ext/wayland/gstwaylandsink.c b/ext/wayland/gstwaylandsink.c
-index 62bd0b78..66e52f16 100644
+index 7be84595..e3e9cea8 100644
 --- a/ext/wayland/gstwaylandsink.c
 +++ b/ext/wayland/gstwaylandsink.c
-@@ -261,12 +261,18 @@ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
+@@ -260,12 +260,18 @@ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
  static void
  gst_wayland_sink_init (GstWaylandSink * self)
  {
@@ -41,7 +41,7 @@ index 62bd0b78..66e52f16 100644
  }
  
  static void
-@@ -664,9 +670,10 @@ gst_wayland_sink_fixup_caps (GstWaylandSink * self, GstCaps * caps)
+@@ -663,9 +669,10 @@ gst_wayland_sink_fixup_caps (GstWaylandSink * self, GstCaps * caps)
  
    if (gst_wl_display_check_format_for_dmabuf (self->display,
            DRM_FORMAT_NV15, DRM_FORMAT_MOD_LINEAR)) {
@@ -55,7 +55,7 @@ index 62bd0b78..66e52f16 100644
  
      if (gst_wl_display_check_format_for_dmabuf (self->display,
              DRM_FORMAT_NV15, DRM_AFBC_MODIFIER)) {
-@@ -682,6 +689,9 @@ gst_wayland_sink_fixup_caps (GstWaylandSink * self, GstCaps * caps)
+@@ -681,6 +688,9 @@ gst_wayland_sink_fixup_caps (GstWaylandSink * self, GstCaps * caps)
    if (gst_wl_display_check_format_for_dmabuf (self->display,
            DRM_FORMAT_NV20, DRM_FORMAT_MOD_LINEAR)) {
      tmp_caps = gst_caps_from_string (GST_VIDEO_CAPS_MAKE ("NV16_10LE40"));
@@ -65,7 +65,7 @@ index 62bd0b78..66e52f16 100644
  
      if (gst_wl_display_check_format_for_dmabuf (self->display,
              DRM_FORMAT_NV20, DRM_AFBC_MODIFIER)) {
-@@ -696,18 +706,22 @@ gst_wayland_sink_fixup_caps (GstWaylandSink * self, GstCaps * caps)
+@@ -695,18 +705,22 @@ gst_wayland_sink_fixup_caps (GstWaylandSink * self, GstCaps * caps)
  
    if (gst_wl_display_check_format_for_dmabuf (self->display,
            DRM_FORMAT_NV12, DRM_AFBC_MODIFIER)) {
@@ -94,7 +94,7 @@ index 62bd0b78..66e52f16 100644
      gst_caps_set_simple (tmp_caps, "arm-afbc", G_TYPE_INT, 1, NULL);
      gst_caps_append (caps, tmp_caps);
    }
-@@ -930,6 +944,9 @@ gst_wayland_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
+@@ -919,6 +933,9 @@ gst_wayland_sink_set_caps (GstBaseSink * bsink, GstCaps * caps)
    use_dmabuf = gst_caps_features_contains (gst_caps_get_features (caps, 0),
        GST_CAPS_FEATURE_MEMORY_DMABUF);
  

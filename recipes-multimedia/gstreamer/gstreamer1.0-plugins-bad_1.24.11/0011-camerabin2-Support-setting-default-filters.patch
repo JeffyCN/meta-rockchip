@@ -17,7 +17,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 13 insertions(+), 1 deletion(-)
 
 diff --git a/gst/camerabin2/gstcamerabin2.c b/gst/camerabin2/gstcamerabin2.c
-index f05192be..c12dfa64 100644
+index f05192b..c12dfa6 100644
 --- a/gst/camerabin2/gstcamerabin2.c
 +++ b/gst/camerabin2/gstcamerabin2.c
 @@ -1507,6 +1507,19 @@ gst_camera_bin_create_elements (GstCameraBin2 * camera)
