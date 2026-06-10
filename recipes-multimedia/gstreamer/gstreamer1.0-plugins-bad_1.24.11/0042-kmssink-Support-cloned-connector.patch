@@ -1,4 +1,4 @@
-From 41e75041d12f259583b699fe98a0b7f143b6c72c Mon Sep 17 00:00:00 2001
+From 17dbfd31107a5850bac799cf2031019279950058 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 16 Jun 2025 16:48:40 +0800
 Subject: [PATCH 42/43] kmssink: Support cloned connector
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 21 insertions(+), 1 deletion(-)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index e4d9f675..b3093ab3 100644
+index e4d9f67..b3093ab 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -58,6 +58,7 @@

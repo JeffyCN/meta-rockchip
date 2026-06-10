@@ -1,4 +1,4 @@
-From f4262330ca5344973baee426403f90404129df5a Mon Sep 17 00:00:00 2001
+From c69ebdb824978b0171e0c8234093d481cc98314f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 19 Jan 2022 16:37:40 +0800
 Subject: [PATCH 23/43] kmssink: Support ignoring aspect ratio

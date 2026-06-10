@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/gst/mpegtsdemux/mpegtsbase.c b/gst/mpegtsdemux/mpegtsbase.c
-index a8416589..857f7156 100644
+index a841658..857f715 100644
 --- a/gst/mpegtsdemux/mpegtsbase.c
 +++ b/gst/mpegtsdemux/mpegtsbase.c
 @@ -59,7 +59,7 @@ static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",

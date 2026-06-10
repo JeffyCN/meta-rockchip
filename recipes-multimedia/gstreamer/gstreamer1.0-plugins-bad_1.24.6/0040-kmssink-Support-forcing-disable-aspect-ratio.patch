@@ -1,4 +1,4 @@
-From f28a860206ffa5ed180218100077e9b3b803fcb7 Mon Sep 17 00:00:00 2001
+From 295d52dcb5540934a2c5ad261d19a10bed24d09f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 30 May 2024 17:53:49 +0800
 Subject: [PATCH 40/43] kmssink: Support forcing disable aspect ratio

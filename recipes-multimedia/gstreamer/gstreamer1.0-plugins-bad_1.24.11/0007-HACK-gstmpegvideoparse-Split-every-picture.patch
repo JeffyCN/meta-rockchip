@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 2 insertions(+)
 
 diff --git a/gst/videoparsers/gstmpegvideoparse.c b/gst/videoparsers/gstmpegvideoparse.c
-index bb09d026..c1546c2d 100644
+index bb09d02..c1546c2 100644
 --- a/gst/videoparsers/gstmpegvideoparse.c
 +++ b/gst/videoparsers/gstmpegvideoparse.c
 @@ -584,6 +584,7 @@ gst_mpegv_parse_process_sc (GstMpegvParse * mpvparse,

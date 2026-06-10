@@ -1,4 +1,4 @@
-From 88dc5d3e9393f1035835d87c6e6eed9d668d1cbb Mon Sep 17 00:00:00 2001
+From 288da831bd401c934e3d2b2d4dbca7335af4a321 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 7 May 2025 18:05:43 +0800
 Subject: [PATCH 41/43] ext: closedcaption: Port H264/H265 ccextractor
@@ -20,7 +20,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 
 diff --git a/ext/closedcaption/gsth264ccextractor.c b/ext/closedcaption/gsth264ccextractor.c
 new file mode 100644
-index 00000000..638e841f
+index 0000000..638e841
 --- /dev/null
 +++ b/ext/closedcaption/gsth264ccextractor.c
 @@ -0,0 +1,473 @@
@@ -499,7 +499,7 @@ index 00000000..638e841f
 +}
 diff --git a/ext/closedcaption/gsth264ccextractor.h b/ext/closedcaption/gsth264ccextractor.h
 new file mode 100644
-index 00000000..b8ea0774
+index 0000000..b8ea077
 --- /dev/null
 +++ b/ext/closedcaption/gsth264ccextractor.h
 @@ -0,0 +1,34 @@
@@ -539,7 +539,7 @@ index 00000000..b8ea0774
 +G_END_DECLS
 diff --git a/ext/closedcaption/gsth265ccextractor.c b/ext/closedcaption/gsth265ccextractor.c
 new file mode 100644
-index 00000000..f39e831b
+index 0000000..f39e831
 --- /dev/null
 +++ b/ext/closedcaption/gsth265ccextractor.c
 @@ -0,0 +1,447 @@
@@ -992,7 +992,7 @@ index 00000000..f39e831b
 +}
 diff --git a/ext/closedcaption/gsth265ccextractor.h b/ext/closedcaption/gsth265ccextractor.h
 new file mode 100644
-index 00000000..35c9a818
+index 0000000..35c9a81
 --- /dev/null
 +++ b/ext/closedcaption/gsth265ccextractor.h
 @@ -0,0 +1,34 @@
@@ -1031,7 +1031,7 @@ index 00000000..35c9a818
 +
 +G_END_DECLS
 diff --git a/ext/closedcaption/meson.build b/ext/closedcaption/meson.build
-index 6b7df1c0..b561025e 100644
+index 6b7df1c..b561025 100644
 --- a/ext/closedcaption/meson.build
 +++ b/ext/closedcaption/meson.build
 @@ -12,12 +12,13 @@ zvbi_sources = [

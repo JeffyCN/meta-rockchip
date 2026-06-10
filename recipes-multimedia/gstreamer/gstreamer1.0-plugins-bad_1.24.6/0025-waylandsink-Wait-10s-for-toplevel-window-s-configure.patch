@@ -1,4 +1,4 @@
-From 906dc61b2d532015574a871077c9713302f87291 Mon Sep 17 00:00:00 2001
+From f3b983cfce2729f43b564dbbad9dd4d6231a476c Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 7 Jul 2022 14:43:31 +0800
 Subject: [PATCH 25/43] waylandsink: Wait 10s for toplevel window's configure

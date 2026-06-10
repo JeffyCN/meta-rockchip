@@ -1,4 +1,4 @@
-From aef204531eab6a5f04f3e38ee5da52ddc564673c Mon Sep 17 00:00:00 2001
+From ac7a555d70d1b370aa0297c6424f94521fa0255c Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 21 Jul 2022 12:29:27 +0800
 Subject: [PATCH 26/43] HACK: waylandsink: Set size in

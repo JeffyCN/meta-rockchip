@@ -1,4 +1,4 @@
-From bd1c6afb00d958a47d8ba2336cd4fed7be83eaaf Mon Sep 17 00:00:00 2001
+From 3eb8a0a6a861054ca30febb9216c5e5326e62ecf Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 16 Jun 2025 16:48:40 +0800
 Subject: [PATCH 42/43] kmssink: Support cloned connector
