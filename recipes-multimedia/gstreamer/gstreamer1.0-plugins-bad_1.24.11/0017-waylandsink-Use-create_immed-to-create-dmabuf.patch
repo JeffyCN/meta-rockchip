@@ -1,4 +1,4 @@
-From f4875e3669111d8b312ed3e3f71e48210fb08929 Mon Sep 17 00:00:00 2001
+From 3cadcfd8578d6ef938244fd78faf693a1f59ee2b Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Tue, 8 Jun 2021 09:09:38 +0800
 Subject: [PATCH 17/43] waylandsink: Use create_immed to create dmabuf
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 5 insertions(+), 56 deletions(-)
 
 diff --git a/gst-libs/gst/wayland/gstwllinuxdmabuf.c b/gst-libs/gst/wayland/gstwllinuxdmabuf.c
-index ac53e068..3f4c4687 100644
+index ac53e06..3f4c468 100644
 --- a/gst-libs/gst/wayland/gstwllinuxdmabuf.c
 +++ b/gst-libs/gst/wayland/gstwllinuxdmabuf.c
 @@ -46,41 +46,9 @@ gst_wl_linux_dmabuf_init_once (void)

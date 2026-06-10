@@ -16,7 +16,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  2 files changed, 79 insertions(+)
 
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index 3c2bdb16..207d76b1 100644
+index 3c2bdb1..207d76b 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -1014,6 +1014,76 @@ gst_kms_sink_update_plane_properties (GstKMSSink * self)
@@ -126,7 +126,7 @@ index 3c2bdb16..207d76b1 100644
    gst_poll_fd_init (&sink->pollfd);
    sink->poll = gst_poll_new (TRUE);
 diff --git a/sys/kms/gstkmssink.h b/sys/kms/gstkmssink.h
-index 317f789e..4e18becc 100644
+index 317f789..4e18bec 100644
 --- a/sys/kms/gstkmssink.h
 +++ b/sys/kms/gstkmssink.h
 @@ -54,6 +54,7 @@ struct _GstKMSSink {

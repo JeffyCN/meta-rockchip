@@ -1,4 +1,4 @@
-From b6cdd3b104f11b31f0d5188c030314ab4c7e512f Mon Sep 17 00:00:00 2001
+From 316f9f9ab30c577373c2dc1a8fa5743ec13a019a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 15 Sep 2022 18:01:12 +0800
 Subject: [PATCH 30/43] kmssink: Support scaling in modesetting

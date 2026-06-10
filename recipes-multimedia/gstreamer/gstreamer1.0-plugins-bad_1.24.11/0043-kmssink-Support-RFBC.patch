@@ -1,4 +1,4 @@
-From a1d2cdc798fbfd434a5348ce14938a5d89b292e8 Mon Sep 17 00:00:00 2001
+From c5259578c64e5c9fc32e26106413f138cb15010e Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 4 Aug 2025 13:12:48 +0800
 Subject: [PATCH 43/43] kmssink: Support RFBC
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  3 files changed, 77 insertions(+), 21 deletions(-)
 
 diff --git a/sys/kms/gstkmsallocator.c b/sys/kms/gstkmsallocator.c
-index 4a50564e..f0c3b6f6 100644
+index 4a50564..f0c3b6f 100644
 --- a/sys/kms/gstkmsallocator.c
 +++ b/sys/kms/gstkmsallocator.c
 @@ -372,11 +372,12 @@ gst_kms_allocator_add_fb (GstKMSAllocator * alloc, GstKMSMemory * kmsmem,
@@ -39,7 +39,7 @@ index 4a50564e..f0c3b6f6 100644
        }
  
 diff --git a/sys/kms/gstkmssink.c b/sys/kms/gstkmssink.c
-index b3093ab3..0aee8b7f 100644
+index b3093ab..0aee8b7 100644
 --- a/sys/kms/gstkmssink.c
 +++ b/sys/kms/gstkmssink.c
 @@ -1105,8 +1105,8 @@ no_disp_ratio:
@@ -175,7 +175,7 @@ index b3093ab3..0aee8b7f 100644
  
    /* to make sure it can be show when driver don't support scale */
 diff --git a/sys/kms/gstkmsutils.h b/sys/kms/gstkmsutils.h
-index 500405a1..8d470efe 100644
+index 500405a..8d470ef 100644
 --- a/sys/kms/gstkmsutils.h
 +++ b/sys/kms/gstkmsutils.h
 @@ -80,6 +80,46 @@ G_BEGIN_DECLS

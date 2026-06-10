@@ -1,4 +1,4 @@
-From 7671508a6bfe11c97e975afcef874124fb90d072 Mon Sep 17 00:00:00 2001
+From 314c277e95838f8a6570c5a6ad0a83a52280a7ef Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 25 Mar 2024 12:14:30 +0800
 Subject: [PATCH 35/43] HACK: jpegparse: Allow duplicated or bad SOF marker
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 1 insertion(+), 4 deletions(-)
 
 diff --git a/gst/jpegformat/gstjpegparse.c b/gst/jpegformat/gstjpegparse.c
-index 1dda8c5f..85bbb183 100644
+index 1dda8c5..85bbb18 100644
 --- a/gst/jpegformat/gstjpegparse.c
 +++ b/gst/jpegformat/gstjpegparse.c
 @@ -967,11 +967,8 @@ gst_jpeg_parse_handle_frame (GstBaseParse * bparse, GstBaseParseFrame * frame,

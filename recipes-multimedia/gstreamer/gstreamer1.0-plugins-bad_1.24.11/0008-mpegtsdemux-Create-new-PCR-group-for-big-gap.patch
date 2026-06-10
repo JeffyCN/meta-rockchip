@@ -12,7 +12,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 11 insertions(+)
 
 diff --git a/gst/mpegtsdemux/mpegtspacketizer.c b/gst/mpegtsdemux/mpegtspacketizer.c
-index c50dec31..3601a393 100644
+index c50dec3..3601a39 100644
 --- a/gst/mpegtsdemux/mpegtspacketizer.c
 +++ b/gst/mpegtsdemux/mpegtspacketizer.c
 @@ -1995,6 +1995,7 @@ record_pcr (MpegTSPacketizer2 * packetizer, MpegTSPCR * pcrtable,

@@ -1,4 +1,4 @@
-From b49928a89e01f828a1be736ca20d658c9fd5b80c Mon Sep 17 00:00:00 2001
+From 8cffc99485b634e90d4ff74320885613fe842d62 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 5 Aug 2022 11:39:00 +0800
 Subject: [PATCH 27/43] waylandsink: Support transparent video
