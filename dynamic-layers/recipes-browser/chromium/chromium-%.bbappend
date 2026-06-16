@@ -10,6 +10,9 @@ PACKAGECONFIG[use-v4lplugin] = "use_v4lplugin=true"
 
 GN_ARGS:append = " fatal_linker_warnings=false"
 
+# Vulkan unsupported for now
+GN_ARGS:append = " enable_vulkan=false"
+
 CHROMIUM_EXTRA_ARGS:append = " --no-sandbox --gpu-sandbox-start-early --ignore-gpu-blocklist"
 
 # Enable VEA as well
