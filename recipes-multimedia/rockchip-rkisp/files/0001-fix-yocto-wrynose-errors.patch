@@ -1,0 +1,38 @@
+From a1c3e232a305247f4551b2bc2a5f99b9ac5ae935 Mon Sep 17 00:00:00 2001
+From: Pieter Van Buggenhout <pieter.vanbuggenhout@camco.be>
+Date: Wed, 17 Jun 2026 09:59:13 +0200
+Subject: [PATCH] fix yocto wrynose errors
+
+---
+ ext/tinyxml2/tinyxml2.h      | 2 +-
+ gstreamer/media-controller.c | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/ext/tinyxml2/tinyxml2.h b/ext/tinyxml2/tinyxml2.h
+index 8cabd0c6bdd0..16b3c2841091 100644
+--- a/ext/tinyxml2/tinyxml2.h
++++ b/ext/tinyxml2/tinyxml2.h
+@@ -162,7 +162,7 @@ template <class T, int INIT>
+ class DynArray
+ {
+ public:
+-    DynArray< T, INIT >()
++    DynArray()
+     {
+         mem = pool;
+         allocated = INIT;
+diff --git a/gstreamer/media-controller.c b/gstreamer/media-controller.c
+index cce5623ef188..1d4bf7b1ea1b 100644
+--- a/gstreamer/media-controller.c
++++ b/gstreamer/media-controller.c
+@@ -20,6 +20,7 @@
+  */
+ #include "media-controller.h"
+ 
++#include <string.h>
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <stdio.h>
+-- 
+2.53.0
+

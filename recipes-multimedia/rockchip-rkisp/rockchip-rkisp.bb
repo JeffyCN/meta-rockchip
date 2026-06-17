@@ -17,12 +17,15 @@ inherit local-git
 SRCREV = "fafcd69874d20a7737425cc16a70619b220f8a2e"
 SRC_URI = " \
 	git://github.com/JeffyCN/mirrors.git;protocol=https;branch=camera_engine_rkisp; \
+	file://0001-fix-yocto-wrynose-errors.patch \
 	file://rkisp_daemons.sh \
 "
 
 EXTRA_OECMAKE = " \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
 "
+
+CFLAGS:append = " -D_GNU_SOURCE"
 
 do_configure() {
 	if echo ${TUNE_FEATURES} | grep -wq arm; then
@@ -98,7 +101,10 @@ INITSCRIPT_PACKAGES = "${PN}-server"
 INITSCRIPT_NAME:${PN}-server = "rkisp_daemons.sh"
 INITSCRIPT_PARAMS:${PN}-server = "start 70 5 4 3 2 . stop 30 0 1 6 ."
 
-INSANE_SKIP:${PN} = "already-stripped ldflags"
+INSANE_SKIP:${PN} = "already-stripped ldflags buildpaths"
+INSANE_SKIP:${PN}-dbg += "buildpaths"
+INSANE_SKIP:${PN}-tests += "buildpaths"
+INSANE_SKIP:${PN}-server += "buildpaths"
 
 FILES:${PN}-dev = "${includedir}"
 FILES:${PN}-tests = "${bindir}/rkisp_demo"
