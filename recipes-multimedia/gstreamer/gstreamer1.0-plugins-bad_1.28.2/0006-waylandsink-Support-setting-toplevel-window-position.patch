@@ -1,4 +1,4 @@
-From ef091a091e0732f04d6c480acfe19bfdfeebfb86 Mon Sep 17 00:00:00 2001
+From 9d454f7cb84f631631926c114e6726e339763c3a Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 15 Jun 2020 10:11:42 +0800
 Subject: [PATCH 06/41] waylandsink: Support setting toplevel window position
@@ -9,11 +9,11 @@ gst-launch-1.0 videotestsrc ! waylandsink render-rectangle="<100,200,300,400>"
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
  ext/gtk/gstgtkwaylandsink.c        |  6 ++---
- ext/wayland/gstwaylandsink.c       | 23 +++++++++--------
+ ext/wayland/gstwaylandsink.c       | 23 ++++++++++--------
  ext/wayland/gstwaylandsink.h       |  2 ++
- gst-libs/gst/wayland/gstwlwindow.c | 41 ++++++++++++++++++++----------
+ gst-libs/gst/wayland/gstwlwindow.c | 39 +++++++++++++++++++++---------
  gst-libs/gst/wayland/gstwlwindow.h |  8 +++---
- 5 files changed, 50 insertions(+), 30 deletions(-)
+ 5 files changed, 51 insertions(+), 27 deletions(-)
 
 diff --git a/ext/gtk/gstgtkwaylandsink.c b/ext/gtk/gstgtkwaylandsink.c
 index 0660b30..48f5004 100644
@@ -102,7 +102,7 @@ index 7c448bf..64136bb 100644
    GstVideoOrientationMethod tag_rotate_method;
    GstVideoOrientationMethod current_rotate_method;
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index 3b31d80..a8ecc2f 100644
+index 3b31d80..1986795 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -174,7 +174,7 @@ handle_xdg_toplevel_configure (void *data, struct xdg_toplevel *xdg_toplevel,
@@ -123,7 +123,7 @@ index 3b31d80..a8ecc2f 100644
  {
    GstWlWindow *self;
    GstWlWindowPrivate *priv;
-@@ -434,15 +434,23 @@ gst_wl_window_new_toplevel_full (GstWlDisplay * display,
+@@ -434,12 +434,24 @@ gst_wl_window_new_toplevel_full (GstWlDisplay * display,
      /* Finally, commit the xdg_surface state as toplevel */
      priv->configured = FALSE;
  
@@ -133,15 +133,16 @@ index 3b31d80..a8ecc2f 100644
 -    priv->default_height = info->height;
 -    gst_wl_window_set_render_rectangle (self, 0, 0, priv->default_width,
 -        priv->default_height);
--
--    GST_INFO_OBJECT (self, "Configured default rectangle to %ix%i",
--        priv->default_width, priv->default_height);
 +    if (!fullscreen && (render_rectangle->w || render_rectangle->h)) {
 +      /* apply cached position and size */
-+      GST_DEBUG ("Applying window position (%d, %d)",
-+          render_rectangle->x, render_rectangle->y);
 +      gst_wl_window_set_render_rectangle (self, render_rectangle->x,
 +          render_rectangle->y, render_rectangle->w, render_rectangle->h, TRUE);
++
++      GST_DEBUG ("Applying window position (%d, %d)",
++          render_rectangle->x, render_rectangle->y);
++
++      priv->default_width = render_rectangle->w;
++      priv->default_height = render_rectangle->h;
 +    } else {
 +      /* set the initial size to be the same as the reported video size */
 +      priv->default_width =
@@ -149,14 +150,11 @@ index 3b31d80..a8ecc2f 100644
 +      priv->default_height = info->height;
 +      gst_wl_window_set_render_rectangle (self, 0, 0, priv->default_width,
 +          priv->default_height, FALSE);
-+
-+      GST_INFO_OBJECT (self, "Configured default rectangle to %ix%i",
-+          priv->default_width, priv->default_height);
 +    }
  
-     wl_surface_commit (priv->area_surface);
-     wl_display_flush (gst_wl_display_get_display (display));
-@@ -488,10 +496,11 @@ error:
+     GST_INFO_OBJECT (self, "Configured default rectangle to %ix%i",
+         priv->default_width, priv->default_height);
+@@ -488,10 +500,11 @@ error:
  
  GstWlWindow *
  gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
@@ -170,7 +168,7 @@ index 3b31d80..a8ecc2f 100644
  }
  
  GstWlWindow *
-@@ -1040,7 +1049,7 @@ gst_wl_window_update_geometry (GstWlWindow * self)
+@@ -1040,7 +1053,7 @@ gst_wl_window_update_geometry (GstWlWindow * self)
  
  void
  gst_wl_window_set_render_rectangle (GstWlWindow * self, gint x, gint y,
@@ -179,7 +177,7 @@ index 3b31d80..a8ecc2f 100644
  {
    GstWlWindowPrivate *priv = gst_wl_window_get_instance_private (self);
  
-@@ -1054,6 +1063,10 @@ gst_wl_window_set_render_rectangle (GstWlWindow * self, gint x, gint y,
+@@ -1054,6 +1067,10 @@ gst_wl_window_set_render_rectangle (GstWlWindow * self, gint x, gint y,
    priv->render_rectangle.h = h;
  
    gst_wl_window_update_geometry (self);

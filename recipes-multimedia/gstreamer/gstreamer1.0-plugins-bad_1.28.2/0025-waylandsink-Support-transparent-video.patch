@@ -1,4 +1,4 @@
-From 80509c669dd6e522d8432fb503340505efbfa87d Mon Sep 17 00:00:00 2001
+From 8086b95f23b2416c495d9b3820459482818f3831 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 5 Aug 2022 11:39:00 +0800
 Subject: [PATCH 25/41] waylandsink: Support transparent video
@@ -11,7 +11,7 @@ Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
  1 file changed, 28 insertions(+), 10 deletions(-)
 
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index e8e25b1..fa044b5 100644
+index 47507f3..c1502dd 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -100,6 +100,9 @@ typedef struct _GstWlWindowPrivate
@@ -24,7 +24,7 @@ index e8e25b1..fa044b5 100644
  } GstWlWindowPrivate;
  
  G_DEFINE_TYPE_WITH_CODE (GstWlWindow, gst_wl_window, G_TYPE_OBJECT,
-@@ -752,20 +755,23 @@ gst_wl_window_resize_video_surface (GstWlWindow * self)
+@@ -756,20 +759,23 @@ gst_wl_window_resize_video_surface (GstWlWindow * self)
  }
  
  static void
@@ -55,7 +55,7 @@ index e8e25b1..fa044b5 100644
      /* Set video opaque */
      region = wl_compositor_create_region (compositor);
      wl_region_add (region, 0, 0, G_MAXINT32, G_MAXINT32);
-@@ -864,9 +870,15 @@ gst_wl_window_commit_buffer (GstWlWindow * self, GstWlBuffer * buffer)
+@@ -868,9 +874,15 @@ gst_wl_window_commit_buffer (GstWlWindow * self, GstWlBuffer * buffer)
    }
  
    if (G_UNLIKELY (needs_layout_update)) {
@@ -72,7 +72,7 @@ index e8e25b1..fa044b5 100644
  
      gst_wl_window_set_colorimetry (self, &info->colorimetry, minfo, linfo);
    }
-@@ -1061,8 +1073,14 @@ gst_wl_window_update_borders (GstWlWindow * self)
+@@ -1065,8 +1077,14 @@ gst_wl_window_update_borders (GstWlWindow * self)
      GstVideoInfo info;
      GstAllocator *alloc;
  

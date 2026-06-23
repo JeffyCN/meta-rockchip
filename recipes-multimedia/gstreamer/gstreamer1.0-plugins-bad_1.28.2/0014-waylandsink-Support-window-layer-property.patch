@@ -1,4 +1,4 @@
-From 19eee32269c20c37951e58c890eef2cf24fa594b Mon Sep 17 00:00:00 2001
+From 1d17d11998d3e99196f6a4e32dd3e32c88ebbb72 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 5 Mar 2021 10:15:51 +0800
 Subject: [PATCH 14/41] waylandsink: Support window layer property
@@ -138,7 +138,7 @@ index 64136bb..0d626b4 100644
    gchar *display_name;
  
 diff --git a/gst-libs/gst/wayland/gstwlwindow.c b/gst-libs/gst/wayland/gstwlwindow.c
-index 705f0f4..c007e06 100644
+index 1a032dc..db62c67 100644
 --- a/gst-libs/gst/wayland/gstwlwindow.c
 +++ b/gst-libs/gst/wayland/gstwlwindow.c
 @@ -327,6 +327,43 @@ gst_wl_window_new_internal (GstWlDisplay * display, GMutex * render_lock)
@@ -203,7 +203,7 @@ index 705f0f4..c007e06 100644
  
      /* Finally, commit the xdg_surface state as toplevel */
      priv->configured = FALSE;
-@@ -498,11 +537,11 @@ error:
+@@ -502,11 +541,11 @@ error:
  
  GstWlWindow *
  gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
