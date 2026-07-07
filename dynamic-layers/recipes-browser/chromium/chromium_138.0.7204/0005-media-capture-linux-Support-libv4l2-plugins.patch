@@ -1,4 +1,4 @@
-From 52a2cacd1fe04eafbfcfe55fd6889f7a135cce79 Mon Sep 17 00:00:00 2001
+From a41ce0bd04785468108523547adc2f39de0e8f8f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 1 Jul 2019 10:37:35 +0800
 Subject: [PATCH 05/16] media: capture: linux: Support libv4l2 plugins
@@ -9,23 +9,20 @@ Depends on custom libv4l2 with mmap & munmap.
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
- media/capture/video/linux/BUILD.gn            | 15 ++++++
- .../video/linux/v4l2_capture_device_impl.cc   | 53 ++++++++++++++++++-
- .../video/linux/v4l2_capture_device_impl.h    |  8 +++
- 3 files changed, 75 insertions(+), 1 deletion(-)
-
-diff --git a/media/capture/video/linux/BUILD.gn b/media/capture/video/linux/BUILD.gn
-index 8f812f723..6ffe7345d 100644
---- a/media/capture/video/linux/BUILD.gn
-+++ b/media/capture/video/linux/BUILD.gn
-@@ -2,10 +2,19 @@
+diff --git a/media/capture/BUILD.gn b/media/capture/BUILD.gn
+--- a/media/capture/BUILD.gn
++++ b/media/capture/BUILD.gn
+@@ -2,6 +2,7 @@
  # Use of this source code is governed by a BSD-style license that can be
  # found in the LICENSE file.
  
 +import("//build/buildflag_header.gni")
- import("//third_party/webrtc/webrtc.gni")
- 
- assert(is_linux || is_chromeos)
+ import("//build/config/apple/mobile_config.gni")
+ import("//build/config/features.gni")
+ import("//build/config/ui.gni")
+@@ -20,6 +21,14 @@
+   ]
+ }
  
 +buildflag_header("buildflags") {
 +  header = "buildflags.h"
@@ -35,24 +32,24 @@ index 8f812f723..6ffe7345d 100644
 +  ]
 +}
 +
- source_set("linux") {
-   visibility = [
-     ":test_support",
-@@ -70,6 +79,12 @@ source_set("linux") {
-     "//ui/display",
-     "//ui/gfx",
-   ]
+ component("capture_switches") {
+   defines = [ "CAPTURE_IMPLEMENTATION" ]
+   sources = [
+@@ -265,6 +274,12 @@
+       ]
+     }
+     deps += [ "//gpu/command_buffer/client" ]
 +
-+  public_deps += [ ":buildflags" ]
++    public_deps += [ ":buildflags" ]
 +
-+  if (use_v4lplugin) {
-+    deps += [ "//media/gpu/v4l2:libv4l2_stubs" ]
-+  }
- }
++    if (use_v4lplugin) {
++      deps += [ "//media/gpu/v4l2:libv4l2_stubs" ]
++    }
+   }
  
- source_set("test_support") {
+   if (is_linux) {
+
 diff --git a/media/capture/video/linux/v4l2_capture_device_impl.cc b/media/capture/video/linux/v4l2_capture_device_impl.cc
-index c8a49b3f0..b9fa8efd5 100644
 --- a/media/capture/video/linux/v4l2_capture_device_impl.cc
 +++ b/media/capture/video/linux/v4l2_capture_device_impl.cc
 @@ -10,19 +10,62 @@
@@ -119,7 +116,7 @@ index c8a49b3f0..b9fa8efd5 100644
    return ::ioctl(fd, request, argp);
  }
  
-@@ -32,10 +75,18 @@ void* V4L2CaptureDeviceImpl::mmap(void* start,
+@@ -32,10 +75,18 @@
                                    int flags,
                                    int fd,
                                    off_t offset) {
@@ -138,19 +135,19 @@ index c8a49b3f0..b9fa8efd5 100644
    return ::munmap(start, length);
  }
  
+
 diff --git a/media/capture/video/linux/v4l2_capture_device_impl.h b/media/capture/video/linux/v4l2_capture_device_impl.h
-index e2f6bc154..336d1504e 100644
 --- a/media/capture/video/linux/v4l2_capture_device_impl.h
 +++ b/media/capture/video/linux/v4l2_capture_device_impl.h
-@@ -10,6 +10,7 @@
+@@ -8,6 +8,7 @@
+ #include <fcntl.h>
+ #include <poll.h>
  
++#include "media/capture/buildflags.h"
  #include "media/capture/capture_export.h"
  #include "media/capture/video/linux/v4l2_capture_device.h"
-+#include "media/capture/video/linux/buildflags.h"
  
- namespace media {
- 
-@@ -17,6 +18,8 @@ namespace media {
+@@ -17,6 +18,8 @@
  // V4L2 APIs.
  class CAPTURE_EXPORT V4L2CaptureDeviceImpl : public V4L2CaptureDevice {
   public:
@@ -159,7 +156,7 @@ index e2f6bc154..336d1504e 100644
    int open(const char* device_name, int flags) override;
    int close(int fd) override;
    int ioctl(int fd, int request, void* argp) override;
-@@ -32,6 +35,11 @@ class CAPTURE_EXPORT V4L2CaptureDeviceImpl : public V4L2CaptureDevice {
+@@ -32,6 +35,11 @@
  
   private:
    ~V4L2CaptureDeviceImpl() override;
@@ -171,6 +168,3 @@ index e2f6bc154..336d1504e 100644
  };
  
  }  // namespace media
--- 
-2.39.5
-
