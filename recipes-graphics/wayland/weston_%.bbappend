@@ -10,3 +10,8 @@ S = "${WORKDIR}/git"
 
 # The custom player demo depends on gstreamer.
 DEPENDS:append = " ${@bb.utils.contains('PACKAGECONFIG', 'clients', 'gstreamer1.0-plugins-base', '', d)}"
+
+# in weston 14 the touch-calibrator patch is no longer needed (yocto 5.0.18 provides weston 13)
+SRC_URI:remove = " \
+    file://0001-touch-calibrator-Regularise-surface-view-mapping.patch \
+"
