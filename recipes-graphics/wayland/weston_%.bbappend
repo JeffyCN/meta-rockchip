@@ -4,8 +4,13 @@
 DEPENDS:append = " rockchip-librga"
 
 SRCREV = "${AUTOREV}"
-SRC_URI:append = " git://github.com/JeffyCN/weston;protocol=https;nobranch=1;branch=${@oe.utils.trim_version('${PV}', 2)}_2025_09_29;"
-SRC_URI:remove = "https://gitlab.freedesktop.org/wayland/weston/-/releases/${PV}/downloads/${BPN}-${PV}.tar.xz2"
+SRC_URI = " \
+    git://github.com/JeffyCN/weston;protocol=https;nobranch=1;branch=13.0_2025_09_29; \
+    file://weston.png \
+    file://weston.desktop \
+    file://xwayland.weston-start \
+    file://systemd-notify.weston-start \
+"
 S = "${WORKDIR}/git"
 
 # The custom player demo depends on gstreamer.
