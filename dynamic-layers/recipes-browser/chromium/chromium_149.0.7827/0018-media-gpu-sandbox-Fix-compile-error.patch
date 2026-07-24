@@ -1,0 +1,26 @@
+From 7ebad05938f46d225c3e09c0e8b2f781c359d888 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 15 Jun 2026 16:47:52 +0800
+Subject: [PATCH 18/18] media: gpu: sandbox: Fix compile error
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/sandbox/hardware_video_decoding_sandbox_hook_linux.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/media/gpu/sandbox/hardware_video_decoding_sandbox_hook_linux.cc b/media/gpu/sandbox/hardware_video_decoding_sandbox_hook_linux.cc
+index 58ab0db50..01ea4cf4a 100644
+--- a/media/gpu/sandbox/hardware_video_decoding_sandbox_hook_linux.cc
++++ b/media/gpu/sandbox/hardware_video_decoding_sandbox_hook_linux.cc
+@@ -120,7 +120,7 @@ bool HardwareVideoDecodingPreSandboxHookForVaapiOnAMD(
+   radeonsi_lib = DRI_DRIVER_DIR "/radeonsi_dri.so";
+ #endif
+   if (nullptr == dlopen(radeonsi_lib, kDlopenFlags)) {
+-    LOG(ERROR) << "dlopen(radeonsi_dri.so) failed with error: " << dlerror();
++    // LOG(ERROR) << "dlopen(radeonsi_dri.so) failed with error: " << dlerror();
+     return false;
+   }
+ 
+-- 
+2.39.5
+
