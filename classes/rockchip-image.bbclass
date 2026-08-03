@@ -57,7 +57,7 @@ do_fixup_wks[depends] += " \
 	virtual/bootloader:do_deploy \
 "
 do_fixup_wks() {
-	[ -f "${WKS_FULL_PATH}" ] || return
+	[ -f "${WKS_FULL_PATH}" ] || return 0
 
 	IMAGES=$(grep -o "[^=]*\.img" "${WKS_FULL_PATH}")
 
@@ -74,7 +74,7 @@ IMAGE_POSTPROCESS_COMMAND:append = " do_image_wic_ufs;gen_rkparameter;"
 
 do_image_wic_ufs() {
 	IMAGE="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.wic"
-	[ -f "${IMAGE}" ] || return
+	[ -f "${IMAGE}" ] || return 0
 
 	echo "Creating wic image for UFS(4K logical sector size)..."
 
