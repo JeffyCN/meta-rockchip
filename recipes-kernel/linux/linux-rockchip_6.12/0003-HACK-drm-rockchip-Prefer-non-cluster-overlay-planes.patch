@@ -1,0 +1,52 @@
+From 1df10be036676b2468e41837da6852293e38972f Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 1 Apr 2022 22:17:07 +0800
+Subject: [PATCH 3/3] HACK: drm: rockchip: Prefer non-cluster overlay planes
+
+Change-Id: I65d40b50c96921b644de4601188c0518c99c9d72
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
+index e3da7d589e4b..0711c19d6e71 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
+@@ -18671,6 +18671,7 @@ static int vop2_create_crtc(struct vop2 *vop2, uint8_t enabled_vp_mask)
+ 	bool find_primary_plane = false;
+ 	bool bootloader_initialized = false;
+ 	struct rockchip_drm_private *private = drm_dev->dev_private;
++	bool use_cluster = false;
+ 
+ 	/*
+ 	 * We set plane_mask from dts or bootloader
+@@ -18957,9 +18958,13 @@ static int vop2_create_crtc(struct vop2 *vop2, uint8_t enabled_vp_mask)
+ 	 * create overlay planes of the leftover overlay win
+ 	 * Create drm_planes for overlay windows with possible_crtcs restricted
+ 	 */
++add_overlay:
+ 	for (j = 0; j < vop2->registered_num_wins; j++) {
+ 		win = &vop2->win[j];
+ 
++		if (use_cluster != vop2_cluster_window(win))
++			continue;
++
+ 		if (win->type != DRM_PLANE_TYPE_OVERLAY)
+ 			continue;
+ 		/*
+@@ -18995,6 +19000,11 @@ static int vop2_create_crtc(struct vop2 *vop2, uint8_t enabled_vp_mask)
+ 			DRM_WARN("failed to init overlay plane %s\n", win->name);
+ 	}
+ 
++	if (!use_cluster) {
++		use_cluster = true;
++		goto add_overlay;
++	}
++
+ 	if (is_vop3(vop2))
+ 		vop3_init_esmart_scale_engine(vop2);
+ 
+-- 
+2.47.3
+
