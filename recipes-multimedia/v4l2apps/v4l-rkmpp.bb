@@ -8,7 +8,7 @@ SECTION = "libs"
 LICENSE = "LGPL-2.1-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d749e86a105281d7a44c2328acebc4b0"
 
-SRCREV = "131d22430dc1a058977c2e24e6f4709576de3e3e"
+SRCREV = "83d2eb6057a347f1f8bfa9d9dab04763c214e3a0"
 SRC_URI = "git://github.com/JeffyCN/libv4l-rkmpp.git;protocol=https;branch=master"
 
 DEPENDS = "rockchip-mpp libv4l"
