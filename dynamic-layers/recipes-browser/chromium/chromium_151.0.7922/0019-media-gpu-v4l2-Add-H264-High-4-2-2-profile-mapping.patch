@@ -1,0 +1,53 @@
+From 7e16231156e4e5a4a9b42dd062d4e018a03e0e8b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 9 Oct 2026 17:38:20 +0800
+Subject: [PATCH] media: gpu: v4l2: Add H264 High 4:2:2 profile mapping
+
+The H264 branch of V4L2ProfileToVideoCodecProfile() stops at High,
+so a decoder reporting V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_422 via
+QUERYMENU (e.g. Rockchip rkvdec, which decodes 4:2:2 to NV16) never
+matches a V4L2 stateful decoder config. H264 4:2:2 streams then
+always fall back to software decode.
+
+Map the High 4:2:2 menu entry to H264PROFILE_HIGH422PROFILE in
+V4L2ProfileToVideoCodecProfile() and add it to the
+kVideoCodecProfileToV4L2CodecPixFmt reverse map: without the latter
+VideoCodecProfileToV4L2PixFmt() hits its CHECK() and crashes the GPU
+process when a 4:2:2 stream is about to be decoded. High 10 stays
+unmapped on purpose since the Rockchip decoders do not support 10-bit
+H264; libv4l-rkmpp converts the NV16 frames to NV12, so no capture
+format changes are needed on the Chrome side.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ media/gpu/v4l2/v4l2_utils.cc | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/media/gpu/v4l2/v4l2_utils.cc b/media/gpu/v4l2/v4l2_utils.cc
+index a5c0f8210..bcd1c7880 100644
+--- a/media/gpu/v4l2/v4l2_utils.cc
++++ b/media/gpu/v4l2/v4l2_utils.cc
+@@ -199,6 +199,11 @@ VideoCodecProfile V4L2ProfileToVideoCodecProfile(uint32_t v4l2_codec,
+           return H264PROFILE_EXTENDED;
+         case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH:
+           return H264PROFILE_HIGH;
++        // H264 High 10 is left out on purpose: the Rockchip decoders do
++        // not support 10-bit H264, and advertising it would make Chrome
++        // pick the decoder for High10 streams that then fail to decode.
++        case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_422:
++          return H264PROFILE_HIGH422PROFILE;
+       }
+       break;
+     case V4L2_CID_MPEG_VIDEO_VP8_PROFILE:
+@@ -407,6 +412,8 @@ static const std::map<VideoCodecProfile,
+         {H264PROFILE_BASELINE, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_H264, SLICE)},
+         {H264PROFILE_MAIN, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_H264, SLICE)},
+         {H264PROFILE_HIGH, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_H264, SLICE)},
++        {H264PROFILE_HIGH422PROFILE,
++         MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_H264, SLICE)},
+ #if BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
+         {HEVCPROFILE_MAIN, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_HEVC, SLICE)},
+         {HEVCPROFILE_MAIN10, MAKE_V4L2_CODEC_PAIR(V4L2_PIX_FMT_HEVC, SLICE)},
+-- 
+2.39.5
+
