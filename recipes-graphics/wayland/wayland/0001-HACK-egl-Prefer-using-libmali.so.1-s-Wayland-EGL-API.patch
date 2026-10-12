@@ -1,5 +1,6 @@
 From f7bd21d0ba1267db6a6f640717b283f93006ba5f Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Upstream-Status: Pending
 Date: Tue, 25 Feb 2025 09:11:02 +0800
 Subject: [PATCH] HACK: egl: Prefer using libmali.so.1's Wayland-EGL APIs
 
