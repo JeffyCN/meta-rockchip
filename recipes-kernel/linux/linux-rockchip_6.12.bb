@@ -8,7 +8,7 @@ inherit local-git
 
 SRCREV = "470f9dccbdc42e7b8a824d0a5c5640a10e9457d2"
 SRC_URI = " \
-	git://github.com/rockchip-linux/kernel.git;protocol=https;nobranch=1;branch=develop-6.12; \
+	git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=kernel-6.12; \
 	file://${THISDIR}/files/cgroups.cfg \
 "
 
