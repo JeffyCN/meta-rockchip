@@ -21,3 +21,11 @@ SRC_URI:append = " ${@bb.utils.contains('IMAGE_FSTYPES', 'ext4', \
 		   'file://${THISDIR}/files/ext4.cfg', \
 		   '', \
 		   d)}"
+
+# Hook to fix OpenSSL ENGINE API compatibility for kernel 6.1
+# The kernel's certs/extract-cert.c uses ENGINE API that was removed in OpenSSL 4.0
+# This workaround adds the OPENSSL_ENGINE_STUBS define before compilation
+do_compile:prepend() {
+    # Fix OpenSSL ENGINE API compatibility
+    sed -i '1i#define OPENSSL_ENGINE_STUBS' "${WORKDIR}/kernel-source/certs/extract-cert.c"
+}
