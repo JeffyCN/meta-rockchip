@@ -22,3 +22,9 @@ PACKAGECONFIG[shell-fullscreen] = ""
 PACKAGECONFIG[vaapi] = ""
 
 EXTRA_OEMESON = "-Dtests=false"
+
+# The JeffyCN SRC_URI override drops the oe-core patch that allows
+# libdisplay-info 0.4.0; relax the requirement via sed instead
+do_configure:prepend() {
+	sed -i "s/\['>= 0.2.0', '< 0.4.0'\]/['>= 0.2.0', '< 0.5.0']/" ${S}/meson.build
+}
