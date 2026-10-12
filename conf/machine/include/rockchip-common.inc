@@ -23,9 +23,9 @@ PREFERRED_PROVIDER_virtual/kernel ?= "linux-rockchip"
 ROCKCHIP_KERNEL_COMPRESSED ??= "1"
 ROCKCHIP_KERNEL_IMAGES ??= "1"
 
-# Prefer using Rockchip BSP kernel 6.1
-PREFERRED_VERSION_linux-rockchip ?= "6.1%"
-PREFERRED_VERSION_linux-libc-headers ?= "6.1-custom%"
+# Prefer using Rockchip BSP kernel 6.12
+PREFERRED_VERSION_linux-rockchip ?= "6.12%"
+PREFERRED_VERSION_linux-libc-headers ?= "6.12-custom%"
 # Avoid old kernel version error
 OLDEST_KERNEL = "${@d.getVar('PREFERRED_VERSION_linux-libc-headers').split('-')[0]}"
 
