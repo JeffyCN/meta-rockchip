@@ -13,7 +13,14 @@
 # Create dummy video node for V4L2 VDA/VEA with rkmpp plugin
 for type in dec enc; do
 	dev=/dev/video-${type}0
-	echo $type > $dev
+	# Limit the encoder codecs to non-JPEG ones: chromium rejects the
+	# whole encoder device if its codec list contains any JPEG format,
+	# while MJPEG encoding is not reachable from chromium anyway
+	if [ "$type" = enc ]; then
+		echo "enc codecs=H.264,VP8" > $dev
+	else
+		echo $type > $dev
+	fi
 	chmod 660 $dev
 	chown root:video $dev
 done
