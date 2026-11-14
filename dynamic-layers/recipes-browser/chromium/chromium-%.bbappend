@@ -8,12 +8,19 @@ inherit auto-patch
 # HACK: Workaround for the meta-browser chromium-R136 issue in the scarthgap branch
 UNPACKDIR ??= "${WORKDIR}"
 
-PACKAGECONFIG ??= "use-egl use-v4l2 use-v4lplugin proprietary-codecs content-shell"
+PACKAGECONFIG ??= "use-egl use-v4l2 use-v4lplugin proprietary-codecs basic"
 PACKAGECONFIG[use-v4lplugin] = "use_v4lplugin=true"
 
 # Minimal shell around the content module; no GN args needed, the
 # content_shell target is always available in the upstream build graph.
+# Off by default, enable locally with e.g.
+#   PACKAGECONFIG:append:pn-chromium-ozone-wayland = " content-shell"
 PACKAGECONFIG[content-shell] = ""
+
+# Basic-browser-only build: drop subsystems a kiosk-style browser does
+# not need (validated against gn args --list on 152; remoting is already
+# off and WebRTC can no longer be disabled upstream)
+PACKAGECONFIG[basic] = "enable_printing=false enable_pdf=false enable_vr=false"
 
 GN_ARGS:append = " fatal_linker_warnings=false"
 
@@ -62,13 +69,21 @@ do_compile:append () {
 
 do_install:append () {
 	if ${@bb.utils.contains('PACKAGECONFIG', 'content-shell', 'true', 'false', d)}; then
-		install -m 0755 ${B}/content_shell ${D}${libdir}/chromium/content-shell
-		# Keep the original pak name: the shell looks up content_shell.pak
-		# next to the binary at runtime
-		install -m 0644 ${B}/content_shell.pak ${D}${libdir}/chromium/content_shell.pak
+		# Private layout: the shell looks up its pak, ICU and V8 snapshot
+		# data next to the binary (DIR_ASSETS/DIR_MODULE), so keeping
+		# everything in one private directory makes the package standalone
+		# instead of depending on the full browser package
+		install -d ${D}${libdir}/content-shell
+		install -m 0755 ${B}/content_shell ${D}${libdir}/content-shell/content-shell
+		install -m 0644 ${B}/content_shell.pak ${D}${libdir}/content-shell/content_shell.pak
+		install -m 0644 ${B}/icudtl.dat ${D}${libdir}/content-shell/icudtl.dat
+		install -m 0644 ${B}/snapshot_blob.bin ${D}${libdir}/content-shell/snapshot_blob.bin
+		install -m 0644 ${B}/v8_context_snapshot.bin ${D}${libdir}/content-shell/v8_context_snapshot.bin
+		install -m 0755 ${B}/libEGL.so ${D}${libdir}/content-shell/libEGL.so
+		install -m 0755 ${B}/libGLESv2.so ${D}${libdir}/content-shell/libGLESv2.so
 
 		# Wrapper to pass the Rockchip-specific runtime args
-		printf '#!/bin/sh\nexec %s/chromium/content-shell %s "$@"\n' \
+		printf '#!/bin/sh\nexec %s/content-shell/content-shell %s "$@"\n' \
 			"${libdir}" "${CHROMIUM_EXTRA_ARGS}" \
 			> ${D}${bindir}/content-shell
 		chmod 0755 ${D}${bindir}/content-shell
@@ -79,11 +94,10 @@ PACKAGES =+ "${PN}-content-shell"
 
 FILES:${PN}-content-shell = " \
 	${bindir}/content-shell \
-	${libdir}/chromium/content-shell \
-	${libdir}/chromium/content_shell.pak \
+	${libdir}/content-shell/ \
 "
 
-# Shares icudtl.dat, v8 snapshots, ANGLE and GPU libs with the main package
-RDEPENDS:${PN}-content-shell = "${PN}"
+# Standalone minimal browser: ships its own data files and ANGLE, and
+# links the system GL stack (libmali) directly; the packaging flow
+# strips the binary and auto-generates the system shlib dependencies
 
-INSANE_SKIP:${PN}-content-shell = "already-stripped"
