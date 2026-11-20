@@ -14,6 +14,7 @@ SRC_URI:append = " \
 	file://android-gadget-cleanup \
 	file://10-adbd-rockchip.conf \
 "
+S = "${UNPACKDIR}"
 
 do_install:append() {
 	install -d ${D}${sysconfdir}/init.d
