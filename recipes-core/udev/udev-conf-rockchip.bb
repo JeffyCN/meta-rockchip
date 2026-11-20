@@ -8,6 +8,7 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384
 SRC_URI = " \
 	file://99-rockchip-permissions.rules \
 "
+S = "${UNPACKDIR}"
 
 do_install() {
 	install -d ${D}${nonarch_base_libdir}/udev/rules.d
