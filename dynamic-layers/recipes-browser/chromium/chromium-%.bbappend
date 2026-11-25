@@ -5,7 +5,7 @@ MAJ_VER = "${@oe.utils.trim_version("${PV}", 3)}"
 PATCHPATH = "${CURDIR}/chromium_${MAJ_VER}"
 inherit auto-patch
 
-PACKAGECONFIG ??= "use-egl use-v4l2 use-v4lplugin proprietary-codecs basic"
+PACKAGECONFIG ??= "use-egl use-v4l2 use-v4lplugin proprietary-codecs"
 PACKAGECONFIG[use-v4lplugin] = "use_v4lplugin=true"
 
 # Minimal shell around the content module; no GN args needed, the
@@ -13,11 +13,6 @@ PACKAGECONFIG[use-v4lplugin] = "use_v4lplugin=true"
 # Off by default, enable locally with e.g.
 #   PACKAGECONFIG:append:pn-chromium-ozone-wayland = " content-shell"
 PACKAGECONFIG[content-shell] = ""
-
-# Basic-browser-only build: drop subsystems a kiosk-style browser does
-# not need (validated against gn args --list on 152; remoting is already
-# off and WebRTC can no longer be disabled upstream)
-PACKAGECONFIG[basic] = "enable_printing=false enable_pdf=false enable_vr=false"
 
 GN_ARGS:append = " fatal_linker_warnings=false"
 
